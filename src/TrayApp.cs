@@ -20,6 +20,7 @@ namespace Stillpoint
         readonly Stopwatch clock = Stopwatch.StartNew();
         readonly RegisteredWaitHandle showWait;
         ReminderPopup popup;
+        readonly Random messageRandom = new Random();
         bool challengeOpen;
         double lastClock;
         int ticksSinceSave;
@@ -257,9 +258,7 @@ namespace Stillpoint
         {
             if (shutDown) return;
             popup?.Close();
-            string body = preview
-                ? "This is how reminders look. Click OK to try the puzzle."
-                : $"Counting since {Tracker.SessionStarted:t}.";
+            string body = Messages.For(sessionMark, messageRandom);
             Func<bool> confirmClose = () => Verify("Close the reminder?", "To close the reminder, solve this puzzle.", "Close reminder", "Cancel");
             var next = new ReminderPopup(Fmt.Words(sessionMark) + " at the computer", Fmt.Badge(sessionMark), body, confirmClose, preview ? null : (Func<bool>)RequestStop);
             next.FormClosed += (s, e) => { if (popup == s) popup = null; };

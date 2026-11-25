@@ -23,7 +23,7 @@ namespace Stillpoint
             StartPosition = FormStartPosition.Manual;
             BackColor = Theme.Track;
             Padding = new Padding(1);
-            ClientSize = new Size(380, 146);
+            ClientSize = new Size(380, 168);
 
             var table = new TableLayoutPanel
             {
@@ -41,7 +41,7 @@ namespace Stillpoint
 
             var ring = new MiniRing { Text = badge, Size = new Size(44, 44), Margin = new Padding(0, 0, 16, 0), BackColor = Theme.Surface };
             var titleLabel = new Label { Text = title, AutoSize = true, Font = Theme.SemiBold(13.5f), Margin = new Padding(0, 2, 0, 0) };
-            var bodyLabel = new Label { Text = body, AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9.5f), Margin = new Padding(0, 4, 0, 0) };
+            var bodyLabel = new Label { Text = body, AutoSize = true, MaximumSize = new Size(270, 0), ForeColor = Theme.Muted, Font = Theme.Regular(9.5f), Margin = new Padding(0, 4, 0, 0) };
             var buttons = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.RightToLeft,
