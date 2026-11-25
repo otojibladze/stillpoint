@@ -205,21 +205,23 @@ namespace Stillpoint
             else SetRunning(true);
         }
 
-        public bool RequestStop()
+        public bool RequestStop() => RequestStop(null);
+
+        bool RequestStop(Form above)
         {
             if (!Tracker.Running) return true;
-            if (!Verify("Stop counting?", "To stop, solve this puzzle.", "Stop", "Keep counting")) return false;
+            if (!Verify("Stop counting?", "To stop, solve this puzzle.", "Stop", "Keep counting", above)) return false;
             SetRunning(false);
             return true;
         }
 
-        bool Verify(string title, string hint, string confirmText, string cancelText)
+        bool Verify(string title, string hint, string confirmText, string cancelText, Form above = null)
         {
             if (challengeOpen) return false;
             challengeOpen = true;
             try
             {
-                using (var challenge = new ChallengeDialog(title, hint, confirmText, cancelText))
+                using (var challenge = new ChallengeDialog(title, hint, confirmText, cancelText) { Above = above })
                 {
                     var owner = form.Visible ? form : null;
                     return challenge.ShowDialog(owner) == DialogResult.OK;
@@ -259,8 +261,9 @@ namespace Stillpoint
             if (shutDown) return;
             popup?.Close();
             string body = Messages.For(sessionMark, messageRandom);
-            Func<bool> confirmClose = () => Verify("Close the reminder?", "To close the reminder, solve this puzzle.", "Close reminder", "Cancel");
-            var next = new ReminderPopup(Fmt.Words(sessionMark) + " at the computer", Fmt.Badge(sessionMark), body, confirmClose, preview ? null : (Func<bool>)RequestStop);
+            ReminderPopup next = null;
+            Func<bool> confirmClose = () => Verify("Close the reminder?", "To close the reminder, solve this puzzle.", "Close reminder", "Cancel", next);
+            next = new ReminderPopup(Fmt.Words(sessionMark) + " at the computer", Fmt.Badge(sessionMark), body, confirmClose, preview ? null : (Func<bool>)(() => RequestStop(next)));
             next.FormClosed += (s, e) => { if (popup == s) popup = null; };
             popup = next;
             next.ShowNearTray();

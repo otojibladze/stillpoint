@@ -68,6 +68,21 @@ namespace Stillpoint
         }
 
         public Puzzle Puzzle { get; private set; }
+        public Form Above { get; set; }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            if (Above == null || Above.IsDisposed) return;
+            var area = Screen.FromControl(Above).WorkingArea;
+            int gap = (int)Math.Round(10 * AutoScaleFactor.Height);
+            int x = Above.Right - Width;
+            int y = Above.Top - Height - gap;
+            StartPosition = FormStartPosition.Manual;
+            Location = new Point(
+                Math.Max(area.Left, Math.Min(x, area.Right - Width)),
+                Math.Max(area.Top, Math.Min(y, area.Bottom - Height)));
+        }
 
         protected override void OnHandleCreated(EventArgs e)
         {
