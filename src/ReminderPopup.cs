@@ -47,8 +47,8 @@ namespace Stillpoint
                 FlowDirection = FlowDirection.RightToLeft,
                 AutoSize = true,
                 WrapContents = false,
-                Anchor = AnchorStyles.Right,
-                Margin = new Padding(24, 0, 0, 0),
+                Anchor = AnchorStyles.Right | AnchorStyles.Bottom,
+                Margin = new Padding(24, 28, 0, 0),
             };
             var ok = new FlatButton(ButtonKind.Primary) { Text = "OK", MinimumSize = new Size(64, 36), Height = 36, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(8, 0, 0, 0), Font = Theme.SemiBold(9.5f) };
             ok.Click += (s, e) => { if (confirmClose == null || confirmClose()) Close(); };
