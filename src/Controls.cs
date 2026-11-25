@@ -291,7 +291,11 @@ namespace Stillpoint
 
         int RowHeight => (int)(Font.Height * 1.9f);
 
-        int MaxOffset() => Math.Max(0, rows.Count * RowHeight - Height);
+        int Pad => RowHeight / 2;
+
+        Rectangle Inner => new Rectangle(Pad, Pad / 2, Math.Max(0, Width - Pad * 2), Math.Max(0, Height - Pad));
+
+        int MaxOffset() => Math.Max(0, rows.Count * RowHeight - Inner.Height);
 
         protected override void OnMouseEnter(EventArgs e)
         {
@@ -312,37 +316,51 @@ namespace Stillpoint
         {
             var g = e.Graphics;
             g.Clear(Parent?.BackColor ?? Theme.Background);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            float radius = Font.Height * 0.6f;
+            using (var card = Draw.Rounded(new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 1.5f), radius))
+            using (var fill = new SolidBrush(Theme.Surface))
+            using (var edge = new Pen(Theme.Track))
+            {
+                g.FillPath(fill, card);
+                g.DrawPath(edge, card);
+            }
+            g.SmoothingMode = SmoothingMode.None;
+            var inner = Inner;
             int h = RowHeight;
+            g.SetClip(inner);
             if (rows.Count == 0)
             {
-                Draw.Text(g, "Sessions you count show up here.", Font, Theme.Muted, new Rectangle(0, 0, Width, h), TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                Draw.Text(g, "Sessions you count show up here.", Font, Theme.Muted, new Rectangle(inner.Left, inner.Top, inner.Width, h), TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
                 return;
             }
             int gap = h / 2;
-            int right = Width - Math.Max(8, h / 3);
+            int left = inner.Left;
+            int right = inner.Right;
             int lengthWidth = TextRenderer.MeasureText(g, "00h 00m", Font, Size.Empty, TextFormatFlags.NoPadding).Width;
             int endWidth = TextRenderer.MeasureText(g, "Wed 00:00 PM", Font, Size.Empty, TextFormatFlags.NoPadding).Width;
             using (var pen = new Pen(Theme.Line))
             {
                 for (int i = 0; i < rows.Count; i++)
                 {
-                    int y = i * h - offset;
-                    if (y + h < 0) continue;
-                    if (y > Height) break;
-                    g.DrawLine(pen, 0, y, Width, y);
+                    int y = inner.Top + i * h - offset;
+                    if (y + h < inner.Top) continue;
+                    if (y > inner.Bottom) break;
+                    if (i > 0) g.DrawLine(pen, left, y, right, y);
                     var row = rows[i];
-                    Draw.Text(g, row[0], Font, Theme.Ink, new Rectangle(0, y, right - lengthWidth - endWidth - gap * 2, h), TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                    Draw.Text(g, row[0], Font, Theme.Ink, new Rectangle(left, y, right - left - lengthWidth - endWidth - gap * 2, h), TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
                     Draw.Text(g, row[1], Font, Theme.Muted, new Rectangle(right - lengthWidth - gap - endWidth, y, endWidth, h), TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
                     Draw.Text(g, row[2], Font, Theme.Ink, new Rectangle(right - lengthWidth, y, lengthWidth, h), TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
                 }
             }
+            g.ResetClip();
             int max = MaxOffset();
             if (max > 0)
             {
-                float visible = (float)Height / (rows.Count * h);
-                float barH = Math.Max(h, Height * visible);
-                float barY = (Height - barH) * offset / max;
-                using (var brush = new SolidBrush(Theme.Border)) g.FillRectangle(brush, Width - 3, barY, 3, barH);
+                float visible = (float)inner.Height / (rows.Count * h);
+                float barH = Math.Max(h, inner.Height * visible);
+                float barY = inner.Top + (inner.Height - barH) * offset / max;
+                using (var brush = new SolidBrush(Theme.Border)) g.FillRectangle(brush, Width - Pad / 2 - 2, barY, 3, barH);
             }
         }
     }
