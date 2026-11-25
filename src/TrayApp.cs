@@ -289,6 +289,7 @@ namespace Stillpoint
         {
             Tracker.Tick(DateTime.Now, TakeDelta());
             if (Tracker.TryTakeReminder(out double mark)) ShowReminder(mark, false);
+            popup?.FollowCursor();
             if (++ticksSinceSave >= 60) SaveUsage();
             if (--ticksUntilUpdateCheck <= 0) CheckForUpdates(false);
             Refresh();

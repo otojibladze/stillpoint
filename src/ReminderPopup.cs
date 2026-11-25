@@ -102,10 +102,22 @@ namespace Stillpoint
         public void ShowNearTray()
         {
             FitSize();
-            var area = Screen.PrimaryScreen.WorkingArea;
+            PlaceOn(Screen.FromPoint(Cursor.Position));
+            Show();
+        }
+
+        public void FollowCursor()
+        {
+            if (Form.ActiveForm is ChallengeDialog) return;
+            var screen = Screen.FromPoint(Cursor.Position);
+            if (!screen.Equals(Screen.FromControl(this))) PlaceOn(screen);
+        }
+
+        void PlaceOn(Screen screen)
+        {
+            var area = screen.WorkingArea;
             int margin = (int)Math.Round(12 * AutoScaleFactor.Width);
             Location = new Point(area.Right - Width - margin, area.Bottom - Height - margin);
-            Show();
         }
     }
 }
