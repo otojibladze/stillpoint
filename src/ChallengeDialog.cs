@@ -46,8 +46,8 @@ namespace Stillpoint
             host.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             feedback = new Label { AutoSize = true, ForeColor = Theme.AccentText, Font = Theme.Regular(9.5f), Anchor = AnchorStyles.Left | AnchorStyles.Right, Margin = new Padding(0, 8, 0, 0) };
 
-            var confirm = new FlatButton(ButtonKind.Primary) { Text = confirmText, Size = new Size(96, 38), Margin = new Padding(8, 0, 0, 0), Font = Theme.SemiBold(9.5f) };
-            var cancel = new FlatButton(ButtonKind.Ghost) { Text = cancelText, Size = new Size(116, 38), Margin = new Padding(0), Font = Theme.SemiBold(9.5f), DialogResult = DialogResult.Cancel };
+            var confirm = new FlatButton(ButtonKind.Primary) { Text = confirmText, MinimumSize = new Size(88, 38), Height = 38, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(8, 0, 0, 0), Font = Theme.SemiBold(9.5f) };
+            var cancel = new FlatButton(ButtonKind.Ghost) { Text = cancelText, MinimumSize = new Size(88, 38), Height = 38, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0), Font = Theme.SemiBold(9.5f), DialogResult = DialogResult.Cancel };
             var buttons = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, AutoSize = true, WrapContents = false, Dock = DockStyle.Fill, Margin = new Padding(0, 10, 0, 0) };
             buttons.Controls.Add(confirm);
             buttons.Controls.Add(cancel);

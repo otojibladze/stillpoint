@@ -61,6 +61,14 @@ namespace Stillpoint
         public ButtonKind Kind { get; set; }
         public bool Uppercase { get; set; }
 
+        public override Size GetPreferredSize(Size proposedSize)
+        {
+            string label = Uppercase ? Text.ToUpperInvariant() : Text;
+            int text = TextRenderer.MeasureText(label, Font, Size.Empty, TextFormatFlags.NoPadding | TextFormatFlags.SingleLine).Width;
+            int pad = (int)Math.Round(Font.Height * 1.1f);
+            return new Size(Math.Max(MinimumSize.Width, text + pad * 2), Math.Max(MinimumSize.Height, Height));
+        }
+
         protected override void OnMouseEnter(EventArgs e) { hover = true; Invalidate(); base.OnMouseEnter(e); }
         protected override void OnMouseLeave(EventArgs e) { hover = false; down = false; Invalidate(); base.OnMouseLeave(e); }
         protected override void OnMouseDown(MouseEventArgs e) { down = true; Invalidate(); base.OnMouseDown(e); }
@@ -310,9 +318,10 @@ namespace Stillpoint
                 Draw.Text(g, "Sessions you count show up here.", Font, Theme.Muted, new Rectangle(0, 0, Width, h), TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
                 return;
             }
-            int lengthWidth = TextRenderer.MeasureText("00h 00m", Font).Width;
-            int endWidth = TextRenderer.MeasureText("Wed 00:00 PM", Font).Width;
             int gap = h / 2;
+            int right = Width - Math.Max(8, h / 3);
+            int lengthWidth = TextRenderer.MeasureText(g, "00h 00m", Font, Size.Empty, TextFormatFlags.NoPadding).Width;
+            int endWidth = TextRenderer.MeasureText(g, "Wed 00:00 PM", Font, Size.Empty, TextFormatFlags.NoPadding).Width;
             using (var pen = new Pen(Theme.Line))
             {
                 for (int i = 0; i < rows.Count; i++)
@@ -322,9 +331,9 @@ namespace Stillpoint
                     if (y > Height) break;
                     g.DrawLine(pen, 0, y, Width, y);
                     var row = rows[i];
-                    Draw.Text(g, row[0], Font, Theme.Ink, new Rectangle(0, y, Width - lengthWidth - endWidth - gap * 2, h), TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-                    Draw.Text(g, row[1], Font, Theme.Muted, new Rectangle(Width - lengthWidth - gap - endWidth, y, endWidth, h), TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
-                    Draw.Text(g, row[2], Font, Theme.Ink, new Rectangle(Width - lengthWidth, y, lengthWidth, h), TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
+                    Draw.Text(g, row[0], Font, Theme.Ink, new Rectangle(0, y, right - lengthWidth - endWidth - gap * 2, h), TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                    Draw.Text(g, row[1], Font, Theme.Muted, new Rectangle(right - lengthWidth - gap - endWidth, y, endWidth, h), TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
+                    Draw.Text(g, row[2], Font, Theme.Ink, new Rectangle(right - lengthWidth, y, lengthWidth, h), TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
                 }
             }
             int max = MaxOffset();
