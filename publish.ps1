@@ -24,7 +24,7 @@ if ($built -ne "$Version.0") { throw "Built exe reports $built, expected $Versio
 Push-Location $root
 $ErrorActionPreference = 'Continue'
 try {
-    git add -- src tools app.manifest build.ps1 publish.ps1 README.txt README.md .gitignore latest/Stillpoint.exe latest/version.txt
+    git add -- src tools fonts app.manifest build.ps1 publish.ps1 README.txt README.md .gitignore latest/Stillpoint.exe latest/version.txt
     if ($LASTEXITCODE -ne 0) { throw 'git add failed' }
     git commit -m $Message
     if ($LASTEXITCODE -ne 0) { throw 'git commit failed' }

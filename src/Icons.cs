@@ -10,8 +10,8 @@ namespace Stillpoint
 {
     static class Icons
     {
-        public static readonly Color On = Color.FromArgb(0x1E, 0x8E, 0x4E);
-        public static readonly Color Off = Color.FromArgb(0x86, 0x8C, 0x96);
+        public static readonly Color On = Color.FromArgb(0xC4, 0x60, 0x40);
+        public static readonly Color Off = Color.FromArgb(0x8E, 0x8A, 0x86);
         static readonly int[] Sizes = { 16, 20, 24, 32, 40, 48, 64, 256 };
 
         public static Icon Load(Color fill) => new Icon(new MemoryStream(BuildIco(fill)));

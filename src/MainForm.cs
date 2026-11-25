@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
@@ -11,18 +10,15 @@ namespace Stillpoint
     sealed class MainForm : Form
     {
         readonly TrayApp app;
-        readonly Label sessionValue;
+        readonly SessionRing ring;
         readonly Label status;
-        readonly Label saveError;
+        readonly FlatButton startStop;
+        readonly UnderlineBox reminderMinutes;
+        readonly SessionList sessions;
+        readonly ToggleSwitch startWithWindows;
         readonly LinkLabel updateLink;
         readonly Label updateStatus;
-        readonly Button startStop;
-        readonly NumericUpDown reminderMinutes;
-        readonly CheckBox startWithWindows;
-        readonly ListView history;
-        readonly ColumnHeader startColumn;
-        readonly ColumnHeader endColumn;
-        readonly ColumnHeader lengthColumn;
+        readonly Label saveError;
         bool syncing;
 
         public MainForm(TrayApp app)
@@ -31,80 +27,53 @@ namespace Stillpoint
             SuspendLayout();
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
-            Font = new Font("Segoe UI", 9F);
+            Font = Theme.Regular(10f);
+            ForeColor = Theme.Ink;
+            BackColor = Theme.Background;
             Text = "Stillpoint";
-            ClientSize = new Size(400, 560);
-            MinimumSize = new Size(360, 480);
+            ClientSize = new Size(400, 606);
+            MinimumSize = new Size(380, 560);
             StartPosition = FormStartPosition.CenterScreen;
             MaximizeBox = false;
 
-            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(16, 12, 16, 12) };
+            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(26, 12, 26, 16), BackColor = Theme.Background };
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             root.SuspendLayout();
 
-            sessionValue = new Label { AutoSize = true, Font = new Font("Segoe UI Light", 32F), Margin = new Padding(0) };
-            status = new Label { AutoSize = true, Font = new Font("Segoe UI Semibold", 10F), Margin = new Padding(3, 0, 3, 8) };
-            startStop = new Button
-            {
-                Text = "Start",
-                AutoSize = true,
-                MinimumSize = new Size(130, 38),
-                Font = new Font("Segoe UI Semibold", 11F),
-                Anchor = AnchorStyles.Left,
-            };
+            ring = new SessionRing { Size = new Size(196, 196), Anchor = AnchorStyles.None, Margin = new Padding(0, 6, 0, 6) };
+            status = new Label { AutoSize = true, Anchor = AnchorStyles.None, ForeColor = Theme.Muted, Margin = new Padding(0, 0, 0, 14) };
+            startStop = new FlatButton(ButtonKind.Primary) { Text = "Start", Uppercase = true, Height = 44, Dock = DockStyle.Fill, Margin = new Padding(0), Font = Theme.SemiBold(10.5f) };
 
-            reminderMinutes = new NumericUpDown
-            {
-                Minimum = Settings.MinReminderMinutes,
-                Maximum = Settings.MaxReminderMinutes,
-                Increment = 5,
-                Value = 60,
-                Width = 60,
-                Anchor = AnchorStyles.Left,
-                TextAlign = HorizontalAlignment.Right,
-            };
-            var preview = new LinkLabel { Text = "Preview", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(16, 3, 3, 3) };
+            reminderMinutes = new UnderlineBox(10f, 44, HorizontalAlignment.Center) { Anchor = AnchorStyles.Left, Margin = new Padding(8, 0, 8, 0) };
+            var preview = Link("Preview");
+            var reminderLeft = Row(
+                new Label { Text = "Remind me every", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0) },
+                reminderMinutes,
+                new Label { Text = "minutes", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0) });
+            var reminderRow = TwoSides(reminderLeft, preview);
+            reminderRow.Margin = new Padding(0, 18, 0, 14);
 
-            startColumn = new ColumnHeader { Text = "Started" };
-            endColumn = new ColumnHeader { Text = "Ended" };
-            lengthColumn = new ColumnHeader { Text = "Length", TextAlign = HorizontalAlignment.Right };
-            history = new ListView
-            {
-                View = View.Details,
-                FullRowSelect = true,
-                MultiSelect = false,
-                HeaderStyle = ColumnHeaderStyle.Nonclickable,
-                Dock = DockStyle.Fill,
-                Margin = new Padding(3, 0, 3, 6),
-            };
-            history.Columns.AddRange(new[] { startColumn, endColumn, lengthColumn });
+            sessions = new SessionList { Dock = DockStyle.Fill, Margin = new Padding(0) };
 
-            startWithWindows = new CheckBox { Text = "Start with Windows", AutoSize = true, Anchor = AnchorStyles.Left };
-            var openFolder = new LinkLabel { Text = "Open data folder", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(24, 3, 3, 3) };
-            var version = new Label { Text = "Version " + AppVersion.Text, AutoSize = true, ForeColor = SystemColors.GrayText, Anchor = AnchorStyles.Left };
-            updateLink = new LinkLabel { Text = "Check for updates", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(16, 3, 3, 3) };
-            updateStatus = Hint("");
-            updateStatus.Visible = false;
-            saveError = new Label { AutoSize = true, ForeColor = Color.Firebrick, Anchor = AnchorStyles.Left | AnchorStyles.Right, Visible = false };
+            updateStatus = Small(Theme.Muted);
+            saveError = Small(Theme.AccentText);
 
-            AddRow(root, Caption("This session", 0));
-            AddRow(root, sessionValue);
+            startWithWindows = new ToggleSwitch { Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 8, 0) };
+            var autoLabel = new Label { Text = "Start with Windows", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0), Font = Theme.Regular(9f), Cursor = Cursors.Hand };
+            var version = new Label { Text = "v" + AppVersion.Text + "  ·", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0), Font = Theme.Regular(9f), ForeColor = Theme.Muted };
+            updateLink = Link("Check for updates");
+            updateLink.Font = Theme.Regular(9f);
+            var footer = TwoSides(Row(startWithWindows, autoLabel), Row(version, updateLink));
+            footer.Margin = new Padding(0, 12, 0, 0);
+
+            AddRow(root, ring);
             AddRow(root, status);
             AddRow(root, startStop);
-            AddRow(root, Caption("Reminders", 16));
-            AddRow(root, Row(
-                new Label { Text = "Remind me every", AutoSize = true, Anchor = AnchorStyles.Left },
-                reminderMinutes,
-                new Label { Text = "minutes", AutoSize = true, Anchor = AnchorStyles.Left },
-                preview));
-            AddRow(root, Hint("A small window pops up in the bottom corner of the screen and stays until you click OK."));
-            AddRow(root, Caption("Sessions", 12));
-            AddRow(root, history, fill: true);
-            AddRow(root, Row(startWithWindows, openFolder));
-            AddRow(root, Row(version, updateLink));
+            AddRow(root, reminderRow);
+            AddRow(root, sessions, fill: true);
             AddRow(root, updateStatus);
             AddRow(root, saveError);
-            AddRow(root, Hint("Closing this window keeps it running in the tray. Right-click the tray icon to exit."));
+            AddRow(root, footer);
 
             Controls.Add(root);
             root.ResumeLayout(false);
@@ -113,22 +82,23 @@ namespace Stillpoint
             PerformLayout();
 
             startStop.Click += (s, e) => app.ToggleRunning();
-            reminderMinutes.ValueChanged += (s, e) => { if (!syncing) app.SetReminderMinutes((int)reminderMinutes.Value); };
+            reminderMinutes.Box.KeyPress += (s, e) => { if (!char.IsDigit(e.KeyChar) && !char.IsControl(e.KeyChar)) e.Handled = true; };
+            reminderMinutes.Box.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; CommitReminder(); } };
+            reminderMinutes.Box.Leave += (s, e) => CommitReminder();
             preview.LinkClicked += (s, e) => app.ShowReminder(app.Settings.ReminderMinutes * 60, preview: true);
             startWithWindows.CheckedChanged += (s, e) => { if (!syncing) { app.SetAutoStart(startWithWindows.Checked); SyncControls(); } };
-            openFolder.LinkClicked += (s, e) => Process.Start("explorer.exe", "\"" + app.Store.Dir + "\"");
+            autoLabel.Click += (s, e) => startWithWindows.Checked = !startWithWindows.Checked;
             updateLink.LinkClicked += (s, e) =>
             {
                 if (app.UpdateAvailable != null) app.InstallUpdate();
                 else app.CheckForUpdates(manual: true);
             };
-            history.Resize += (s, e) => FitColumns();
         }
 
         public void SyncControls()
         {
             syncing = true;
-            reminderMinutes.Value = Math.Max(reminderMinutes.Minimum, Math.Min(reminderMinutes.Maximum, app.Settings.ReminderMinutes));
+            reminderMinutes.Box.Text = app.Settings.ReminderMinutes.ToString(CultureInfo.InvariantCulture);
             startWithWindows.Checked = app.AutoStartEnabled;
             syncing = false;
         }
@@ -136,27 +106,41 @@ namespace Stillpoint
         public void UpdateView()
         {
             var tracker = app.Tracker;
-            sessionValue.Text = Fmt.Clock(tracker.SessionSeconds);
-            status.Text = app.DescribeState();
-            status.ForeColor = tracker.IsCounting ? Icons.On : SystemColors.GrayText;
+            string note;
+            float progress = 0;
+            switch (tracker.State)
+            {
+                case TrackState.Counting:
+                    double interval = tracker.ReminderIntervalSeconds;
+                    double into = interval > 0 ? tracker.SessionSeconds % interval : 0;
+                    progress = interval > 0 ? (float)(into / interval) : 0;
+                    int minutes = (int)Math.Ceiling((interval - into) / 60);
+                    note = minutes <= 1 ? "Reminder in a moment" : $"{minutes} min to next reminder";
+                    break;
+                case TrackState.Paused:
+                    note = "Paused";
+                    break;
+                default:
+                    note = "Not counting";
+                    break;
+            }
+            ring.Set(progress, "THIS SESSION", Fmt.Clock(tracker.SessionSeconds), note);
+            SetText(status, app.DescribeState());
             startStop.Text = tracker.Running ? "Stop" : "Start";
 
-            string error = app.SaveError == null ? null : "Could not save: " + app.SaveError;
-            saveError.Visible = error != null;
+            SetLine(updateStatus, app.UpdateStatus);
+            SetLine(saveError, app.SaveError == null ? null : "Could not save: " + app.SaveError);
             string link = app.UpdateAvailable != null ? $"Update to {app.UpdateAvailable}" : "Check for updates";
             if (updateLink.Text != link) updateLink.Text = link;
             updateLink.Enabled = !app.UpdateBusy;
-            updateStatus.Visible = app.UpdateStatus != null;
-            if (app.UpdateStatus != null && updateStatus.Text != app.UpdateStatus) updateStatus.Text = app.UpdateStatus;
-            if (error != null && saveError.Text != error) saveError.Text = error;
 
-            UpdateHistory();
+            sessions.SetRows(tracker.Sessions.OrderByDescending(s => s.Start).Select(s => Cells(s, tracker.Current)).ToList());
         }
 
-        protected override void OnLoad(EventArgs e)
+        protected override void OnHandleCreated(EventArgs e)
         {
-            base.OnLoad(e);
-            FitColumns();
+            base.OnHandleCreated(e);
+            Theme.StyleTitleBar(this, Theme.Background, Theme.Muted);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -176,28 +160,15 @@ namespace Stillpoint
             app.Exit(fromForm: true);
         }
 
-        void UpdateHistory()
+        void CommitReminder()
         {
-            var tracker = app.Tracker;
-            var sessions = tracker.Sessions.OrderByDescending(s => s.Start).ToList();
-            bool rebuild = history.Items.Count != sessions.Count
-                || (sessions.Count > 0 && history.Items[0].Tag != sessions[0]);
-            if (rebuild)
+            if (syncing) return;
+            if (int.TryParse(reminderMinutes.Box.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minutes))
             {
-                history.BeginUpdate();
-                history.Items.Clear();
-                foreach (var session in sessions)
-                    history.Items.Add(new ListViewItem(Cells(session, tracker.Current)) { Tag = session });
-                history.EndUpdate();
-                return;
+                minutes = Math.Max(Settings.MinReminderMinutes, Math.Min(Settings.MaxReminderMinutes, minutes));
+                if (minutes != app.Settings.ReminderMinutes) app.SetReminderMinutes(minutes);
             }
-            for (int i = 0; i < sessions.Count; i++)
-            {
-                var cells = Cells(sessions[i], tracker.Current);
-                var item = history.Items[i];
-                for (int c = 1; c < cells.Length; c++)
-                    if (item.SubItems[c].Text != cells[c]) item.SubItems[c].Text = cells[c];
-            }
+            SyncControls();
         }
 
         static string[] Cells(Session session, Session current)
@@ -210,15 +181,38 @@ namespace Stillpoint
             return new[] { started, ended, Fmt.Hm(session.Seconds) };
         }
 
-        void FitColumns()
+        static void SetText(Label label, string text)
         {
-            int lengthWidth = Scaled(80), endWidth = Scaled(90);
-            lengthColumn.Width = lengthWidth;
-            endColumn.Width = endWidth;
-            startColumn.Width = Math.Max(Scaled(110), history.ClientSize.Width - lengthWidth - endWidth - SystemInformation.VerticalScrollBarWidth);
+            if (label.Text != text) label.Text = text;
         }
 
-        int Scaled(int logicalPixels) => (int)Math.Round(logicalPixels * AutoScaleFactor.Width);
+        static void SetLine(Label label, string text)
+        {
+            label.Visible = text != null;
+            if (text != null) SetText(label, text);
+        }
+
+        static Label Small(Color color) => new Label
+        {
+            AutoSize = true,
+            Visible = false,
+            ForeColor = color,
+            Font = Theme.Regular(9f),
+            Anchor = AnchorStyles.Left | AnchorStyles.Right,
+            Margin = new Padding(0, 8, 0, 0),
+        };
+
+        static LinkLabel Link(string text) => new LinkLabel
+        {
+            Text = text,
+            AutoSize = true,
+            Anchor = AnchorStyles.Right,
+            Margin = new Padding(0),
+            LinkColor = Theme.AccentText,
+            ActiveLinkColor = Theme.Accent,
+            VisitedLinkColor = Theme.AccentText,
+            LinkBehavior = LinkBehavior.HoverUnderline,
+        };
 
         static FlowLayoutPanel Row(params Control[] controls)
         {
@@ -234,23 +228,17 @@ namespace Stillpoint
             return row;
         }
 
-        static Label Hint(string text) => new Label
+        static TableLayoutPanel TwoSides(Control left, Control right)
         {
-            Text = text,
-            AutoSize = true,
-            Anchor = AnchorStyles.Left | AnchorStyles.Right,
-            ForeColor = SystemColors.GrayText,
-            Margin = new Padding(3, 2, 3, 4),
-        };
-
-        static Label Caption(string text, int top) => new Label
-        {
-            Text = text,
-            AutoSize = true,
-            Font = new Font("Segoe UI Semibold", 9F),
-            ForeColor = Color.FromArgb(85, 91, 102),
-            Margin = new Padding(3, top, 3, 2),
-        };
+            var table = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            left.Anchor = AnchorStyles.Left;
+            right.Anchor = AnchorStyles.Right;
+            table.Controls.Add(left, 0, 0);
+            table.Controls.Add(right, 1, 0);
+            return table;
+        }
 
         static void AddRow(TableLayoutPanel table, Control control, bool fill = false)
         {

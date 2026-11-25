@@ -19,7 +19,9 @@ namespace Stillpoint
             SuspendLayout();
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
-            Font = new Font("Segoe UI", 9F);
+            Font = Theme.Regular(10f);
+            ForeColor = Theme.Ink;
+            BackColor = Theme.Background;
             Text = title;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -27,9 +29,9 @@ namespace Stillpoint
             ShowInTaskbar = false;
             TopMost = true;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(340, 470);
+            ClientSize = new Size(340, 480);
 
-            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(16, 12, 16, 12) };
+            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(22, 16, 22, 18) };
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -37,16 +39,16 @@ namespace Stillpoint
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            prompt = new Label { AutoSize = true, Font = new Font("Segoe UI Semibold", 11F), Anchor = AnchorStyles.Left | AnchorStyles.Right, Margin = new Padding(3, 0, 3, 2) };
-            var hint = new Label { Text = hintText, AutoSize = true, ForeColor = SystemColors.GrayText, Anchor = AnchorStyles.Left | AnchorStyles.Right, Margin = new Padding(3, 0, 3, 8) };
+            prompt = new Label { AutoSize = true, Font = Theme.SemiBold(14f), Anchor = AnchorStyles.Left | AnchorStyles.Right, Margin = new Padding(0, 0, 0, 4) };
+            var hint = new Label { Text = hintText, AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9.5f), Anchor = AnchorStyles.Left | AnchorStyles.Right, Margin = new Padding(0, 0, 0, 10) };
             host = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 1, Margin = new Padding(0) };
             host.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             host.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            feedback = new Label { AutoSize = true, ForeColor = Color.Firebrick, Anchor = AnchorStyles.Left | AnchorStyles.Right, Margin = new Padding(3, 8, 3, 0) };
+            feedback = new Label { AutoSize = true, ForeColor = Theme.AccentText, Font = Theme.Regular(9.5f), Anchor = AnchorStyles.Left | AnchorStyles.Right, Margin = new Padding(0, 8, 0, 0) };
 
-            var confirm = new Button { Text = confirmText, AutoSize = true, MinimumSize = new Size(90, 0) };
-            var cancel = new Button { Text = cancelText, AutoSize = true, DialogResult = DialogResult.Cancel };
-            var buttons = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, AutoSize = true, WrapContents = false, Dock = DockStyle.Fill, Margin = new Padding(0, 8, 0, 0) };
+            var confirm = new FlatButton(ButtonKind.Primary) { Text = confirmText, Size = new Size(96, 38), Margin = new Padding(8, 0, 0, 0), Font = Theme.SemiBold(9.5f) };
+            var cancel = new FlatButton(ButtonKind.Ghost) { Text = cancelText, Size = new Size(116, 38), Margin = new Padding(0), Font = Theme.SemiBold(9.5f), DialogResult = DialogResult.Cancel };
+            var buttons = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, AutoSize = true, WrapContents = false, Dock = DockStyle.Fill, Margin = new Padding(0, 10, 0, 0) };
             buttons.Controls.Add(confirm);
             buttons.Controls.Add(cancel);
 
@@ -66,6 +68,12 @@ namespace Stillpoint
         }
 
         public Puzzle Puzzle { get; private set; }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            Theme.StyleTitleBar(this, Theme.Background, Theme.Muted);
+        }
 
         public void Check()
         {

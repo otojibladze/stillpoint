@@ -16,6 +16,13 @@ namespace Stillpoint
             return minutes < 60 ? $"{minutes}m" : $"{minutes / 60}h {minutes % 60:00}m";
         }
 
+        public static string Badge(double seconds)
+        {
+            long total = (long)Math.Round(Math.Max(0, seconds) / 60);
+            if (total < 60) return total + "m";
+            return total % 60 == 0 ? total / 60 + "h" : total / 60 + "h" + (total % 60).ToString("00");
+        }
+
         public static string Words(double seconds)
         {
             long total = (long)Math.Round(Math.Max(0, seconds) / 60);

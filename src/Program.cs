@@ -55,6 +55,7 @@ namespace Stillpoint
                 var store = new Store(dir);
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
+                Theme.LoadFonts();
                 Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
                 Application.ThreadException += (s, e) => store.Log(e.Exception);
                 AppDomain.CurrentDomain.UnhandledException += (s, e) => store.Log(e.ExceptionObject);

@@ -54,7 +54,8 @@ namespace Stillpoint
             var open = new ToolStripMenuItem("Open Stillpoint", null, (s, e) => ShowWindow());
             open.Font = new Font(open.Font, FontStyle.Bold);
             startStopItem = new ToolStripMenuItem("Start counting", null, (s, e) => ToggleRunning());
-            menu.Items.AddRange(new ToolStripItem[] { open, startStopItem, new ToolStripSeparator(), new ToolStripMenuItem("Exit", null, (s, e) => ExitFromMenu()) });
+            var folder = new ToolStripMenuItem("Open data folder", null, (s, e) => Process.Start("explorer.exe", "\"" + store.Dir + "\""));
+            menu.Items.AddRange(new ToolStripItem[] { open, startStopItem, folder, new ToolStripSeparator(), new ToolStripMenuItem("Exit", null, (s, e) => ExitFromMenu()) });
             tray = new NotifyIcon { Icon = iconOff, Text = "Stillpoint", ContextMenuStrip = menu, Visible = true };
             tray.MouseClick += (s, e) => { if (e.Button == MouseButtons.Left) ShowWindow(); };
 
@@ -260,7 +261,7 @@ namespace Stillpoint
                 ? "This is how reminders look. Click OK to try the puzzle."
                 : $"Counting since {Tracker.SessionStarted:t}.";
             Func<bool> confirmClose = () => Verify("Close the reminder?", "To close the reminder, solve this puzzle.", "Close reminder", "Cancel");
-            var next = new ReminderPopup(Fmt.Words(sessionMark) + " at the computer", body, confirmClose, preview ? null : (Func<bool>)RequestStop);
+            var next = new ReminderPopup(Fmt.Words(sessionMark) + " at the computer", Fmt.Badge(sessionMark), body, confirmClose, preview ? null : (Func<bool>)RequestStop);
             next.FormClosed += (s, e) => { if (popup == s) popup = null; };
             popup = next;
             next.ShowNearTray();

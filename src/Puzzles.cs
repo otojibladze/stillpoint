@@ -30,10 +30,10 @@ namespace Stillpoint
         public static readonly string[] ColorNames = { "red", "green", "blue", "orange" };
         public static readonly Color[] Colors =
         {
-            Color.FromArgb(0xD6, 0x3A, 0x3A),
-            Color.FromArgb(0x2E, 0x9E, 0x4F),
-            Color.FromArgb(0x2F, 0x6F, 0xD6),
-            Color.FromArgb(0xE8, 0x8A, 0x1A),
+            Color.FromArgb(0xC8, 0x3E, 0x3E),
+            Color.FromArgb(0x3F, 0x8C, 0x55),
+            Color.FromArgb(0x3D, 0x6F, 0xB8),
+            Color.FromArgb(0xD8, 0x8A, 0x2A),
         };
         public static readonly string[] ShapeNames = { "circle", "square", "triangle", "star" };
         public const int TileCount = 9;
@@ -83,9 +83,10 @@ namespace Stillpoint
         {
             Text = text,
             AutoSize = true,
-            Font = new Font("Consolas", 20F, FontStyle.Bold),
+            Font = Theme.SemiBold(22f),
+            ForeColor = Theme.Ink,
             Anchor = AnchorStyles.None,
-            Margin = new Padding(3, 3, 3, 12),
+            Margin = new Padding(3, 3, 3, 14),
         };
 
         static Puzzle CountShapes(Random r)
@@ -127,8 +128,10 @@ namespace Stillpoint
                 Text = phrase,
                 AutoSize = true,
                 MaximumSize = new Size(280, 0),
-                Font = new Font("Segoe UI Semibold", 13F),
-                Margin = new Padding(3, 3, 3, 12),
+                Font = Theme.SemiBold(14f),
+                ForeColor = Theme.Ink,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Margin = new Padding(3, 3, 3, 14),
             };
             return new AnswerPuzzle("Type this sentence", shown, phrase, true);
         }
@@ -174,8 +177,9 @@ namespace Stillpoint
             var shown = display();
             shown.Anchor = AnchorStyles.None;
             panel.Controls.Add(shown, 0, 0);
-            box = new TextBox { Width = 200, Font = new Font("Segoe UI", 14F), TextAlign = HorizontalAlignment.Center, Anchor = AnchorStyles.None, ShortcutsEnabled = false };
-            panel.Controls.Add(box, 0, 1);
+            var field = new UnderlineBox(14f, 220, HorizontalAlignment.Center) { Anchor = AnchorStyles.None, Margin = new Padding(0, 4, 0, 0) };
+            box = field.Box;
+            panel.Controls.Add(field, 0, 1);
             return panel;
         }
 
@@ -302,7 +306,7 @@ namespace Stillpoint
 
         public int[] Numbers => numbers;
         public TileGrid Grid => grid;
-        public override string Prompt => "Click the numbers in order, 1 to 9";
+        public override string Prompt => "Click 1 to 9 in order";
 
         public override Control Build()
         {
@@ -332,30 +336,28 @@ namespace Stillpoint
 
         public override Control Build()
         {
-            var panel = new TableLayoutPanel { AutoSize = true, ColumnCount = 1, Anchor = AnchorStyles.None };
-            var button = new Button { Text = "Hold me", Size = new Size(170, 56), Font = new Font("Segoe UI Semibold", 12F), Anchor = AnchorStyles.None };
-            var bar = new ProgressBar { Maximum = 1000, Size = new Size(220, 16), Anchor = AnchorStyles.None, Margin = new Padding(3, 12, 3, 3) };
+            var ring = new HoldRing { Size = new Size(156, 156), Anchor = AnchorStyles.None };
             var timer = new Timer { Interval = 40 };
             var watch = new Stopwatch();
             timer.Tick += (s, e) =>
             {
                 double progress = watch.Elapsed.TotalSeconds / seconds;
-                bar.Value = (int)Math.Min(1000, progress * 1000);
-                if (progress < 1) return;
+                if (progress < 1)
+                {
+                    ring.Set((float)progress, watch.Elapsed.TotalSeconds.ToString("0.0") + "s");
+                    return;
+                }
                 done = true;
                 timer.Stop();
-                button.Text = "Done";
-                button.Enabled = false;
+                ring.Set(1f, "DONE");
+                ring.Cursor = Cursors.Default;
             };
-            MouseEventHandler down = (s, e) => { if (!done && e.Button == MouseButtons.Left) { watch.Restart(); timer.Start(); } };
-            EventHandler release = (s, e) => { if (done) return; timer.Stop(); watch.Reset(); bar.Value = 0; };
-            button.MouseDown += down;
-            button.MouseUp += (s, e) => release(s, e);
-            button.MouseLeave += release;
-            button.Disposed += (s, e) => timer.Dispose();
-            panel.Controls.Add(button, 0, 0);
-            panel.Controls.Add(bar, 0, 1);
-            return panel;
+            ring.MouseDown += (s, e) => { if (!done && e.Button == MouseButtons.Left) { watch.Restart(); timer.Start(); } };
+            EventHandler release = (s, e) => { if (done) return; timer.Stop(); watch.Reset(); ring.Set(0f, "HOLD"); };
+            ring.MouseUp += (s, e) => release(s, e);
+            ring.MouseLeave += release;
+            ring.Disposed += (s, e) => timer.Dispose();
+            return ring;
         }
 
         public override bool Solved() => done;
@@ -363,7 +365,7 @@ namespace Stillpoint
 
     sealed class SliderPuzzle : Puzzle
     {
-        TrackBar slider;
+        StoneSlider slider;
 
         public SliderPuzzle(Random r)
         {
@@ -374,14 +376,15 @@ namespace Stillpoint
 
         public int Target { get; }
         public int Start { get; }
-        public TrackBar Slider => slider;
+        public StoneSlider Slider => slider;
         public override string Prompt => $"Move the slider to exactly {Target}";
 
         public override Control Build()
         {
             var panel = new TableLayoutPanel { AutoSize = true, ColumnCount = 1, Anchor = AnchorStyles.None };
             var value = Puzzles.Big(Start.ToString());
-            slider = new TrackBar { Minimum = 0, Maximum = 100, Value = Start, TickFrequency = 10, Width = 260, Anchor = AnchorStyles.None };
+            slider = new StoneSlider { Minimum = 0, Maximum = 100, Size = new Size(260, 32), Anchor = AnchorStyles.None };
+            slider.Value = Start;
             slider.ValueChanged += (s, e) => value.Text = slider.Value.ToString();
             panel.Controls.Add(value, 0, 0);
             panel.Controls.Add(slider, 0, 1);
@@ -447,7 +450,7 @@ namespace Stillpoint
 
     sealed class Tile : Control
     {
-        static readonly Color Accent = Color.FromArgb(0x2F, 0x6F, 0xD6);
+        static readonly Color Accent = Theme.Accent;
         bool selected;
 
         public Tile(bool clickable)
@@ -458,7 +461,7 @@ namespace Stillpoint
 
         public Picture Picture { get; set; }
         public string Label { get; set; }
-        public Color LabelColor { get; set; } = Color.Black;
+        public Color LabelColor { get; set; } = Theme.Ink;
         public int Order { get; set; }
 
         public bool Selected
@@ -476,19 +479,21 @@ namespace Stillpoint
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             var bounds = ClientRectangle;
-            g.Clear(Selected ? Color.FromArgb(0xE3, 0xEE, 0xFB) : Color.FromArgb(0xF4, 0xF5, 0xF7));
-            float border = Selected ? Math.Max(3f, bounds.Width * 0.04f) : 1f;
-            using (var pen = new Pen(Selected ? Accent : Color.FromArgb(0xC8, 0xCC, 0xD2), border))
-                g.DrawRectangle(pen, border / 2, border / 2, bounds.Width - border, bounds.Height - border);
+            g.Clear(Parent?.BackColor ?? Theme.Background);
+            float border = Selected ? Math.Max(2.5f, bounds.Width * 0.035f) : 0f;
+            var r = new RectangleF(border / 2, border / 2, bounds.Width - border - 1, bounds.Height - border - 1);
+            using (var path = Draw.Rounded(r, bounds.Width * 0.08f))
+            {
+                using (var brush = new SolidBrush(Selected ? Theme.TileSelected : Theme.Tile)) g.FillPath(brush, path);
+                if (Selected) using (var pen = new Pen(Accent, border)) g.DrawPath(pen, path);
+            }
 
             if (Picture != null) DrawPicture(g, bounds);
             if (Label != null)
             {
-                float size = Label.Length <= 2 ? bounds.Height * 0.3f : bounds.Height * 0.15f;
-                using (var font = new Font("Segoe UI", size, FontStyle.Bold, GraphicsUnit.Pixel))
-                using (var brush = new SolidBrush(LabelColor))
-                using (var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
-                    g.DrawString(Label, font, brush, bounds, format);
+                float points = (Label.Length <= 2 ? bounds.Height * 0.3f : bounds.Height * 0.15f) * 72f / g.DpiY;
+                using (var font = Theme.SemiBold(points))
+                    TextRenderer.DrawText(g, Label, font, bounds, LabelColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
             }
             if (Selected) DrawCheck(g, bounds);
         }
