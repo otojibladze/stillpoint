@@ -38,8 +38,37 @@ namespace Stillpoint
         public static readonly string[] ShapeNames = { "circle", "square", "triangle", "star" };
         public const int TileCount = 9;
 
-        static readonly string[] Words = { "COMPUTER", "KEYBOARD", "MONITOR", "WINDOW", "BREAK", "CHAIR", "SCREEN", "TIMER", "STRETCH", "WALKING" };
         const string CodeLetters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+        static readonly string[] Words = (
+            "BREATHE STRETCH BALANCE MOUNTAIN SUNRISE GRATITUDE STILLNESS PRESENCE WALKING PATIENCE " +
+            "MEADOW FOREST RIVER OCEAN HARBOR GARDEN BLOSSOM LANTERN CANDLE PEBBLE " +
+            "FEATHER WILLOW BAMBOO LOTUS ORCHID JASMINE LAVENDER CEDAR MAPLE BIRCH " +
+            "CLOUD THUNDER RAINBOW SUNSET TWILIGHT MOONLIGHT STARLIGHT HORIZON VALLEY CANYON " +
+            "ISLAND LAGOON GLACIER PRAIRIE ORCHARD HARVEST AUTUMN WINTER SPRING SUMMER " +
+            "BREEZE WHISPER SILENCE SERENITY HARMONY KINDNESS COURAGE WISDOM CLARITY GENTLE " +
+            "TENDER STEADY GROUNDED CENTERED RELEASE SOFTEN POSTURE SHOULDER STANDING MOVEMENT " +
+            "JOURNEY PATHWAY MEANDER WANDER RAMBLE STROLL SAUNTER HIKING CYCLING SWIMMING " +
+            "DANCING SINGING READING PAINTING TEAPOT KETTLE BLANKET PILLOW CUSHION HAMMOCK " +
+            "BALCONY TERRACE SUNLIGHT DAYBREAK MORNING EVENING COMPASS LIGHTHOUSE SAILBOAT ANCHOR " +
+            "PADDLE CANOE KAYAK SPARROW FALCON HERON PELICAN DOLPHIN OTTER TURTLE " +
+            "RABBIT SQUIRREL HEDGEHOG BUTTERFLY DRAGONFLY FIREFLY PINECONE ACORN CLOVER DAISY " +
+            "TULIP POPPY VIOLET SAFFRON CINNAMON GINGER TEMPLE MANTRA MANDALA SANCTUARY " +
+            "HEARTBEAT INHALE EXHALE SLUMBER DREAMING SOLSTICE EQUINOX AURORA CRESCENT ZENITH " +
+            "WATERFALL RIPPLE CURRENT DRIFTWOOD SEASHELL SANDBAR DUNES MOSSY FERNS THISTLE " +
+            "BRAMBLE HEATHER JUNIPER SPRUCE ASPEN SEQUOIA OLIVE FIGTREE MELODY CHORUS " +
+            "BOULDER QUARRY PLATEAU SUMMIT FOOTHILL BASIN ESTUARY MARSHLAND WETLAND RAINFALL " +
+            "SNOWFALL HAILSTONE FROSTING DEWDROP SUNBEAM MOONBEAM STARDUST COMET GALAXY NEBULA " +
+            "PLANET ORBIT ECLIPSE METEOR SATELLITE COCONUT MANGO PAPAYA APRICOT PEACH " +
+            "PLUM CHERRY LEMON LIME BERRY ALMOND WALNUT CHESTNUT HAZEL PISTACHIO " +
+            "BASIL THYME OREGANO ROSEMARY MINT SAGE PARSLEY FENNEL CHAMOMILE HIBISCUS " +
+            "MARIGOLD SUNFLOWER DANDELION BLUEBELL PRIMROSE MAGNOLIA CAMELLIA PEONY IRIS HYACINTH " +
+            "GAZELLE PANTHER LEOPARD GIRAFFE ELEPHANT KANGAROO KOALA PENGUIN WALRUS BEAVER " +
+            "MOOSE BISON BADGER WEASEL OSPREY KESTREL SWALLOW NIGHTINGALE HUMMINGBIRD STARLING " +
+            "PUDDLE FOUNTAIN CASCADE TIDEPOOL CORAL SEAWEED DRIFTING FLOATING GLIDING SOARING " +
+            "BALLAD SONNET POETRY CANVAS SKETCH POTTERY WEAVING KNITTING QUILTING GARDENING"
+        ).Split(' ').Where(w => w.Length >= 5).Distinct().ToArray();
+
         static readonly string[] Phrases =
         {
             "I choose to stand up and stretch",
@@ -48,6 +77,40 @@ namespace Stillpoint
             "Breathe in, breathe out",
             "Time to rest my eyes",
             "I will move for a few minutes",
+            "My shoulders can soften now",
+            "A short pause makes the day lighter",
+            "I listen to what my body needs",
+            "Slow breath, calm mind",
+            "I will look out of a window",
+            "Stillness is a kind of strength",
+            "Each breath brings me back",
+            "I can return to this later",
+            "Rest is part of the work",
+            "My spine wants to move",
+            "I notice my feet on the floor",
+            "Water first, then the screen",
+            "Five deep breaths before I go on",
+            "Small breaks, steady energy",
+            "I let my jaw relax",
+            "The task will wait for me",
+            "I stand tall and breathe",
+            "Gentle movement, clear head",
+            "I am more than my to do list",
+            "My eyes rest on something far away",
+            "One stretch at a time",
+            "I give my wrists a rest",
+            "Calm is a choice I can make",
+            "I step away with intention",
+            "My breath is always with me",
+            "I unclench my hands",
+            "A walk to the window and back",
+            "Pause, breathe, continue",
+            "I roll my shoulders slowly",
+            "My body carries me all day",
+            "I take a moment just for me",
+            "Fresh air helps me think",
+            "I welcome a quiet minute",
+            "Today I move a little more",
         };
 
         public static readonly Func<Random, Puzzle>[] Kinds =
@@ -71,11 +134,14 @@ namespace Stillpoint
             r => UpsideDown(r),
         };
 
-        static readonly string[] CalmWords = { "BREATHE", "STRETCH", "BALANCE", "MOUNTAIN", "SUNRISE", "GRATITUDE", "STILLNESS", "PRESENCE", "WALKING", "PATIENCE" };
+        public static int WordCount => Words.Length;
+        public static int PhraseCount => Phrases.Length;
+
+        static string NextWord(Random r) => Words[r.Next(Words.Length)];
 
         static Puzzle MissingLetters(Random r)
         {
-            string word = CalmWords[r.Next(CalmWords.Length)];
+            string word = NextWord(r);
             var hidden = Enumerable.Range(1, word.Length - 1).OrderBy(_ => r.Next()).Take(2).ToList();
             string shown = new string(word.Select((c, i) => hidden.Contains(i) ? '_' : c).ToArray());
             return new AnswerPuzzle("Fill in the missing letters and type the whole word", Big(shown), word, true);
@@ -83,7 +149,7 @@ namespace Stillpoint
 
         static Puzzle UpsideDown(Random r)
         {
-            string word = CalmWords[r.Next(CalmWords.Length)];
+            string word = NextWord(r);
             return new AnswerPuzzle("This word is upside down. Type it the right way up.", () => new UpsideDownText(word), word, true);
         }
 
@@ -137,7 +203,7 @@ namespace Stillpoint
 
         static Puzzle TypeBackwards(Random r)
         {
-            string word = Words[r.Next(Words.Length)];
+            string word = NextWord(r);
             return new AnswerPuzzle("Type this word backwards", Big(word), new string(word.Reverse().ToArray()), true);
         }
 
