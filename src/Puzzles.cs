@@ -40,6 +40,15 @@ namespace Stillpoint
 
         static readonly string[] Words = { "COMPUTER", "KEYBOARD", "MONITOR", "WINDOW", "BREAK", "CHAIR", "SCREEN", "TIMER", "STRETCH", "WALKING" };
         const string CodeLetters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        static readonly string[] Phrases =
+        {
+            "I choose to stand up and stretch",
+            "My body needs a short walk",
+            "I am taking a mindful break",
+            "Breathe in, breathe out",
+            "Time to rest my eyes",
+            "I will move for a few minutes",
+        };
 
         public static readonly Func<Random, Puzzle>[] Kinds =
         {
@@ -51,8 +60,7 @@ namespace Stillpoint
             r => new AnswerPuzzle("Type CONFIRM in the box", Big("CONFIRM"), "CONFIRM", false),
             r => TypeCode(r),
             r => TypeBackwards(r),
-            r => MathSum(r),
-            r => NextInSequence(r),
+            r => TypePhrase(r),
             r => CountLetters(r),
             r => new HoldPuzzle(r.Next(4, 7)),
             r => new SliderPuzzle(r),
@@ -111,24 +119,18 @@ namespace Stillpoint
             return new AnswerPuzzle("Type this word backwards", Big(word), new string(word.Reverse().ToArray()), true);
         }
 
-        static Puzzle MathSum(Random r)
+        static Puzzle TypePhrase(Random r)
         {
-            int a, b, answer;
-            string op;
-            switch (r.Next(3))
+            string phrase = Phrases[r.Next(Phrases.Length)];
+            var shown = new Label
             {
-                case 0: a = r.Next(12, 90); b = r.Next(12, 90); op = "+"; answer = a + b; break;
-                case 1: a = r.Next(40, 100); b = r.Next(11, a - 5); op = "-"; answer = a - b; break;
-                default: a = r.Next(3, 10); b = r.Next(6, 16); op = "x"; answer = a * b; break;
-            }
-            return new AnswerPuzzle("Solve this", Big($"{a} {op} {b} = ?"), answer.ToString(), true);
-        }
-
-        static Puzzle NextInSequence(Random r)
-        {
-            int start = r.Next(1, 20), step = r.Next(2, 10);
-            var terms = Enumerable.Range(0, 4).Select(i => (start + i * step).ToString());
-            return new AnswerPuzzle("Which number comes next?", Big(string.Join(", ", terms) + ", ?"), (start + 4 * step).ToString(), true);
+                Text = phrase,
+                AutoSize = true,
+                MaximumSize = new Size(280, 0),
+                Font = new Font("Segoe UI Semibold", 13F),
+                Margin = new Padding(3, 3, 3, 12),
+            };
+            return new AnswerPuzzle("Type this sentence", shown, phrase, true);
         }
 
         static Puzzle CountLetters(Random r)
