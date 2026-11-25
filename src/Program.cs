@@ -61,7 +61,7 @@ namespace Stillpoint
                 ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
 
                 Updater.CleanUp(Application.ExecutablePath);
-                AutoStart.Command = $"\"{Application.ExecutablePath}\" --tray{extraArgs}";
+                AutoStart.Command = customDir == null ? $"\"{Application.ExecutablePath}\" --tray" : null;
                 Native.RegisterRestart("--tray" + extraArgs);
                 Application.Run(new TrayApp(store, !trayOnly, showEvent, continueSession, extraArgs));
             }
