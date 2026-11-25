@@ -64,7 +64,28 @@ namespace Stillpoint
             r => CountLetters(r),
             r => new HoldPuzzle(r.Next(4, 7)),
             r => new SliderPuzzle(r),
+            r => new MatchingPairPuzzle(r),
+            r => new ArrowPuzzle(r),
+            r => new BiggestCirclePuzzle(r),
+            r => MissingLetters(r),
+            r => UpsideDown(r),
         };
+
+        static readonly string[] CalmWords = { "BREATHE", "STRETCH", "BALANCE", "MOUNTAIN", "SUNRISE", "GRATITUDE", "STILLNESS", "PRESENCE", "WALKING", "PATIENCE" };
+
+        static Puzzle MissingLetters(Random r)
+        {
+            string word = CalmWords[r.Next(CalmWords.Length)];
+            var hidden = Enumerable.Range(1, word.Length - 1).OrderBy(_ => r.Next()).Take(2).ToList();
+            string shown = new string(word.Select((c, i) => hidden.Contains(i) ? '_' : c).ToArray());
+            return new AnswerPuzzle("Fill in the missing letters and type the whole word", Big(shown), word, true);
+        }
+
+        static Puzzle UpsideDown(Random r)
+        {
+            string word = CalmWords[r.Next(CalmWords.Length)];
+            return new AnswerPuzzle("This word is upside down. Type it the right way up.", () => new UpsideDownText(word), word, true);
+        }
 
         public static Puzzle Next(Random random, ref int lastKind)
         {
@@ -394,6 +415,133 @@ namespace Stillpoint
         public override bool Solved() => slider != null && slider.Value == Target;
     }
 
+    sealed class MatchingPairPuzzle : Puzzle
+    {
+        readonly List<Picture> pictures;
+        TileGrid grid;
+
+        public MatchingPairPuzzle(Random r)
+        {
+            var all = Enumerable.Range(0, Puzzles.ShapeNames.Length * Puzzles.Colors.Length)
+                .Select(i => new Picture { Shape = (Shape)(i / Puzzles.Colors.Length), Color = i % Puzzles.Colors.Length })
+                .OrderBy(_ => r.Next()).Take(Puzzles.TileCount - 1).ToList();
+            var twin = all[0];
+            all.Add(new Picture { Shape = twin.Shape, Color = twin.Color });
+            pictures = all.OrderBy(_ => r.Next()).ToList();
+            Pair = pictures.Select((p, i) => p.Same(twin) ? i : -1).Where(i => i >= 0).ToArray();
+        }
+
+        public int[] Pair { get; }
+        public TileGrid Grid => grid;
+        public override string Prompt => "Find the two pictures that are exactly the same";
+
+        public override Control Build()
+        {
+            grid = new TileGrid(PickMode.Many, 1f);
+            for (int i = 0; i < Puzzles.TileCount; i++) grid.Tiles[i].Picture = pictures[i];
+            return grid;
+        }
+
+        public override bool Solved() => grid != null && grid.Tiles.Select((t, i) => t.Selected == Pair.Contains(i)).All(ok => ok);
+    }
+
+    sealed class ArrowPuzzle : Puzzle
+    {
+        static readonly string[] Names = { "UP", "RIGHT", "DOWN", "LEFT" };
+        readonly int[] directions = new int[Puzzles.TileCount];
+        readonly int[] colors = new int[Puzzles.TileCount];
+        TileGrid grid;
+
+        public ArrowPuzzle(Random r)
+        {
+            Target = r.Next(4);
+            int matches = r.Next(2, 5);
+            var order = Enumerable.Range(0, Puzzles.TileCount).OrderBy(_ => r.Next()).ToArray();
+            for (int i = 0; i < Puzzles.TileCount; i++)
+            {
+                directions[order[i]] = i < matches ? Target : (Target + 1 + r.Next(3)) % 4;
+                colors[i] = r.Next(Puzzles.Colors.Length);
+            }
+        }
+
+        public int Target { get; }
+        public int[] Directions => directions;
+        public TileGrid Grid => grid;
+        public override string Prompt => $"Select every arrow pointing {Names[Target]}";
+
+        public override Control Build()
+        {
+            grid = new TileGrid(PickMode.Many, 1f);
+            for (int i = 0; i < Puzzles.TileCount; i++)
+            {
+                grid.Tiles[i].Picture = new Picture { Shape = Shape.Triangle, Color = colors[i] };
+                grid.Tiles[i].Rotation = directions[i] * 90;
+            }
+            return grid;
+        }
+
+        public override bool Solved() => grid != null && grid.Tiles.Select((t, i) => t.Selected == (directions[i] == Target)).All(ok => ok);
+    }
+
+    sealed class BiggestCirclePuzzle : Puzzle
+    {
+        static readonly float[] Smaller = { 0.3f, 0.38f, 0.44f, 0.5f };
+        readonly float[] scales = new float[Puzzles.TileCount];
+        readonly int[] colors = new int[Puzzles.TileCount];
+        TileGrid grid;
+
+        public BiggestCirclePuzzle(Random r)
+        {
+            AnswerIndex = r.Next(Puzzles.TileCount);
+            for (int i = 0; i < Puzzles.TileCount; i++)
+            {
+                scales[i] = i == AnswerIndex ? 0.72f : Smaller[r.Next(Smaller.Length)];
+                colors[i] = r.Next(Puzzles.Colors.Length);
+            }
+        }
+
+        public int AnswerIndex { get; }
+        public TileGrid Grid => grid;
+        public override string Prompt => "Click the biggest circle";
+
+        public override Control Build()
+        {
+            grid = new TileGrid(PickMode.One, 1f);
+            for (int i = 0; i < Puzzles.TileCount; i++)
+            {
+                grid.Tiles[i].Picture = new Picture { Shape = Shape.Circle, Color = colors[i] };
+                grid.Tiles[i].PictureScale = scales[i];
+            }
+            return grid;
+        }
+
+        public override bool Solved() => grid != null && grid.Tiles.Select((t, i) => t.Selected == (i == AnswerIndex)).All(ok => ok);
+    }
+
+    sealed class UpsideDownText : Control
+    {
+        public UpsideDownText(string text)
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            Text = text;
+            Font = Theme.SemiBold(22f);
+            Size = new Size(260, 56);
+            Margin = new Padding(3, 3, 3, 14);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.Clear(Parent?.BackColor ?? Theme.Background);
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            g.TranslateTransform(Width, Height);
+            g.RotateTransform(180);
+            using (var brush = new SolidBrush(Theme.Ink))
+            using (var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                g.DrawString(Text, Font, brush, new RectangleF(0, 0, Width, Height), format);
+        }
+    }
+
     enum PickMode { None, Many, One, InOrder }
 
     sealed class TileGrid : TableLayoutPanel
@@ -463,6 +611,8 @@ namespace Stillpoint
         public string Label { get; set; }
         public Color LabelColor { get; set; } = Theme.Ink;
         public int Order { get; set; }
+        public float PictureScale { get; set; } = 0.56f;
+        public float Rotation { get; set; }
 
         public bool Selected
         {
@@ -500,8 +650,15 @@ namespace Stillpoint
 
         void DrawPicture(Graphics g, Rectangle bounds)
         {
-            float size = bounds.Width * 0.56f;
+            float size = bounds.Width * PictureScale;
             var box = new RectangleF((bounds.Width - size) / 2, (bounds.Height - size) / 2, size, size);
+            var state = g.Save();
+            if (Rotation != 0)
+            {
+                g.TranslateTransform(bounds.Width / 2f, bounds.Height / 2f);
+                g.RotateTransform(Rotation);
+                g.TranslateTransform(-bounds.Width / 2f, -bounds.Height / 2f);
+            }
             using (var brush = new SolidBrush(Puzzles.Colors[Picture.Color]))
             {
                 switch (Picture.Shape)
@@ -512,6 +669,7 @@ namespace Stillpoint
                     default: g.FillPolygon(brush, Points(box, 5, 0.42f)); break;
                 }
             }
+            g.Restore(state);
         }
 
         static void DrawCheck(Graphics g, Rectangle bounds)
