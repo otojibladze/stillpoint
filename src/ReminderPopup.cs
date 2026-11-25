@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -29,26 +29,26 @@ namespace Stillpoint
             {
                 Dock = DockStyle.Fill,
                 BackColor = Theme.Surface,
-                ColumnCount = 2,
-                RowCount = 3,
+                ColumnCount = 3,
+                RowCount = 2,
                 Padding = new Padding(20, 18, 20, 16),
             };
             table.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             var ring = new MiniRing { Text = badge, Size = new Size(44, 44), Margin = new Padding(0, 0, 16, 0), BackColor = Theme.Surface };
             var titleLabel = new Label { Text = title, AutoSize = true, Font = Theme.SemiBold(13.5f), Margin = new Padding(0, 2, 0, 0) };
-            var bodyLabel = new Label { Text = body, AutoSize = true, MaximumSize = new Size(270, 0), ForeColor = Theme.Muted, Font = Theme.Regular(9.5f), Margin = new Padding(0, 4, 0, 0) };
+            var bodyLabel = new Label { Text = body, AutoSize = true, MaximumSize = new Size(440, 0), ForeColor = Theme.Muted, Font = Theme.Regular(9.5f), Margin = new Padding(0, 4, 0, 0) };
             var buttons = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.RightToLeft,
                 AutoSize = true,
                 WrapContents = false,
-                Anchor = AnchorStyles.Right | AnchorStyles.Top,
-                Margin = new Padding(0, 14, 0, 0),
+                Anchor = AnchorStyles.Right,
+                Margin = new Padding(24, 0, 0, 0),
             };
             var ok = new FlatButton(ButtonKind.Primary) { Text = "OK", MinimumSize = new Size(64, 36), Height = 36, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(8, 0, 0, 0), Font = Theme.SemiBold(9.5f) };
             ok.Click += (s, e) => { if (confirmClose == null || confirmClose()) Close(); };
@@ -64,20 +64,21 @@ namespace Stillpoint
             table.SetRowSpan(ring, 2);
             table.Controls.Add(titleLabel, 1, 0);
             table.Controls.Add(bodyLabel, 1, 1);
-            table.Controls.Add(buttons, 1, 2);
+            table.Controls.Add(buttons, 2, 0);
+            table.SetRowSpan(buttons, 2);
             Controls.Add(table);
             this.table = table;
             ResumeLayout(false);
             PerformLayout();
-            FitHeight();
+            FitSize();
         }
 
         readonly TableLayoutPanel table;
 
-        void FitHeight()
+        void FitSize()
         {
-            int height = table.GetPreferredSize(new Size(table.Width, 0)).Height + Padding.Vertical;
-            ClientSize = new Size(ClientSize.Width, height);
+            var size = table.GetPreferredSize(Size.Empty);
+            ClientSize = new Size(size.Width + Padding.Horizontal, size.Height + Padding.Vertical);
         }
 
         protected override bool ShowWithoutActivation => true;
@@ -100,7 +101,7 @@ namespace Stillpoint
 
         public void ShowNearTray()
         {
-            FitHeight();
+            FitSize();
             var area = Screen.PrimaryScreen.WorkingArea;
             int margin = (int)Math.Round(12 * AutoScaleFactor.Width);
             Location = new Point(area.Right - Width - margin, area.Bottom - Height - margin);
