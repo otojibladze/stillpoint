@@ -2,6 +2,6 @@
 {
     static class AppVersion
     {
-        public const string Text = "1.3.5";
+        public const string Text = "1.3.6";
     }
 }
