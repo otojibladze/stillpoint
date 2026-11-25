@@ -257,13 +257,10 @@ namespace Stillpoint
             if (shutDown) return;
             popup?.Close();
             string body = preview
-                ? "This is how reminders look. They stay until you click OK."
+                ? "This is how reminders look. Click OK to try the puzzle."
                 : $"Counting since {Tracker.SessionStarted:t}.";
-            var next = preview
-                ? new ReminderPopup(Fmt.Words(sessionMark) + " at the computer", body, null, null)
-                : new ReminderPopup(Fmt.Words(sessionMark) + " at the computer", body,
-                    () => Verify("Close the reminder?", "To close the reminder, solve this puzzle.", "Close reminder", "Cancel"),
-                    RequestStop);
+            Func<bool> confirmClose = () => Verify("Close the reminder?", "To close the reminder, solve this puzzle.", "Close reminder", "Cancel");
+            var next = new ReminderPopup(Fmt.Words(sessionMark) + " at the computer", body, confirmClose, preview ? null : (Func<bool>)RequestStop);
             next.FormClosed += (s, e) => { if (popup == s) popup = null; };
             popup = next;
             next.ShowNearTray();

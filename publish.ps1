@@ -15,7 +15,7 @@ Set-Content $versionFile $text -Encoding utf8 -NoNewline
 
 $latest = Join-Path $root 'latest'
 New-Item -ItemType Directory -Force $latest | Out-Null
-Copy-Item (Join-Path $root 'dist\Stillpoint.exe') $latest -Force
+Copy-Item (Join-Path $root 'obj\Stillpoint.exe') $latest -Force
 Set-Content (Join-Path $latest 'version.txt') $Version -Encoding ascii -NoNewline
 
 $built = (Get-Item (Join-Path $latest 'Stillpoint.exe')).VersionInfo.FileVersion
