@@ -76,7 +76,7 @@ namespace Stillpoint
             if (Above == null || Above.IsDisposed) return;
             var area = Screen.FromControl(Above).WorkingArea;
             int gap = (int)Math.Round(10 * AutoScaleFactor.Height);
-            int x = Above.Right - Width;
+            int x = Above.Left + (Above.Width - Width) / 2;
             int y = Above.Top - Height - gap;
             StartPosition = FormStartPosition.Manual;
             Location = new Point(
