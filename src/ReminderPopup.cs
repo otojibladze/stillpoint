@@ -37,7 +37,7 @@ namespace Stillpoint
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            table.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             var ring = new MiniRing { Text = badge, Size = new Size(44, 44), Margin = new Padding(0, 0, 16, 0), BackColor = Theme.Surface };
             var titleLabel = new Label { Text = title, AutoSize = true, Font = Theme.SemiBold(13.5f), Margin = new Padding(0, 2, 0, 0) };
@@ -47,8 +47,8 @@ namespace Stillpoint
                 FlowDirection = FlowDirection.RightToLeft,
                 AutoSize = true,
                 WrapContents = false,
-                Anchor = AnchorStyles.Right | AnchorStyles.Bottom,
-                Margin = new Padding(0),
+                Anchor = AnchorStyles.Right | AnchorStyles.Top,
+                Margin = new Padding(0, 14, 0, 0),
             };
             var ok = new FlatButton(ButtonKind.Primary) { Text = "OK", MinimumSize = new Size(64, 36), Height = 36, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(8, 0, 0, 0), Font = Theme.SemiBold(9.5f) };
             ok.Click += (s, e) => { if (confirmClose == null || confirmClose()) Close(); };
@@ -66,8 +66,18 @@ namespace Stillpoint
             table.Controls.Add(bodyLabel, 1, 1);
             table.Controls.Add(buttons, 1, 2);
             Controls.Add(table);
+            this.table = table;
             ResumeLayout(false);
             PerformLayout();
+            FitHeight();
+        }
+
+        readonly TableLayoutPanel table;
+
+        void FitHeight()
+        {
+            int height = table.GetPreferredSize(new Size(table.Width, 0)).Height + Padding.Vertical;
+            ClientSize = new Size(ClientSize.Width, height);
         }
 
         protected override bool ShowWithoutActivation => true;
@@ -90,6 +100,7 @@ namespace Stillpoint
 
         public void ShowNearTray()
         {
+            FitHeight();
             var area = Screen.PrimaryScreen.WorkingArea;
             int margin = (int)Math.Round(12 * AutoScaleFactor.Width);
             Location = new Point(area.Right - Width - margin, area.Bottom - Height - margin);
