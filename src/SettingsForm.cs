@@ -89,7 +89,6 @@ namespace Stillpoint
             updateStatus.TextAlign = ContentAlignment.MiddleCenter;
             updateStatus.Anchor = AnchorStyles.None;
 
-            Ui.AddRow(root, new Label { Text = "Settings", AutoSize = true, Font = Theme.Light(21f), Margin = new Padding(0, 0, 0, 12) });
             Ui.AddRow(root, Caption("Reminder"));
             Ui.AddRow(root, reminder);
             Ui.AddRow(root, Caption("Stone"));
@@ -101,7 +100,7 @@ namespace Stillpoint
             Ui.AddRow(root, footer);
             Ui.AddRow(root, updateStatus);
 
-            Controls.Add(root);
+            Controls.Add(Ui.QuietScroll(root));
             root.ResumeLayout(false);
             root.PerformLayout();
             ResumeLayout(false);
@@ -156,19 +155,7 @@ namespace Stillpoint
             string link = app.UpdateAvailable != null ? $"Update to {app.UpdateAvailable}" : "Check for updates";
             Ui.SetText(updateLink, link);
             updateLink.Enabled = !app.UpdateBusy;
-            bool shown = updateStatus.Visible;
             Ui.SetLine(updateStatus, app.UpdateStatus);
-            if (updateStatus.Visible != shown || !IsHandleCreated) FitHeight();
-        }
-
-        void FitHeight()
-        {
-            var root = (ScrollableControl)Controls[0];
-            int height = root.GetPreferredSize(new Size(ClientSize.Width, 0)).Height;
-            int room = Screen.FromControl(this).WorkingArea.Height - (Height - ClientSize.Height) - 24;
-            root.AutoScroll = height > room;
-            height = Math.Min(height, room);
-            if (ClientSize.Height != height) ClientSize = new Size(ClientSize.Width, height);
         }
 
         static string ChatLabel(Chattiness c) => c == Chattiness.Quiet ? "Quiet" : c == Chattiness.Chatty ? "Chatty" : "Normal";

@@ -32,10 +32,9 @@ namespace Stillpoint
             MinimizeBox = false;
             ShowInTaskbar = false;
 
-            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(22, 14, 22, 20), BackColor = Theme.Background, AutoScroll = true };
+            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(22, 14, 22, 20), BackColor = Theme.Background };
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
-            var title = new Label { Text = "Garden", AutoSize = true, Font = Theme.SemiBold(14f), Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 0, 8) };
             weekLabel = new Label { AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9.5f), Anchor = AnchorStyles.Left, Margin = new Padding(0) };
             var previousWeek = Chevron("‹");
             nextWeek = Chevron("›");
@@ -61,12 +60,12 @@ namespace Stillpoint
                 keepsakes.AddRow(Ui.Row(icon, label, note), Ui.Row(since, bar));
                 keepsakeRows[keepsake] = (icon, since, bar);
             }
-            foreach (var c in new Control[] { title, weekHead, hero, heroHead, heroVisitors, week, hint, Caption("Keepsakes"), keepsakes })
+            foreach (var c in new Control[] { weekHead, hero, heroHead, heroVisitors, week, hint, Caption("Keepsakes"), keepsakes })
             {
                 root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
                 root.Controls.Add(c, 0, root.RowCount++);
             }
-            Controls.Add(root);
+            Controls.Add(Ui.QuietScroll(root));
             ResumeLayout(false);
             PerformLayout();
 

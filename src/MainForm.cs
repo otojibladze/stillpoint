@@ -11,8 +11,12 @@ namespace Stillpoint
         readonly SpiritRing ring;
         readonly Label status;
         readonly ToggleSwitch stoneToggle;
-        readonly FlatButton gardenButton;
-        readonly TableLayoutPanel bottomRow;
+        const int BaseMain = 400, BaseRail = 58, BasePage = 430, BaseHeight = 640;
+        readonly NavRail rail;
+        readonly Panel main;
+        readonly Panel pages;
+        readonly Label pageTitle;
+        string openPage;
         readonly FlatButton startStop;
         readonly FlatButton resume;
         readonly TableLayoutPanel buttonRow;
@@ -28,8 +32,9 @@ namespace Stillpoint
         {
             this.app = app;
             SuspendLayout();
-            Ui.SetupWindow(this, "Pebble", new Size(400, 590));
-            MinimumSize = new Size(300, 440);
+            Ui.SetupWindow(this, "Pebble", new Size(BaseRail + BaseMain, BaseHeight));
+            MinimumSize = new Size(360, 480);
+            KeyPreview = true;
             StartPosition = FormStartPosition.CenterScreen;
 
             var root = Ui.Column(new Padding(26, 12, 26, 18));
@@ -52,19 +57,6 @@ namespace Stillpoint
             buttonRow.Controls.Add(startStop, 0, 0);
             buttonRow.Controls.Add(resume, 1, 0);
 
-            var historyButton = new FlatButton(ButtonKind.Ghost) { Text = "History", Icon = Draw.Clock, Height = 40, Dock = DockStyle.Fill, Margin = new Padding(0), Font = Theme.SemiBold(10f) };
-            gardenButton = new FlatButton(ButtonKind.Ghost) { Text = "Garden", Icon = Draw.Sprout, Height = 40, Dock = DockStyle.Fill, Margin = new Padding(10, 0, 0, 0), Font = Theme.SemiBold(10f) };
-            var settingsButton = new FlatButton(ButtonKind.Ghost) { Size = new Size(40, 40), Margin = new Padding(10, 0, 0, 0), Glyph = Draw.Gear, AccessibleName = "Settings" };
-            new ToolTip().SetToolTip(settingsButton, "Settings");
-            bottomRow = new TableLayoutPanel { ColumnCount = 3, RowCount = 1, Height = 40, Dock = DockStyle.Fill, Margin = new Padding(0, 12, 0, 0) };
-            bottomRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            bottomRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            bottomRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            bottomRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            bottomRow.Controls.Add(historyButton, 0, 0);
-            bottomRow.Controls.Add(gardenButton, 1, 0);
-            bottomRow.Controls.Add(settingsButton, 2, 0);
-
             updateLink = Ui.Link("");
             updateLink.Anchor = AnchorStyles.Left;
             updateLink.Margin = new Padding(0, 10, 0, 0);
@@ -76,12 +68,30 @@ namespace Stillpoint
             Ui.AddRow(root, ring, fill: true);
             Ui.AddRow(root, status);
             Ui.AddRow(root, buttonRow);
-            Ui.AddRow(root, bottomRow);
             Ui.AddRow(root, updateLink);
             Ui.AddRow(root, updateStatus);
             Ui.AddRow(root, saveError);
 
-            Controls.Add(root);
+            main = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Background };
+            main.Controls.Add(root);
+            pageTitle = new Label { AutoSize = true, Font = Theme.Light(15f), ForeColor = Theme.Ink, Anchor = AnchorStyles.Left, Margin = new Padding(0) };
+            var closePage = new FlatButton(ButtonKind.Ghost) { Size = new Size(30, 30), Margin = new Padding(0), Glyph = Draw.Cross, AccessibleName = "Close" };
+            var pageHead = Ui.TwoSides(pageTitle, closePage);
+            pageHead.Dock = DockStyle.Top;
+            pageHead.Padding = new Padding(22, 14, 18, 0);
+            pageHead.BackColor = Theme.Background;
+            pages = new Panel { Dock = DockStyle.Fill, Visible = false, BackColor = Theme.Track, Padding = new Padding(1, 0, 0, 0) };
+            pages.Controls.Add(pageHead);
+            rail = new NavRail { Dock = DockStyle.Left, Width = BaseRail };
+            rail.Add("timer", "Timer", Draw.Stopwatch);
+            rail.Add("garden", "Garden", Draw.Sprout);
+            rail.Add("history", "History", Draw.Clock);
+            rail.Add("settings", "Settings", (g, b, c) => Draw.Gear(g, Rectangle.Inflate(b, b.Width / 2, b.Height / 2), c), bottom: true);
+            rail.Active = "timer";
+
+            Controls.Add(pages);
+            Controls.Add(main);
+            Controls.Add(rail);
             root.ResumeLayout(false);
             root.PerformLayout();
             ResumeLayout(false);
@@ -89,9 +99,14 @@ namespace Stillpoint
 
             startStop.Click += (s, e) => app.ToggleRunning();
             resume.Click += (s, e) => app.Resume();
-            historyButton.Click += (s, e) => ShowHistory(null);
-            gardenButton.Click += (s, e) => ShowGarden(null);
-            settingsButton.Click += (s, e) => ShowSettings();
+            rail.Picked += key =>
+            {
+                if (key == "timer" || key == openPage) ClosePage();
+                else if (key == "garden") ShowGarden(null);
+                else if (key == "history") ShowHistory(null);
+                else ShowSettings();
+            };
+            closePage.Click += (s, e) => ClosePage();
             updateLink.LinkClicked += (s, e) => app.InstallUpdate();
             stoneToggle.CheckedChanged += (s, e) => { if (!syncing) app.SetStoneOn(stoneToggle.Checked); };
             stoneLabel.Click += (s, e) => stoneToggle.Checked = !stoneToggle.Checked;
@@ -106,10 +121,9 @@ namespace Stillpoint
             stoneToggle.Checked = on;
             syncing = false;
             ring.Plain = !on;
-            gardenButton.Visible = on;
-            bottomRow.ColumnStyles[1] = on ? new ColumnStyle(SizeType.Percent, 50F) : new ColumnStyle(SizeType.Absolute, 0F);
+            rail.SetHidden("garden", !on);
             if (history != null && !history.IsDisposed) history.GardenShown = on;
-            if (!on && garden != null && !garden.IsDisposed) garden.Close();
+            if (!on && openPage == "garden") ClosePage();
         }
 
         public void OnReminder() => ring.Reminder();
@@ -127,12 +141,76 @@ namespace Stillpoint
         public void ApplyWindowSize(WindowSize size)
         {
             float k = Settings.Scale(size) * DeviceDpi / 96f;
-            var target = new Size((int)Math.Round(400 * k), (int)Math.Round(590 * k));
-            if (ClientSize == target) return;
-            ClientSize = target;
+            rail.Width = (int)Math.Round(BaseRail * k);
+            int mainWidth = (int)Math.Round(BaseMain * k);
+            if (openPage != null) main.Width = mainWidth;
+            var target = new Size(rail.Width + mainWidth + (openPage != null ? (int)Math.Round(BasePage * k) : 0), (int)Math.Round(BaseHeight * k));
+            if (ClientSize != target) ClientSize = target;
+            KeepOnScreen();
+        }
+
+        void KeepOnScreen()
+        {
             var area = Screen.FromControl(this).WorkingArea;
             Left = Math.Max(area.Left, Math.Min(Left, area.Right - Width));
             Top = Math.Max(area.Top, Math.Min(Top, area.Bottom - Height));
+        }
+
+        float PageScale => Settings.Scale(app.Settings.WindowSize) * DeviceDpi / 96f;
+
+        void OpenPage<T>(string key, string title, ref T page, Func<T> make) where T : Form
+        {
+            if (page == null || page.IsDisposed)
+            {
+                page = make();
+                page.TopLevel = false;
+                page.FormBorderStyle = FormBorderStyle.None;
+                page.MinimumSize = Size.Empty;
+                page.Dock = DockStyle.Fill;
+                pages.Controls.Add(page);
+                page.BringToFront();
+            }
+            foreach (Control child in pages.Controls)
+                if (child is Form other && other != page) other.Hide();
+            page.Show();
+            Ui.SetText(pageTitle, title);
+            rail.Active = key;
+            if (openPage == null)
+            {
+                SuspendLayout();
+                int mainWidth = main.Width;
+                main.Dock = DockStyle.Left;
+                main.Width = mainWidth;
+                pages.Visible = true;
+                ClientSize = new Size(ClientSize.Width + (int)Math.Round(BasePage * PageScale), ClientSize.Height);
+                ResumeLayout(true);
+                KeepOnScreen();
+            }
+            openPage = key;
+        }
+
+        void ClosePage()
+        {
+            rail.Active = "timer";
+            if (openPage == null) return;
+            openPage = null;
+            SuspendLayout();
+            int pageWidth = pages.Width;
+            pages.Visible = false;
+            main.Dock = DockStyle.Fill;
+            ClientSize = new Size(Math.Max(rail.Width + 1, ClientSize.Width - pageWidth), ClientSize.Height);
+            ResumeLayout(true);
+            ring.Focus();
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (e.KeyCode == Keys.Escape && openPage != null)
+            {
+                ClosePage();
+                e.Handled = true;
+            }
         }
 
         public void SyncControls()
@@ -235,7 +313,7 @@ namespace Stillpoint
 
         void ShowHistory(DateTime? day)
         {
-            Ui.ShowBeside(this, ref history, () =>
+            OpenPage("history", "History", ref history, () =>
             {
                 var next = new HistoryForm { GardenShown = app.Settings.StoneOn };
                 next.SetSessions(app.Tracker.Sessions, app.Tracker.Current, app.Album, app.Tracker.ReminderIntervalSeconds);
@@ -248,7 +326,7 @@ namespace Stillpoint
         void ShowGarden(DateTime? day)
         {
             if (!app.Settings.StoneOn) return;
-            Ui.ShowBeside(this, ref garden, () =>
+            OpenPage("garden", "Garden", ref garden, () =>
             {
                 var next = new GardenForm();
                 next.SetData(app.Tracker.Sessions, app.Tracker.Current, app.Album, app.Tracker.ReminderIntervalSeconds);
@@ -258,6 +336,6 @@ namespace Stillpoint
             if (day != null) garden.ShowDay(day.Value);
         }
 
-        void ShowSettings() => Ui.ShowBeside(this, ref settings, () => new SettingsForm(app));
+        void ShowSettings() => OpenPage("settings", "Settings", ref settings, () => new SettingsForm(app));
     }
 }

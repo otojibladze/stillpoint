@@ -60,6 +60,30 @@ namespace Stillpoint
             }
         }
 
+        public static void Stopwatch(Graphics g, Rectangle b, Color color)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            float w = Math.Max(1.4f, b.Width * 0.1f), r = b.Width * 0.38f, cx = b.Left + b.Width / 2f, cy = b.Top + b.Height * 0.56f;
+            using (var pen = new Pen(color, w) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+            {
+                g.DrawEllipse(pen, cx - r, cy - r, r * 2, r * 2);
+                g.DrawLine(pen, cx, cy, cx + r * 0.42f, cy - r * 0.42f);
+                g.DrawLine(pen, cx - r * 0.3f, b.Top + w / 2, cx + r * 0.3f, b.Top + w / 2);
+                g.DrawLine(pen, cx, b.Top + w / 2, cx, cy - r);
+            }
+        }
+
+        public static void Cross(Graphics g, Rectangle b, Color color)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            float s = Math.Min(b.Width, b.Height) * 0.16f, cx = b.Left + b.Width / 2f, cy = b.Top + b.Height / 2f;
+            using (var pen = new Pen(color, Math.Max(1.3f, s * 0.35f)) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+            {
+                g.DrawLine(pen, cx - s, cy - s, cx + s, cy + s);
+                g.DrawLine(pen, cx - s, cy + s, cx + s, cy - s);
+            }
+        }
+
         public static void Sprout(Graphics g, Rectangle b, Color color)
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -78,7 +102,7 @@ namespace Stillpoint
         {
             var r = RectangleF.Inflate(bounds, -width / 2, -width / 2);
             using (var pen = new Pen(track, width)) g.DrawEllipse(pen, r);
-            if (progress <= 0) return;
+            if (360 * progress < 0.5f) return;
             using (var pen = new Pen(fill, width) { StartCap = LineCap.Flat, EndCap = LineCap.Flat })
             {
                 if (progress >= 1) g.DrawEllipse(pen, r);

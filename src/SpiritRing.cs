@@ -1259,7 +1259,14 @@ namespace Stillpoint
 
         bool Fading => fadeShot != null && Now - fadeT < 0.45f;
 
-        protected override void OnPaint(PaintEventArgs e) => Render(e.Graphics, Now);
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            try { Render(e.Graphics, Now); }
+            catch (Exception ex) when (ex is OutOfMemoryException || ex is System.Runtime.InteropServices.ExternalException || ex is ArgumentException)
+            {
+                Invalidate();
+            }
+        }
 
         public void Render(Graphics g, float t)
         {

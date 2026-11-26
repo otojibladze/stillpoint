@@ -46,15 +46,14 @@ namespace Stillpoint
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-            var title = new Label { Text = "History", AutoSize = true, Font = Theme.SemiBold(14f), Anchor = AnchorStyles.Left, Margin = new Padding(0) };
             tabs = new[] { Tab("List"), Tab("Calendar") };
-            var tabRow = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Anchor = AnchorStyles.Right, Margin = new Padding(0) };
+            var tabRow = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Anchor = AnchorStyles.Left, Margin = new Padding(0) };
             for (int i = 0; i < tabs.Length; i++)
             {
                 tabs[i].Margin = new Padding(i == 0 ? 0 : 6, 0, 0, 0);
                 tabRow.Controls.Add(tabs[i]);
             }
-            var head = Ui.TwoSides(title, tabRow);
+            var head = tabRow;
             head.Margin = new Padding(0, 0, 0, 4);
 
             summary = new Label { AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9.5f), Margin = new Padding(0, 0, 0, 12) };

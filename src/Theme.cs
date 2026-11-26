@@ -61,6 +61,7 @@ namespace Stillpoint
             Dark = dark;
             foreach (Form form in Application.OpenForms)
             {
+                if (!form.TopLevel) continue;
                 Recolor(form, old, next);
                 if (form.IsHandleCreated) StyleTitleBar(form, Background, Muted);
                 form.Invalidate(true);

@@ -77,6 +77,22 @@ namespace Stillpoint
         public static TableLayoutPanel Column(Padding padding) =>
             new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = padding, BackColor = Theme.Background, ColumnStyles = { new ColumnStyle(SizeType.Percent, 100F) } };
 
+        public static Control QuietScroll(ScrollableControl content)
+        {
+            var clip = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0), BackColor = content.BackColor };
+            content.Dock = DockStyle.None;
+            content.AutoScroll = true;
+            clip.Controls.Add(content);
+            Action fit = () =>
+            {
+                var bounds = new Rectangle(0, 0, clip.ClientSize.Width + (content.VerticalScroll.Visible ? SystemInformation.VerticalScrollBarWidth : 0), clip.ClientSize.Height);
+                if (content.Bounds != bounds) content.Bounds = bounds;
+            };
+            clip.Resize += (s, e) => fit();
+            content.ClientSizeChanged += (s, e) => fit();
+            return clip;
+        }
+
         public static void SetupWindow(Form form, string title, Size client)
         {
             form.AutoScaleDimensions = new SizeF(96F, 96F);
@@ -87,26 +103,6 @@ namespace Stillpoint
             form.Text = title;
             form.ClientSize = client;
             form.MaximizeBox = false;
-        }
-
-        public static void ShowBeside<T>(Form owner, ref T window, Func<T> make) where T : Form
-        {
-            if (window != null && !window.IsDisposed)
-            {
-                if (window.WindowState == FormWindowState.Minimized) window.WindowState = FormWindowState.Normal;
-                window.Activate();
-                return;
-            }
-            window = make();
-            window.Icon = owner.Icon;
-            window.Owner = owner;
-            window.StartPosition = FormStartPosition.Manual;
-            window.ShowInTaskbar = false;
-            window.MinimizeBox = false;
-            var area = Screen.FromControl(owner).WorkingArea;
-            int x = owner.Right + 12 + window.Width <= area.Right ? owner.Right + 12 : Math.Max(area.Left, owner.Left - 12 - window.Width);
-            window.Location = new Point(x, Math.Max(area.Top, Math.Min(owner.Top, area.Bottom - window.Height)));
-            window.Show();
         }
     }
 }

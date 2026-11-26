@@ -35,11 +35,15 @@ Every 30 minutes (you can change it in Settings) a small window pops up in the
 bottom corner of the screen. It doesn't take over your keyboard, so you
 can keep typing or playing. Click KEEP SITTING to close it and keep
 counting, or I GOT UP to stop counting.
-The gear button next to History opens Settings. There you can change
-how often the reminder comes (- and +), pick its sound (or No sound,
-the round button plays it) and click "Preview reminder" to see it.
-Under Stone you can rename it, make it quieter or chattier and turn on the desktop buddy: a tiny stone that sits on top of
-the taskbar. Click the buddy to open Pebble, right-click it to hide
+The bar on the left switches between the timer, the garden, your history
+and settings (the gear at the bottom). The garden, history and settings
+open next to the timer in the same window, which grows to the right;
+click the same icon again, the X or press Esc to close it. In Settings
+you can change how often the reminder comes (- and +), pick its sound
+(or No sound, the round button plays it) and click "Preview reminder"
+to see it. Under Stone you can rename it, make it quieter or chattier
+and turn on the desktop buddy: a tiny stone that sits on top of the
+taskbar. Click the buddy to open Pebble, right-click it to hide
 it. It hides by itself while a full-screen game or video is running.
 
 THE STONE
@@ -84,7 +88,7 @@ THE GARDEN
 - Keepsakes stay in the garden for good: moss after 7 days in a row,
   a stone lantern after 50 breaks, a pond after 100, and a baby pebble
   after 30 days.
-- The Garden button opens the garden: each day's garden, a week at a
+- The leaf icon on the left opens the garden: each day's garden, a week at a
   time, and your keepsakes. Double-click a day to open it in History >
   Calendar; in the calendar, click the little garden next to a day to
   open it in the garden.
@@ -135,7 +139,7 @@ Each Start begins a new session at 0:00:00. After you stop, Resume
 carries on the last session instead, so a short break does not split
 it in two (the break itself is not counted).
 
-The History button opens your history. List shows every session grouped
+The clock icon on the left opens your history. List shows every session grouped
 by day, with each day's total. Calendar shows the month: the darker a
 day, the longer you sat. Click a day to see its sessions. The arrows (or
 the mouse wheel) change the month; Today jumps back.
