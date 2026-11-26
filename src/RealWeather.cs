@@ -86,6 +86,21 @@ namespace Stillpoint
             return weather;
         }
 
+        const string KpFeed = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json";
+
+        public static async Task<float> FetchKp()
+        {
+            string json;
+            using (var web = Client()) json = await web.DownloadStringTaskAsync(KpFeed);
+            float kp = float.NaN;
+            var since = DateTime.UtcNow.AddHours(-6);
+            if (new JavaScriptSerializer().DeserializeObject(json) is object[] rows)
+                foreach (var row in rows.OfType<Dictionary<string, object>>())
+                    if (DateTime.TryParse(Text(row, "time_tag"), Inv, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var at) && at >= since)
+                        kp = float.IsNaN(kp) ? (float)Number(row, "Kp") : Math.Max(kp, (float)Number(row, "Kp"));
+            return kp;
+        }
+
         static Dictionary<string, object> Parse(string json) =>
             new JavaScriptSerializer().DeserializeObject(json) as Dictionary<string, object> ?? new Dictionary<string, object>();
 

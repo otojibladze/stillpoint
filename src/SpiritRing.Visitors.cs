@@ -41,7 +41,7 @@ namespace Stillpoint
             StepSquirrel(t, dt);
             StepOwl(t, dt);
             StepMoth(t, dt);
-            StepFox(t);
+            StepFox(t, dt);
             StepSnails(t);
             StepTurtle(t, dt);
             float awayFox = away != null && away.Saw(Visitors.Fox) ? 1 - Smooth(480, 600, t - tracesT) : 0;
@@ -55,7 +55,7 @@ namespace Stillpoint
                 nightNext = Math.Min(nightNext, t + 2);
                 return;
             }
-            var picks = new List<(float Weight, Action<float> Go)> { (2f, x => StartFlyer(bird, x)) };
+            var picks = new List<(float Weight, Action<float> Go)> { (NestBusy ? 5f : 2f, x => StartFlyer(bird, x)) };
             if (Warm) picks.Add((2f, x => StartFlyer(butterfly, x)));
             if (Warm) picks.Add((1.6f, StartLadybug));
             if (Green && !squirrel.Active) picks.Add((season == Season.Autumn ? 2.2f : 1.2f, StartSquirrel));
@@ -73,7 +73,7 @@ namespace Stillpoint
             if (nightK < 0.7f || rainK > 0.4f || owl.Active || moth.Active || fox.Active || t < nightNext) return;
             nightNext = t + 50 + Rand * 50;
             double r = rng.NextDouble();
-            if (r < 0.36) StartOwl(t);
+            if (r < 0.36 && (Lantern || !NestShown)) StartOwl(t);
             else if (r < 0.68 && (Lantern || cloudK < 0.5f)) StartMoth(t);
             else StartFox(t);
         }
@@ -91,7 +91,7 @@ namespace Stillpoint
             if (squirrel.State == 1) { SquirrelRun(squirrel, t); Later("Oops. I scared it.", t + 0.6f, 2.2f); }
             if (turtle.Active && turtle.P.Hide < 0.5f) turtleHideT = t;
             if (owl.State == 2) OwlLeave(owl, t);
-            if (fox.State == 2 && t - fox.T0 < 23.3f) fox.T0 = t - 23.3f;
+            if (fox.State == 2 && FoxTrust != Trust.Family) fox.B = Math.Min(fox.B, t - fox.T0 + 1.2f);
         }
 
         void HoverVisitors(PointF q, float t)
@@ -209,7 +209,7 @@ namespace Stillpoint
             {
                 p.Open = 1 - Smooth(0, 0.35f, since);
                 float q = Clamp((since - 0.5f) / 4.8f, 0, 1);
-                c.A = LadyLand + (GardenArt.LadybugSeat - LadyLand) * (q + Sin(q * Pi * 6) / (Pi * 6) * 0.8f);
+                c.A = LadyLand + (LadyTop - LadyLand) * (q + Sin(q * Pi * 6) / (Pi * 6) * 0.8f);
                 p.Walk = since > 0.5f && q < 1 ? (1 + 0.8f * Cos(q * Pi * 6)) / 1.8f : 0;
                 if (since > 5.5f) { c.State = 3; c.T0 = t; }
             }
@@ -322,7 +322,7 @@ namespace Stillpoint
             c.P.Acorn = true;
             moundBefore = digMound;
             Visit(Visitors.Squirrel);
-            Later(Pick(new[] { "A squirrel. Hiding snacks for later.", "Hey! That's my sand." }), t + 1.9f, 2.8f);
+            if (!Known(Visitors.Squirrel)) Later(Pick(new[] { "A squirrel. Hiding snacks for later.", "Hey! That's my sand." }), t + 1.9f, 2.8f);
         }
 
         void StepSquirrel(float t, float dt)
@@ -365,7 +365,30 @@ namespace Stillpoint
                     c.C = t + 0.08f;
                     Emit(new Particle { Kind = Bit.Dirt, X = GardenArt.DigAt.X + 2, Y = GardenArt.DigAt.Y - 1, Vx = 30 + Rand * 40, Vy = -45 - Rand * 35, Life = 1.3f, Size = 0.6f + Rand * 0.6f, Target = GardenArt.DigAt.Y - 1 + Rand * 5, Night = nightK });
                 }
-                if (s > 8) SquirrelRun(c, t);
+                if (s > 8)
+                {
+                    if (TrustOf(Visitors.Squirrel) >= Trust.Friendly && !giftLeft) { c.State = 3; c.T0 = t; c.From = new PointF(c.X, c.Y); p.Acorn = true; }
+                    else SquirrelRun(c, t);
+                }
+            }
+            else if (c.State == 3)
+            {
+                float u = Clamp(s / 1.1f, 0, 1);
+                c.Side = -1;
+                p.Dig = p.Flick = 0;
+                p.Paw = 0;
+                p.Run = 1 - Smooth(0.75f, 1, u);
+                p.Gait = u * Pi * 3;
+                c.X = c.From.X + (GardenArt.GiftAt.X + 7 - c.From.X) * u;
+                c.Y = GardenArt.DigAt.Y - Math.Abs(Sin(u * Pi * 3)) * 4 * (1 - u);
+                p.Acorn = s < 1.4f;
+                if (s >= 1.4f && !giftLeft)
+                {
+                    giftLeft = true;
+                    var f = FriendNow(Visitors.Squirrel);
+                    Later(f != null && f.Named ? $"{f.Name} left me an acorn!" : "It left me an acorn!", t + 0.3f, 2.8f);
+                }
+                if (s > 2.3f) SquirrelRun(c, t);
             }
             else
             {
@@ -402,6 +425,9 @@ namespace Stillpoint
             c.From = new PointF(SX + c.Side * 190, 20 + Rand * 20);
             c.P.Turn = 0;
             c.P.Spread = 1;
+            var trust = TrustOf(Visitors.Owl);
+            c.D = (int)trust;
+            c.B = trust == Trust.Family ? float.MaxValue : 10 + 5 * (int)trust;
         }
 
         void StepOwl(float t, float dt)
@@ -424,7 +450,7 @@ namespace Stillpoint
                     c.State = 2;
                     c.T0 = t;
                     Visit(Visitors.Owl);
-                    if (!Sleeping) Chat(Pick(new[] { "Hoo's there? Oh. An owl.", "An owl. We're both night people now." }), 3f);
+                    if (!Sleeping && !Known(Visitors.Owl)) Chat(Pick(new[] { "Hoo's there? Oh. An owl.", "An owl. We're both night people now." }), 3f);
                 }
             }
             else if (c.State == 2)
@@ -436,17 +462,21 @@ namespace Stillpoint
                 p.Tilt = 0;
                 float look = c.X > SX ? -0.5f : 0.5f;
                 if (pointerIn && t - pointerT < 3 && Dist(pointer, c.X, c.Y - 18) < 40) look = Clamp((pointer.X - c.X) / 22, -1.2f, 1.2f);
-                float target = look + Window(8, 10.4f, s, 0.9f) * Pi;
+                var trust = (Trust)(int)c.D;
+                float kiss = trust >= Trust.Friendly ? Window(6.2f, 8f, s, 0.5f) : 0;
+                if (kiss > 0) look += ((c.X > SX ? -1.1f : 1.1f) - look) * kiss;
+                float target = look + (trust >= Trust.Curious ? Window(8.5f, 10.9f, s, 0.9f) * Pi : 0);
                 p.Turn += (target - p.Turn) * (1 - (float)Math.Exp(-dt * 6));
                 float blink = (s + 1.1f) % 3.6f;
-                p.Blink = blink < 0.6f ? Sin(blink / 0.6f * Pi) : 0;
-                p.Puff = Math.Max(Window(4.2f, 5, s, 0.2f), Window(12, 12.8f, s, 0.2f));
+                p.Blink = Math.Max(blink < 0.6f ? Sin(blink / 0.6f * Pi) : 0, Window(6.6f, 7.8f, s, 0.45f) * kiss);
+                p.Puff = trust == Trust.Wary ? 0 : Math.Max(Window(4.2f, 5, s, 0.2f), Math.Max(Window(12, 12.8f, s, 0.2f), trust >= Trust.Trusting ? Window(19, 19.8f, s, 0.2f) : 0));
+                if (trust == Trust.Wary && pointerIn && t - pointerT < 1 && Dist(pointer, c.X, c.Y - 14) < 26) { OwlLeave(c, t); return; }
                 if (p.Puff > 0.9f && t > c.C)
                 {
                     c.C = t + 0.35f;
                     Emit(new Particle { Kind = Bit.Hoot, X = c.X + Sin(p.Turn) * 3, Y = c.Y - 18.5f, Life = 1.1f, Size = 1 });
                 }
-                if (s > 17) OwlLeave(c, t);
+                if (s > c.B || ((Trust)(int)c.D == Trust.Family && nightK < 0.45f)) OwlLeave(c, t);
             }
             else
             {
@@ -530,28 +560,40 @@ namespace Stillpoint
             c.P.Shadow = lamp ? 0 : 1 - Smooth(11, 14, d);
         }
 
+        static readonly float[] FoxHomes = { 30, 52, 74, 92, 100 };
+        static readonly float[] FoxStays = { 12, 24, 30, 45, float.MaxValue };
+
+        Trust FoxTrust => (Trust)(int)fox.D;
+
         void StartFox(float t)
         {
             var c = fox;
             if (c.Active) return;
+            var trust = TrustOf(Visitors.Fox);
             c.State = 1;
             c.T0 = t;
             c.Side = 1;
             c.X = -24;
             c.Y = GardenArt.FoxAt.Y;
+            c.A = FoxHomes[(int)trust];
+            c.B = FoxStays[(int)trust];
+            c.D = (int)trust;
             c.P.Sit = 0;
             c.P.Curl = 0;
+            c.P.Hide = 0;
+            c.P.Flick = 0;
         }
 
-        void StepFox(float t)
+        void StepFox(float t, float dt)
         {
             var c = fox;
             var p = c.P;
             if (!c.Active) return;
-            float s = t - c.T0, home = GardenArt.FoxAt.X;
+            float s = t - c.T0, home = c.A;
+            var trust = FoxTrust;
             if (c.State == 1)
             {
-                float u = Clamp(s / 3.4f, 0, 1);
+                float u = Clamp(s / (2.6f + home / 60), 0, 1);
                 c.X = -24 + (home + 24) * (1 - (1 - u) * (1 - u));
                 p.Gait = s * 9;
                 p.Run = 1 - Smooth(0.85f, 1, u);
@@ -561,26 +603,33 @@ namespace Stillpoint
                     c.State = 2;
                     c.T0 = t;
                     Visit(Visitors.Fox);
-                    if (!Sleeping) Chat(Pick(new[] { "A fox. Shh, don't scare it.", "Look who's out tonight." }), 3f);
+                    if (!Sleeping && !Known(Visitors.Fox)) Chat(Pick(new[] { "A fox. Shh, don't scare it.", "Look who's out tonight." }), 3f);
                 }
             }
             else if (c.State == 2)
             {
+                if (trust == Trust.Family && nightK < 0.45f && c.B > s + 3) c.B = s + 3;
+                float leave = c.B;
+                bool lies = trust >= Trust.Trusting, sleeps = trust == Trust.Family;
                 p.Run = 0;
                 c.X = home;
                 c.Y = GardenArt.FoxAt.Y;
-                p.Sit = Smooth(0, 0.7f, s) * (1 - Smooth(23.3f, 24, s));
-                p.Curl = Smooth(0.6f, 1.6f, s) * (1 - Smooth(22.8f, 23.6f, s));
-                float blink = (s + 0.4f) % 3.7f;
-                p.Blink = blink < 0.22f ? Sin(blink / 0.22f * Pi) : 0;
-                p.Ear = Math.Max(Window(6, 6.35f, s, 0.08f), Window(14.2f, 14.5f, s, 0.08f));
-                p.Yawn = Window(10.5f, 12.3f, s, 0.5f);
-                p.Tilt = 0.14f * Window(16, 19.5f, s, 0.6f);
-                if (s > 24) { c.State = 3; c.T0 = t; c.Side = -1; }
+                p.Sit = trust == Trust.Wary ? 0 : Smooth(0, 0.7f, s) * (1 - Smooth(leave - 0.7f, leave, s));
+                p.Curl = trust == Trust.Wary ? 0 : Smooth(0.6f, 1.6f, s) * (1 - Smooth(leave - 1.2f, leave - 0.4f, s));
+                p.Hide = lies ? Smooth(5, 6.5f, s) * (1 - Smooth(leave - 2.4f, leave - 1.2f, s)) : 0;
+                float cycle = lies ? 2.6f : 3.7f, closed = lies ? 0.7f : 0.22f, blink = (s + 0.4f) % cycle;
+                p.Blink = sleeps && p.Hide > 0.85f ? 1 : blink < closed ? Sin(blink / closed * Pi) : 0;
+                p.Ear = trust == Trust.Wary ? Window(0, 0.5f, s % 2.4f, 0.1f) : Math.Max(Window(6, 6.35f, s, 0.08f), Window(14.2f, 14.5f, s, 0.08f));
+                p.Ear = Math.Max(p.Ear, Window(0, 0.8f, t - pokeT, 0.1f));
+                p.Yawn = trust >= Trust.Friendly && !(sleeps && p.Hide > 0.5f) ? Window(10.5f, 12.3f, s, 0.5f) : 0;
+                p.Tilt = trust == Trust.Wary || lies && p.Hide > 0.3f ? 0 : 0.14f * Window(16, 19.5f, s, 0.6f);
+                p.Flick += ((petting && trust >= Trust.Friendly ? 1 : 0) - p.Flick) * Math.Min(1, dt * 4);
+                if (s > leave) { c.State = 3; c.T0 = t; c.Side = -1; }
             }
             else
             {
                 float u = Clamp(s / 3, 0, 1);
+                p.Sit = p.Curl = p.Hide = p.Flick = 0;
                 c.X = home + (-30 - home) * u * u;
                 p.Run = Smooth(0, 0.15f, u);
                 p.Gait = s * 9;
@@ -588,7 +637,6 @@ namespace Stillpoint
                 if (u >= 1) { c.State = 0; foxPrintsT = t; }
             }
         }
-
         void StartSnails(float t)
         {
             var c = snails;
@@ -644,7 +692,7 @@ namespace Stillpoint
             c.Y = TurtleY;
             c.P.Hide = 0;
             Visit(Visitors.Turtle);
-            Chat("A turtle. Slow and steady... and still faster than us.", 3.6f, thought: true);
+            if (!Known(Visitors.Turtle)) Chat("A turtle. Slow and steady... and still faster than us.", 3.6f, thought: true);
         }
 
         void StepTurtle(float t, float dt)

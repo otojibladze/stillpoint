@@ -35,6 +35,7 @@ namespace Stillpoint
     {
         public Bit Kind;
         public float X, Y, Vx, Vy, Age, Life = 1, Rot, Vr, Size = 4, Orbit = float.NaN, Target, Night;
+        public bool Back;
         public int Hue;
     }
 
@@ -468,10 +469,11 @@ namespace Stillpoint
             Grain = new TextureBrush(grain) { WrapMode = WrapMode.Tile };
         }
 
-        public static void DrawParticles(Graphics g, List<Particle> bits)
+        public static void DrawParticles(Graphics g, List<Particle> bits, bool? back = null)
         {
             foreach (var q in bits)
             {
+                if (back.HasValue && q.Back != back.Value) continue;
                 float k = q.Age / q.Life;
                 float a;
                 switch (q.Kind)

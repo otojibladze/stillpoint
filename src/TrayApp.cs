@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -45,7 +46,11 @@ namespace Stillpoint
         Version readyVersion;
         WeatherNow weather;
         bool weatherBusy;
-        int ticksUntilWeather = 5, ticksSinceSeenSave;
+        int ticksUntilWeather = 5, ticksSinceSeenSave, ticksUntilSpace = 15, friendsVersion = -1;
+        float kp = float.NaN;
+        DateTime kpFetched = DateTime.MinValue, friendsDate;
+        bool kpBusy;
+        Dictionary<string, Friend> friends = new Dictionary<string, Friend>();
         const int WeatherEverySeconds = 30 * 60;
         DateTime lastSeen;
         DateTime sunDate;
@@ -68,6 +73,7 @@ namespace Stillpoint
             };
             Tracker.SetRunning(Settings.Running, DateTime.Now, continueSession);
             Album = store.LoadAlbum();
+            if (Enum.TryParse(Settings.Temper, out Temper saved)) Temper = saved;
 
             ApplyTheme();
             foreach (StoneMood mood in Enum.GetValues(typeof(StoneMood)))
@@ -165,6 +171,68 @@ namespace Stillpoint
 
         public WeatherNow Weather => Settings.RealWeather && Settings.HasTown ? weather : null;
 
+        public Temper Temper { get; private set; } = Temper.Easygoing;
+
+        public float Kp => (DateTime.Now - kpFetched).TotalHours < 4 ? kp : float.NaN;
+
+        public Dictionary<string, Friend> FriendsNow
+        {
+            get
+            {
+                if (friendsVersion != Album.Version || friendsDate != DateTime.Today)
+                {
+                    friends = Friends.All(Album, DateTime.Today).ToDictionary(f => f.Species);
+                    friendsVersion = Album.Version;
+                    friendsDate = DateTime.Today;
+                }
+                return friends;
+            }
+        }
+
+        async void RefreshSpace()
+        {
+            ticksUntilSpace = 3600;
+            if (kpBusy || !Settings.StoneOn || !Settings.RealWeather || !Settings.HasTown) return;
+            kpBusy = true;
+            try
+            {
+                float value = await RealWeather.FetchKp();
+                if (!float.IsNaN(value)) { kp = value; kpFetched = DateTime.Now; }
+            }
+            catch (Exception ex)
+            {
+                Store.Log("Kp: " + ex.Message);
+            }
+            finally
+            {
+                kpBusy = false;
+            }
+        }
+
+        void UpdateTemper()
+        {
+            float score = Character.Score(Tracker.Sessions, Tracker.Current, DateTime.Today, Tracker.ReminderIntervalSeconds);
+            bool first = Settings.Temper.Length == 0;
+            var next = first ? Character.Of(score) : Character.Settle(score, Temper);
+            if (!first && next == Temper) return;
+            Temper = next;
+            Settings.Temper = next.ToString();
+            SaveSettings();
+            form.SyncControls();
+            if (!first && Settings.StoneOn) form.Announce(Character.Shift(next));
+        }
+
+        void MaybeRecall()
+        {
+            if (!Settings.StoneOn || !form.Visible) return;
+            string today = DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+            if (Settings.MemoryDay == today) return;
+            Settings.MemoryDay = today;
+            SaveSettings();
+            var memory = Memories.Today(Tracker.Sessions, Tracker.Current, Album, DateTime.Today, Tracker.ReminderIntervalSeconds, Temper, s => FriendsNow.TryGetValue(s, out var f) ? f : null);
+            if (memory != null) form.Recall(memory.Text);
+        }
+
         public SunTimes SunToday
         {
             get
@@ -191,6 +259,7 @@ namespace Stillpoint
             }
             form.SyncControls();
             RefreshWeather();
+            RefreshSpace();
             Refresh();
         }
 
@@ -201,6 +270,7 @@ namespace Stillpoint
             SaveSettings();
             form.SyncControls();
             RefreshWeather();
+            RefreshSpace();
             Refresh();
         }
 
@@ -350,6 +420,7 @@ namespace Stillpoint
                 AskName(form, rename: false);
                 return;
             }
+            MaybeRecall();
             var now = DateTime.Now;
             string today = now.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
             if (now.Hour < 20 || Settings.EveningCardDate == today) return;
@@ -637,6 +708,12 @@ namespace Stillpoint
             if (--ticksUntilUpdateCheck <= 0) CheckForUpdates(false);
             if (Form.ActiveForm != null) lastWindowUse = DateTime.Now;
             if (--ticksUntilWeather <= 0) RefreshWeather();
+            if (--ticksUntilSpace <= 0) RefreshSpace();
+            if (secondsAlive % 60 == 5)
+            {
+                UpdateTemper();
+                MaybeRecall();
+            }
             TrackSeen();
             if (secondsAlive % 10 == 0) ApplyTheme();
             if (++secondsAlive == 120 && justUpdated) Updater.CleanUp(Application.ExecutablePath);

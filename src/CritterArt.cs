@@ -312,15 +312,17 @@ namespace Stillpoint
             var deep = Dim(0xA45A2C, night, 0.3f);
             var cream = Dim(0xF0E2CB, night, 0.35f);
             var dark = Dim(0x463631, night, 0.2f);
-            float k = Smooth(0, 1, p.Sit), c = Smooth(0, 1, p.Curl);
+            float k = Smooth(0, 1, p.Sit), c = Smooth(0, 1, p.Curl), l = Smooth(0, 1, p.Hide);
+            PointF P(PointF stand, PointF sit, PointF lie) => Lerp(Lerp(stand, sit, k), lie, l);
+            float F(float stand, float sit, float lie) => Lerp(Lerp(stand, sit, k), lie, l);
             var st = g.Save();
             g.TranslateTransform(x, y);
             Mirror(g, facing);
-            float swing = p.Run * Sin(p.Gait) * 2.6f, sway = Sin(t * 2.6f) * 0.9f * (1 - c);
-            var t0 = Lerp(new PointF(-7.5f, -9.5f), new PointF(-4.5f, -2.6f), k);
-            var t1 = Lerp(new PointF(-13, -11 + sway), new PointF(-11, 0.6f), c);
+            float swing = p.Run * Sin(p.Gait) * 2.6f, sway = Sin(t * 2.6f) * 0.9f * (1 - c) + p.Flick * Sin(t * 14) * 2.2f;
+            var t0 = P(new PointF(-7.5f, -9.5f), new PointF(-4.5f, -2.6f), new PointF(-7, -2.4f));
+            var t1 = Lerp(new PointF(-13, -11 + sway), new PointF(-11, 0.6f + sway * 0.3f), c);
             var t2 = Lerp(new PointF(-17.5f, -8 + sway), new PointF(-3, 2.8f), c);
-            var t3 = Lerp(new PointF(-21, -4.5f + sway * 1.5f), new PointF(7.4f, 0.9f), c);
+            var t3 = Lerp(new PointF(-21, -4.5f + sway * 1.5f), Lerp(new PointF(7.4f, 0.9f), new PointF(11.5f, 0.2f), l), c);
             Action tail = () =>
             {
                 using (var path = new GraphicsPath())
@@ -335,25 +337,27 @@ namespace Stillpoint
             if (c < 0.5f) tail();
             using (var leg = RoundPen(dark, 1.7f))
             {
-                g.DrawLine(leg, Lerp(new PointF(-5.6f, -8), new PointF(-3, -3.5f), k), Lerp(new PointF(-5.6f - swing, 0), new PointF(-0.5f, -0.6f), k));
-                g.DrawLine(leg, Lerp(new PointF(-3.8f, -8), new PointF(-1.5f, -3.5f), k), Lerp(new PointF(-3.8f + swing, 0), new PointF(1.2f, -0.6f), k));
-                var shoulder = Lerp(new PointF(5.2f, -8), new PointF(3.8f, -8), k);
-                g.DrawLine(leg, new PointF(shoulder.X - 0.8f, shoulder.Y), Lerp(new PointF(5.2f + swing, 0), new PointF(2.9f, 0), k));
-                g.DrawLine(leg, new PointF(shoulder.X + 0.8f, shoulder.Y), Lerp(new PointF(6.8f - swing, 0), new PointF(4.7f, 0), k));
+                g.DrawLine(leg, P(new PointF(-5.6f, -8), new PointF(-3, -3.5f), new PointF(-3, -1.6f)), P(new PointF(-5.6f - swing, 0), new PointF(-0.5f, -0.6f), new PointF(-0.5f, -0.6f)));
+                g.DrawLine(leg, P(new PointF(-3.8f, -8), new PointF(-1.5f, -3.5f), new PointF(-1.5f, -1.6f)), P(new PointF(-3.8f + swing, 0), new PointF(1.2f, -0.6f), new PointF(1.2f, -0.6f)));
+                var shoulder = P(new PointF(5.2f, -8), new PointF(3.8f, -8), new PointF(6.4f, -2.6f));
+                g.DrawLine(leg, new PointF(shoulder.X - 0.8f, shoulder.Y), P(new PointF(5.2f + swing, 0), new PointF(2.9f, 0), new PointF(11.6f, -0.7f)));
+                g.DrawLine(leg, new PointF(shoulder.X + 0.8f, shoulder.Y), P(new PointF(6.8f - swing, 0), new PointF(4.7f, 0), new PointF(12.4f, -0.4f)));
             }
-            var center = Lerp(new PointF(0, -9.6f), new PointF(1.4f, -10.2f), k);
+            var center = P(new PointF(0, -9.6f), new PointF(1.4f, -10.2f), new PointF(0.4f, -4.4f));
+            float breath = l * Sin(t * 1.6f) * 0.25f;
             var b = g.Save();
             g.TranslateTransform(center.X, center.Y);
-            g.RotateTransform(Lerp(0, 14, k));
-            FillEllipse(g, orange, 0, 0, Lerp(8.6f, 4.3f, k), Lerp(3.9f, 7.4f, k));
+            g.RotateTransform(F(0, 14, -3));
+            FillEllipse(g, orange, 0, 0, F(8.6f, 4.3f, 9.4f), F(3.9f, 7.4f, 4.3f) + breath);
             g.Restore(b);
-            if (k > 0.05f) FillEllipse(g, orange, -2.4f, -4.6f, 5.2f * k, 4.6f * k);
-            FillEllipse(g, cream, Lerp(6.2f, 4, k), Lerp(-8.8f, -12.4f, k), Lerp(2.5f, 1.9f, k), Lerp(2.5f, 3.4f, k));
-            var head = Lerp(new PointF(9.8f, -13.4f), new PointF(5.4f, -20.2f), k);
+            float haunch = Math.Max(k, l);
+            if (haunch > 0.05f) FillEllipse(g, orange, Lerp(-2.4f, -5, l), Lerp(-4.6f, -4.2f, l), Lerp(5.2f, 4.8f, l) * haunch, Lerp(4.6f, 4.1f, l) * haunch + breath);
+            FillEllipse(g, cream, F(6.2f, 4, 6.6f), F(-8.8f, -12.4f, -4.4f), F(2.5f, 1.9f, 2.3f), F(2.5f, 3.4f, 2.2f));
+            var head = P(new PointF(9.8f, -13.4f), new PointF(5.4f, -20.2f), new PointF(10.4f, -5.6f));
             var h = g.Save();
             g.TranslateTransform(head.X, head.Y);
-            g.RotateTransform(p.Tilt * Deg);
-            FillPolygon(g, deep, new PointF(0.6f, -2.2f), new PointF(2, -7), new PointF(3, -1.8f));
+            g.RotateTransform((p.Tilt + l * 0.12f) * Deg);
+            FillPolygon(g, deep, new PointF(0.6f, -2.2f), new PointF(2, -7 + l * 1.4f), new PointF(3, -1.8f));
             FillEllipse(g, orange, 0, 0, 3.6f, 3.1f);
             FillEllipse(g, orange, 3.2f, 0.9f, 2.8f, 1.35f);
             FillEllipse(g, cream, 2, 1.7f, 2.8f, 1.15f);
@@ -361,7 +365,7 @@ namespace Stillpoint
             FillEllipse(g, Ink, 5.9f, 0.6f, 0.7f, 0.6f);
             var ear = g.Save();
             g.TranslateTransform(-0.8f, -2.2f);
-            g.RotateTransform(-p.Ear * 18);
+            g.RotateTransform(-p.Ear * 18 - l * 25);
             FillPolygon(g, orange, new PointF(-1.4f, 0), new PointF(-0.6f, -5.4f), new PointF(1.6f, -0.2f));
             FillPolygon(g, dark, new PointF(-0.8f, -0.4f), new PointF(-0.4f, -3.8f), new PointF(0.9f, -0.5f));
             g.Restore(ear);
@@ -371,9 +375,103 @@ namespace Stillpoint
                 FillEllipse(g, Ink, 1.6f, -0.7f, 0.75f, 0.72f * open);
                 FillEllipse(g, Alpha(Color.White, 0.8f), 1.85f, -1, 0.25f, 0.25f * open);
             }
-            else using (var lid = RoundPen(Ink, 0.5f)) g.DrawLine(lid, 0.9f, -0.6f, 2.3f, -0.6f);
+            else using (var lid = RoundPen(Ink, 0.5f)) g.DrawArc(lid, 0.8f, -1.4f, 1.8f, 1.2f, 20, 140);
             g.Restore(h);
             if (c >= 0.5f) tail();
+            g.Restore(st);
+        }
+        static readonly float[][] Twigs = { new[] { -10f, -4.6f, 9f, -1.2f }, new[] { -9f, -1.8f, 8f, -5f }, new[] { -7f, -0.6f, 10f, -3.2f }, new[] { -10.4f, -3.2f, 3f, -0.4f }, new[] { -4f, -5.6f, 10.6f, -2.2f }, new[] { -8f, -5.2f, 6f, -0.8f }, new[] { -2f, -0.4f, 10.4f, -4.6f }, new[] { -10.6f, -5.4f, -1f, -0.2f }, new[] { 1f, -5.8f, 9.6f, -0.8f }, new[] { -6f, -3.6f, 7f, -5.6f }, new[] { -9.6f, -2.6f, 9.8f, -2.8f }, new[] { -5f, -0.2f, 4f, -5.8f }, new[] { -11f, -4f, 11f, -4.2f }, new[] { -3f, -2.4f, 8f, -0.2f } };
+
+        public static void DrawNest(Graphics g, float x, float y, float angle, NestStage stage, float progress, float t, float beg, float flap, int chicks, float night, Action inside = null)
+        {
+            if (stage == NestStage.None) return;
+            var st = g.Save();
+            g.TranslateTransform(x, y);
+            g.RotateTransform(angle * 0.35f * Deg);
+            g.ScaleTransform(1.35f, 1.35f);
+            float built = stage == NestStage.Building ? Smooth(0, 1, progress) : 1;
+            g.ScaleTransform(0.55f + 0.45f * built, 0.4f + 0.6f * built);
+            var dark = Dim(0x5C4027, night, 0.35f);
+            var mid = Dim(0x7A5634, night, 0.35f);
+            var light = Dim(0x9C7A50, night, 0.35f);
+            FillEllipse(g, Alpha(dark, built), 0, -5.8f, 10.5f, 2.6f);
+            if (stage == NestStage.Eggs)
+                foreach (float ex in new[] { -4.2f, 4.2f, 0f })
+                {
+                    float wobble = Sin(t * 1.3f + ex) * 0.15f;
+                    var egg = g.Save();
+                    g.TranslateTransform(ex, -6.6f - (ex == 0 ? 0.6f : 0));
+                    g.RotateTransform((ex * 4 + wobble * 10));
+                    FillEllipse(g, Dim(0xBFDCEB, night, 0.3f), 0, 0, 2.1f, 2.7f);
+                    FillEllipse(g, Alpha(Color.White, 0.5f * (1 - night)), -0.6f, -0.9f, 0.6f, 0.9f);
+                    foreach (var (sx, sy) in new[] { (0.7f, 0.4f), (-0.5f, 1.1f), (0.2f, -0.7f), (0.9f, 1.4f) })
+                        FillEllipse(g, Dim(0x7E9AAA, night, 0.3f), sx, sy, 0.32f, 0.32f);
+                    g.Restore(egg);
+                }
+            else if (stage == NestStage.Chicks || stage == NestStage.Fledglings)
+            {
+                bool big = stage == NestStage.Fledglings;
+                float grow = big ? 1 : 0.55f + 0.45f * progress;
+                float[] spots = { -5f, 5f, 0f };
+                for (int i = 0; i < Math.Min(chicks, 3); i++)
+                {
+                    float cx = spots[i] * (big ? 1.1f : 1), phase = t * 3 + i * 2.1f;
+                    float lift = beg * (2.6f + Sin(phase * 2.2f) * 0.8f) + (big ? 1.4f : 0);
+                    float hy = -7.2f - lift - (big ? 1.5f : 0);
+                    if (big)
+                    {
+                        FillEllipse(g, Dim(0x8A6A55, night), cx, hy + 3.6f, 3.6f, 3f);
+                        float w = flap * Sin(t * 22 + i * 1.7f);
+                        foreach (int s in new[] { -1, 1 })
+                        {
+                            var wing = g.Save();
+                            g.TranslateTransform(cx + s * 2.6f, hy + 2.6f);
+                            g.RotateTransform(s * (20 + w * 50) * flap);
+                            FillEllipse(g, Dim(0x6E5444, night), s * 1.6f, 0, 2.2f, 1.1f);
+                            g.Restore(wing);
+                        }
+                        FillEllipse(g, Dim(0xD9A27E, night), cx, hy + 4.4f, 2.1f, 1.6f);
+                    }
+                    float hr = 2.5f * grow;
+                    FillEllipse(g, Dim(big ? 0x8A6A55 : 0x9C958D, night), cx, hy, hr, hr * 0.95f);
+                    if (!big)
+                        for (int f = -1; f <= 1; f++)
+                            using (var fuzz = RoundPen(Dim(0xB8B1A9, night), 0.5f))
+                                g.DrawLine(fuzz, cx + f * 0.8f, hy - hr * 0.8f, cx + f * 1.2f, hy - hr * 1.25f);
+                    FillEllipse(g, Ink, cx - hr * 0.42f, hy - hr * 0.15f, 0.48f, 0.48f);
+                    FillEllipse(g, Ink, cx + hr * 0.42f, hy - hr * 0.15f, 0.48f, 0.48f);
+                    float open = beg * (0.6f + 0.4f * Math.Abs(Sin(phase * 3)));
+                    var beak = Hex(0xF2B33D);
+                    FillPolygon(g, beak, new PointF(cx - 1.1f * grow, hy + 0.4f), new PointF(cx + 1.1f * grow, hy + 0.4f), new PointF(cx, hy - 1.2f * grow - open * 1.6f));
+                    if (open > 0.1f)
+                    {
+                        FillPolygon(g, Hex(0xD9544A), new PointF(cx - 0.8f * grow, hy + 0.5f), new PointF(cx + 0.8f * grow, hy + 0.5f), new PointF(cx, hy + 0.5f + open * 1.2f));
+                        FillPolygon(g, beak, new PointF(cx - 1.1f * grow, hy + 0.6f), new PointF(cx + 1.1f * grow, hy + 0.6f), new PointF(cx, hy + 1.2f + open * 1.8f));
+                    }
+                    else FillPolygon(g, beak, new PointF(cx - 1.1f * grow, hy + 0.4f), new PointF(cx + 1.1f * grow, hy + 0.4f), new PointF(cx, hy + 1.3f * grow));
+                }
+            }
+            inside?.Invoke();
+            using (var bowl = new GraphicsPath())
+            {
+                bowl.AddArc(-11, -10, 22, 10.5f, 0, 180);
+                bowl.CloseFigure();
+                using (var brush = new SolidBrush(Alpha(mid, built))) g.FillPath(brush, bowl);
+                var clip = g.Save();
+                g.SetClip(bowl, CombineMode.Intersect);
+                int twigs = stage == NestStage.Building ? (int)Math.Round(Twigs.Length * built) : Twigs.Length;
+                for (int i = 0; i < twigs; i++)
+                    using (var pen = RoundPen(i % 2 == 0 ? light : dark, 0.7f))
+                        g.DrawLine(pen, Twigs[i][0], Twigs[i][1], Twigs[i][2], Twigs[i][3]);
+                FillEllipse(g, Alpha(Ink, 0.18f), 0, 0.6f, 11, 2);
+                g.Restore(clip);
+            }
+            using (var rim = RoundPen(Alpha(light, built), 1.1f)) g.DrawArc(rim, -10.6f, -8.2f, 21.2f, 4.6f, 0, 180);
+            using (var stray = RoundPen(Alpha(dark, built), 0.6f))
+            {
+                g.DrawLine(stray, 9.5f, -5.6f, 12.4f, -7.2f);
+                g.DrawLine(stray, -9.8f, -4.6f, -12.6f, -5.4f);
+            }
             g.Restore(st);
         }
 

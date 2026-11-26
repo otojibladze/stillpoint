@@ -20,6 +20,8 @@ namespace Stillpoint
         readonly LinkLabel townLink;
         readonly ToggleSwitch realWeather;
         readonly ToggleSwitch desktopBuddy;
+        readonly Label personality;
+        readonly Label personalityNote;
         readonly ToggleSwitch startWithWindows;
         readonly LinkLabel updateLink;
         readonly Label updateStatus;
@@ -54,12 +56,16 @@ namespace Stillpoint
             stone.AddRow(Ui.Text("Name"), nameLink);
             stone.AddRow(Ui.Text("Chattiness"), chatLink);
             stone.AddRow(buddyLabel, desktopBuddy);
+            personality = new Label { AutoSize = true, ForeColor = Theme.AccentText, Anchor = AnchorStyles.Right, Margin = new Padding(0) };
+            var personalityRow = TwoLines("Personality", "Shaped by how you take breaks", null);
+            personalityNote = (Label)personalityRow.Controls[1];
+            stone.AddRow(personalityRow, personality);
 
             townLink = MenuLink();
             realWeather = new ToggleSwitch { Margin = new Padding(0) };
             var garden = new Card();
             garden.AddRow(Ui.Text("Your town"), townLink);
-            garden.AddRow(TwoLines("Real weather", "Rain and snow from Open-Meteo.com", realWeather), realWeather);
+            garden.AddRow(TwoLines("Real weather", "Open-Meteo.com weather, NOAA northern lights", realWeather), realWeather);
 
             startWithWindows = new ToggleSwitch { Margin = new Padding(0) };
             var autoLabel = Ui.Text("Start with Windows");
@@ -147,6 +153,8 @@ namespace Stillpoint
             seasonal.Checked = app.Settings.SeasonalColors;
             realWeather.Checked = app.Settings.RealWeather && app.Settings.HasTown;
             townLink.Text = (app.Settings.HasTown ? app.Settings.TownName : "Set your town") + "  ›";
+            personality.Text = Character.Label(app.Temper);
+            personalityNote.Text = Character.Describe(app.Temper) + ". Shaped by your breaks.";
             syncing = false;
         }
 
@@ -182,13 +190,14 @@ namespace Stillpoint
             return link;
         }
 
-        static Control TwoLines(string title, string note, ToggleSwitch toggle)
+        static TableLayoutPanel TwoLines(string title, string note, ToggleSwitch toggle)
         {
-            var panel = new TableLayoutPanel { AutoSize = true, ColumnCount = 1, Margin = new Padding(0), Anchor = AnchorStyles.Left, Cursor = Cursors.Hand };
+            var panel = new TableLayoutPanel { AutoSize = true, ColumnCount = 1, Margin = new Padding(0), Anchor = AnchorStyles.Left, Cursor = toggle == null ? Cursors.Default : Cursors.Hand };
             var top = Ui.Text(title);
             var bottom = new Label { Text = note, AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(8.5f), Margin = new Padding(0, 1, 0, 0) };
             panel.Controls.Add(top, 0, 0);
             panel.Controls.Add(bottom, 0, 1);
+            if (toggle == null) return panel;
             EventHandler flip = (s, e) => toggle.Checked = !toggle.Checked;
             panel.Click += flip;
             top.Click += flip;

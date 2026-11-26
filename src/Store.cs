@@ -43,6 +43,8 @@ namespace Stillpoint
         public double TownLat = double.NaN, TownLon = double.NaN;
         public DateTime LastSeen = DateTime.MinValue;
         public string FirstSnow = "";
+        public string MemoryDay = "";
+        public string Temper = "";
 
         public bool HasTown => !double.IsNaN(TownLat) && !double.IsNaN(TownLon);
 
@@ -152,6 +154,8 @@ namespace Stillpoint
                         if (DateTime.TryParseExact(value, TimeFormat, Inv, DateTimeStyles.None, out var seen)) settings.LastSeen = seen;
                         break;
                     case "firstSnow": settings.FirstSnow = value; break;
+                    case "memoryDay": settings.MemoryDay = value; break;
+                    case "temper": settings.Temper = value; break;
                     case "windowSize":
                         if (Enum.TryParse(value, true, out WindowSize size) && Enum.IsDefined(typeof(WindowSize), size)) settings.WindowSize = size;
                         break;
@@ -192,6 +196,8 @@ namespace Stillpoint
                 "townLon=" + (s.HasTown ? s.TownLon.ToString("R", Inv) : ""),
                 "lastSeen=" + (s.LastSeen == DateTime.MinValue ? "" : s.LastSeen.ToString(TimeFormat, Inv)),
                 "firstSnow=" + s.FirstSnow,
+                "memoryDay=" + s.MemoryDay,
+                "temper=" + s.Temper,
             };
             WriteAtomic(SettingsPath, string.Join("\r\n", lines) + "\r\n");
         }

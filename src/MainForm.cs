@@ -125,6 +125,8 @@ namespace Stillpoint
 
         public void ShowAway(AwayReport report) => ring.ShowAway(report);
 
+        public void Recall(string text) => ring.Recall(text);
+
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
@@ -231,6 +233,13 @@ namespace Stillpoint
                 Weather = app.Weather,
                 DugToday = app.Album.On(today).Contains(Visitors.Squirrel),
                 DugYesterday = app.Album.On(today.AddDays(-1)).Contains(Visitors.Squirrel),
+                Lat = app.Settings.TownLat,
+                Lon = app.Settings.TownLon,
+                Kp = app.Kp,
+                Temper = app.Temper,
+                Friends = app.FriendsNow,
+                SeenToday = app.Album.On(today),
+                Fledged = app.Album.DaysWith(Visitors.Fledged).Any(d => d.Year == today.Year),
             });
             Ui.SetText(status, state);
             startStop.Text = tracker.Running ? "I got up" : "Start";

@@ -14,9 +14,14 @@ namespace Stillpoint
     {
         public const string Butterfly = "butterfly", Bird = "bird", Snail = "snail", Frog = "frog", Cat = "cat", Dragonfly = "dragonfly", Rainbow = "rainbow";
         public const string Ladybug = "ladybug", Bee = "bee", Squirrel = "squirrel", Owl = "owl", Moth = "moth", Fox = "fox", Snails = "snails", Turtle = "turtle";
-        public static readonly string[] Order = { Butterfly, Bird, Bee, Ladybug, Dragonfly, Squirrel, Snail, Snails, Turtle, Frog, Owl, Moth, Fox, Cat, Rainbow };
+        public const string Meteors = "meteors", Eclipse = "eclipse", Aurora = "aurora", Comet = "comet", Fledged = "fledged";
+        public static readonly string[] Order = { Butterfly, Bird, Bee, Ladybug, Dragonfly, Squirrel, Snail, Snails, Turtle, Frog, Owl, Moth, Fox, Cat, Rainbow, Meteors, Eclipse, Aurora, Comet, Fledged };
+        static readonly string[] Happenings = { Rainbow, Meteors, Eclipse, Aurora, Comet, Fledged };
 
-        public static string Label(string id) => id == Rainbow ? "Rain, then a rainbow" : Capital(id == Snails ? "two snails" : id);
+        public static bool IsAnimal(string id) => Array.IndexOf(Happenings, id) < 0;
+
+        public static string Label(string id) =>
+            id == Rainbow ? "Rain, then a rainbow" : id == Meteors ? "Meteor shower" : id == Aurora ? "Northern lights" : id == Fledged ? "The chicks flew" : Capital(id == Snails ? "two snails" : id);
 
         public static string Noun(string id) => id == Snails ? "two snails" : ("aeiou".IndexOf(id[0]) >= 0 ? "an " : "a ") + id;
 
@@ -24,7 +29,7 @@ namespace Stillpoint
 
         public static string List(IEnumerable<string> ids)
         {
-            var animals = Sorted(ids).Where(v => v != Rainbow).Select(Noun).ToList();
+            var animals = Sorted(ids).Where(IsAnimal).Select(Noun).ToList();
             if (animals.Count == 0) return null;
             return animals.Count == 1 ? animals[0] : string.Join(", ", animals.Take(animals.Count - 1)) + " and " + animals[animals.Count - 1];
         }
@@ -195,6 +200,9 @@ namespace Stillpoint
         readonly Dictionary<DateTime, HashSet<string>> days = new Dictionary<DateTime, HashSet<string>>();
 
         public bool Dirty { get; set; }
+        public int Version { get; private set; }
+
+        public IEnumerable<DateTime> DaysWith(string visitor) => days.Where(d => d.Value.Contains(visitor)).Select(d => d.Key).OrderBy(d => d);
 
         public IReadOnlyCollection<string> On(DateTime day) =>
             days.TryGetValue(day.Date, out var set) ? (IReadOnlyCollection<string>)set : new string[0];
@@ -204,6 +212,7 @@ namespace Stillpoint
             if (!days.TryGetValue(day.Date, out var set)) days[day.Date] = set = new HashSet<string>();
             if (!set.Add(visitor)) return false;
             Dirty = true;
+            Version++;
             return true;
         }
 

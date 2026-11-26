@@ -16,6 +16,8 @@ namespace Stillpoint
         readonly Label heroStats;
         readonly Label heroVisitors;
         readonly WeekStrip week;
+        readonly Card friendsCard = new Card();
+        string friendsKey;
         readonly Dictionary<Keepsake, (KeepsakeIcon Icon, Label Since, ThinBar Bar)> keepsakeRows = new Dictionary<Keepsake, (KeepsakeIcon, Label, ThinBar)>();
         IReadOnlyList<Session> sessions = new List<Session>();
         Session current;
@@ -60,7 +62,7 @@ namespace Stillpoint
                 keepsakes.AddRow(Ui.Row(icon, label, note), Ui.Row(since, bar));
                 keepsakeRows[keepsake] = (icon, since, bar);
             }
-            foreach (var c in new Control[] { weekHead, hero, heroHead, heroVisitors, week, hint, Caption("Keepsakes"), keepsakes })
+            foreach (var c in new Control[] { weekHead, hero, heroHead, heroVisitors, week, hint, Caption("Keepsakes"), keepsakes, Caption("Friends"), friendsCard })
             {
                 root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
                 root.Controls.Add(c, 0, root.RowCount++);
@@ -109,8 +111,10 @@ namespace Stillpoint
             hero.Set(selected, 0);
             Ui.SetText(heroTitle, gardenDate.Date == DateTime.Today ? "Today" : gardenDate.ToString("dddd d MMMM", culture));
             Ui.SetText(heroStats, selected.Empty ? "Nothing counted" : $"{(selected.Breaks == 1 ? "1 break" : selected.Breaks + " breaks")}, {Fmt.Hm(selected.SitSeconds)}");
-            var seen = Visitors.Sorted(selected.Visitors).Select(Visitors.Label).ToList();
-            Ui.SetText(heroVisitors, seen.Count == 0 ? "No visitors" : "Visitors: " + string.Join(", ", seen));
+            var animals = Visitors.Sorted(selected.Visitors).Where(Visitors.IsAnimal).Select(v => Friends.Of(album, v, selected.Date)?.Title ?? Visitors.Label(v)).ToList();
+            var happenings = Visitors.Sorted(selected.Visitors).Where(v => !Visitors.IsAnimal(v)).Select(Visitors.Label).ToList();
+            string visitors = animals.Count == 0 ? "No visitors" : "Visitors: " + string.Join(", ", animals);
+            Ui.SetText(heroVisitors, happenings.Count == 0 ? visitors : visitors + "  ·  " + string.Join(", ", happenings));
             week.SetDays(days, gardenDate);
 
             var progress = Garden.Progress(sessions, current, DateTime.Today);
@@ -118,6 +122,28 @@ namespace Stillpoint
             SetKeepsake(Keepsake.Lantern, progress.LanternSince, progress.Breaks / (float)Garden.LanternBreaks);
             SetKeepsake(Keepsake.Pond, progress.PondSince, progress.Breaks / (float)Garden.PondBreaks);
             SetKeepsake(Keepsake.Baby, progress.BabySince, progress.Days / (float)Garden.BabyDays);
+            ShowFriends(Friends.All(album, DateTime.Today));
+        }
+
+        void ShowFriends(List<Friend> list)
+        {
+            string key = string.Join("|", list.Select(f => f.Species + f.Visits));
+            if (key == friendsKey) return;
+            friendsKey = key;
+            friendsCard.SuspendLayout();
+            friendsCard.Clear();
+            if (list.Count == 0)
+                friendsCard.AddRow(new Label { Text = "Animals that keep coming back get names.", AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9f), Margin = new Padding(0) }, new Label { AutoSize = true, Margin = new Padding(0) });
+            foreach (var f in list)
+            {
+                var name = new Label { Text = f.Title, AutoSize = true, Margin = new Padding(0, 1, 0, 0) };
+                var note = new Label { Text = Friends.Word(f.Trust) + "  ·  " + (f.Visits == 1 ? "1 visit" : f.Visits + " visits"), AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(8.5f), Margin = new Padding(8, 3, 0, 0) };
+                Control right;
+                if (f.Trust == Trust.Family) right = new Label { Text = "Family", AutoSize = true, ForeColor = SpiritArt.Hex(0x4F6B3D), Font = Theme.SemiBold(9f), Anchor = AnchorStyles.Right, Margin = new Padding(0) };
+                else right = new ThinBar { Anchor = AnchorStyles.Right, Margin = new Padding(0, 0, 2, 0), Value = Friends.ToNext(f) };
+                friendsCard.AddRow(Ui.Row(name, note), right);
+            }
+            friendsCard.ResumeLayout(true);
         }
 
         void SetKeepsake(Keepsake keepsake, DateTime? since, float progress)

@@ -68,7 +68,7 @@ plain timer: just the ring, the time and the reminders.
 THE GARDEN
 ----------
 - Seasons follow the calendar: snow in winter (and a snowman after four
-  breaks), blossoms in spring, fireflies on summer evenings, leaves in
+  breaks), blossoms in spring, fireflies on summer nights, leaves in
   autumn.
 - The weather follows your sitting. Sit long without a break and clouds
   gather, then it starts to rain. A break clears the sky, sometimes
@@ -114,6 +114,35 @@ THE GARDEN LIVES WHILE YOU ARE AWAY
   gets a little moment. Weather comes from Open-Meteo.com (free, no
   account). Only the town is sent to look it up.
 
+THE STONE GROWS WITH YOU
+------------------------
+- Personality: the stone becomes Sunny, Easygoing, Thoughtful, Sarcastic
+  or Worried depending on how you take breaks over the last few weeks.
+  Regular breaks make it calm and cheerful; long sits make it dry and
+  worried. It changes what it says and how it looks (a cheerful smile,
+  a sarcastic eye roll, a worried glance at the clock). Settings > Stone
+  > Personality shows the current one.
+- Memories: on anniversaries (a week, a month, 100 days, a year) it
+  remembers things: the day you met, your longest sit, your busiest day,
+  its first flower, the first visit of an animal, a meteor shower you
+  watched together.
+- Friends: animals that come back get names on their third visit and
+  slowly trust you. A wary fox peeks from the edge; a trusted one sleeps
+  curled up next to the stone all night. A friendly owl gives the stone a
+  slow blink, a friendly squirrel leaves an acorn by the stone. See them
+  in the garden under Friends.
+- In spring a bird builds a nest on the stone's head: twigs in March,
+  eggs in April, chicks that beg when a parent brings food, fledglings
+  practicing their wings, and one day in late May they fly away. While
+  there are eggs or chicks the stone hops very carefully.
+- The night sky follows the real calendar: meteor showers on their real
+  nights (the Geminids, Perseids and others), lunar and solar eclipses at
+  their real times when they can be seen from your town, a comet once a
+  year, and very rarely the northern lights. With Real weather on, a
+  real geomagnetic storm strong enough for your town shows real
+  northern lights (data from NOAA, nothing about you is sent).
+- Fireflies come out on summer nights. Fireflies, falling leaves, petals
+  and snow drift both in front of and behind the stone.
 LOOK AND FEEL
 -------------
 - Settings > General > Dark mode: Off, On, At night (follows the

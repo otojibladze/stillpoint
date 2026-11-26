@@ -8,7 +8,8 @@ namespace Stillpoint
 {
     sealed class SceneLook
     {
-        public float Night, Clouds, Rainbow, Snowman, NewestRake = 1, Dusk, MoonPhase = 0.25f, Wet, FadeAlpha, Shafts, Halo;
+        public float Night, Clouds, Rainbow, Snowman, NewestRake = 1, Dusk, MoonPhase = 0.25f, Wet, FadeAlpha, Shafts, Halo, MoonShadow, MoonDim, SunCover;
+        public bool SunAnnular;
 
         public long BackKey(int px)
         {
@@ -22,6 +23,10 @@ namespace Stillpoint
             k = k * 21 + Q(Shafts, 20);
             k = k * 21 + Q(Halo, 20);
             k = k * 4 + (Southern ? 1 : 0) + (SnowGround ? 2 : 0);
+            k = k * 41 + Q(MoonShadow, 40);
+            k = k * 11 + Q(MoonDim, 10);
+            k = k * 61 + Q(SunCover, 60);
+            k = k * 2 + (SunAnnular ? 1 : 0);
             return k;
         }
 
@@ -67,8 +72,8 @@ namespace Stillpoint
         public const float StoneX = 150, StoneGround = 194, StoneR = 56, Horizon = 174, BabyR = 11;
         public static readonly PointF LanternAt = new PointF(262, 192), PondAt = new PointF(72, 184), SnowmanAt = new PointF(40, 196);
         public static readonly PointF BabyAt = new PointF(220, 201), CatAt = new PointF(229, 217), FrogAt = new PointF(90, 213);
-        public static readonly PointF DigAt = new PointF(204, 216), SproutAt = new PointF(193, 218), FoxAt = new PointF(52, 217), MoonAt = new PointF(206, 66);
-        public const float LadybugSeat = 1.32f * Pi, OwlSeat = 1.37f * Pi;
+        public static readonly PointF DigAt = new PointF(204, 216), SproutAt = new PointF(193, 218), FoxAt = new PointF(52, 217), MoonAt = new PointF(206, 66), SunAt = new PointF(92, 64), GiftAt = new PointF(186, 214);
+        public const float LadybugSeat = 1.32f * Pi, OwlSeat = 1.37f * Pi, NestSeat = 1.38f * Pi;
 
         public static PointF StoneSurface(SpiritPose p, float a, float inset = 0.99f)
         {
@@ -183,25 +188,27 @@ namespace Stillpoint
                 FillRadial(g, 150, Horizon - 20, 170, 60, Color.FromArgb((int)(120 * dusk), 246, 196, 140), Color.FromArgb(0, 246, 196, 140));
             }
 
-            float sun = (1 - n) * (1 - look.Clouds * 0.8f);
+            float sun = (1 - n) * (1 - look.Clouds * 0.8f) * (1 - look.SunCover * 0.85f);
             if (sun > 0.01f)
             {
                 var glow = season == Season.Winter ? Color.FromArgb(240, 236, 224) : season == Season.Summer ? Color.FromArgb(252, 210, 140) : season == Season.Spring ? Color.FromArgb(250, 212, 192) : Color.FromArgb(250, 208, 162);
                 int alpha = season == Season.Summer ? 170 : season == Season.Winter ? 110 : 140;
-                FillRadial(g, 92, 64, 90, 90, Color.FromArgb((int)(alpha * sun), glow), Color.FromArgb(0, glow));
+                FillRadial(g, SunAt.X, SunAt.Y, 90, 90, Color.FromArgb((int)(alpha * sun), glow), Color.FromArgb(0, glow));
             }
             if (look.Shafts > 0.01f && sun > 0.01f)
                 using (var shaft = new SolidBrush(Color.FromArgb((int)(42 * look.Shafts * sun), 255, 246, 226)))
                     foreach (var angle in new[] { 48f, 60f, 73f })
                     {
                         float a0 = (angle - 4) * Pi / 180, a1 = (angle + 4) * Pi / 180;
-                        g.FillPolygon(shaft, new[] { new PointF(92, 40), new PointF(92 + Cos(a0) * 240, 40 + Sin(a0) * 240), new PointF(92 + Cos(a1) * 240, 40 + Sin(a1) * 240) });
+                        g.FillPolygon(shaft, new[] { new PointF(SunAt.X, 40), new PointF(SunAt.X + Cos(a0) * 240, 40 + Sin(a0) * 240), new PointF(SunAt.X + Cos(a1) * 240, 40 + Sin(a1) * 240) });
                     }
             if (n > 0.01f)
             {
                 if (look.Halo > 0.01f) FillRadial(g, MoonAt.X, MoonAt.Y, 34, 34, Color.FromArgb((int)(80 * look.Halo * n), 240, 236, 220), Color.FromArgb(0, 240, 236, 220));
                 DrawMoon(g, MoonAt.X, MoonAt.Y, 13, look.MoonPhase, look.Southern, n * (1 - look.Clouds * 0.7f), top);
+                SkyArt.DrawMoonShadow(g, MoonAt.X, MoonAt.Y, 13, look.MoonShadow, look.MoonDim, n * (1 - look.Clouds * 0.7f));
             }
+            if (look.SunCover > 0.01f) SkyArt.DrawSunEclipse(g, SunAt.X, SunAt.Y, 9, look.SunCover, look.SunAnnular, top);
             float bow = look.Rainbow * (1 - n);
             if (bow > 0.01f)
             {
@@ -503,15 +510,6 @@ namespace Stillpoint
             g.Restore(st);
         }
 
-        public static void DrawShootingStar(Graphics g, float x, float y, float dx, float dy, float k)
-        {
-            float a = Sin(k * Pi);
-            for (int i = 0; i < 8; i++)
-                using (var pen = new Pen(Alpha(Hex(0xF4F0FF), a * (1 - i / 8f) * 0.9f), 1.4f - i * 0.12f))
-                    g.DrawLine(pen, x - dx * i * 4, y - dy * i * 4, x - dx * (i + 1) * 4, y - dy * (i + 1) * 4);
-            FillEllipse(g, Alpha(Color.White, a), x, y, 1.3f, 1.3f);
-        }
-
         public static void DrawKeepsakeIcon(Graphics g, RectangleF dest, Keepsake keepsake, bool earned)
         {
             var state = g.Save();
@@ -677,12 +675,13 @@ namespace Stillpoint
                 }
         }
 
-        public static void DrawFireflies(Graphics g, float t, float glow)
+        public static void DrawFireflies(Graphics g, float t, float glow, int layer = -1)
         {
             if (glow < 0.02f) return;
             for (int i = 0; i < FlyPhase.Length; i++)
             {
                 float ph = FlyPhase[i], sp = FlySpeed[i];
+                if (layer >= 0 && (Sin(t * 0.35f * sp + ph) > 0 ? 1 : 0) != layer) continue;
                 float x = 150 + Cos(t * 0.35f * sp + ph) * 95 + Sin(t * 0.9f * sp + ph) * 12;
                 float y = 120 + Sin(t * 0.5f * sp + ph * 2) * 50;
                 float a = glow * (0.35f + 0.65f * Math.Max(0, Sin(t * 2.4f * sp + ph * 3)));
@@ -722,7 +721,40 @@ namespace Stillpoint
             Snowman = day.Season == Season.Winter && day.Breaks >= Garden.FlowerBreaks ? 1 : 0,
             Rainbow = day.Visitors.Contains(Visitors.Rainbow) ? 0.8f : 0,
             MoonPhase = Sky.MoonPhase(day.Date.AddHours(21)),
+            MoonShadow = night > 0.3f && EclipseOn(day, false) ? 1 : 0,
+            SunCover = night < 0.5f && EclipseOn(day, true) ? 0.75f : 0,
         };
+
+        static bool EclipseOn(GardenDay day, bool solar)
+        {
+            var e = day.Visitors.Contains(Visitors.Eclipse) ? SkyEvents.EclipseOnDay(day.Date) : null;
+            return e != null && e.Solar == solar;
+        }
+
+        static readonly Meteor[] AlbumMeteors =
+        {
+            new Meteor { X = 84, Y = 46, Dx = 0.8f, Dy = 0.6f, Life = 1, Length = 26, Bright = 0.9f },
+            new Meteor { X = 176, Y = 34, Dx = 0.75f, Dy = 0.66f, Life = 1, Length = 20, Bright = 0.75f },
+            new Meteor { X = 128, Y = 80, Dx = 0.85f, Dy = 0.53f, Life = 1, Length = 16, Bright = 0.6f },
+        };
+
+        static void DrawHappenings(Graphics g, GardenDay day, float night)
+        {
+            if (night < 0.3f) return;
+            var v = day.Visitors;
+            if (v.Contains(Visitors.Aurora)) SkyArt.DrawAurora(g, 2.1f, 0.85f * night);
+            if (v.Contains(Visitors.Comet)) SkyArt.DrawComet(g, 128, 50, 0.9f * night, 0);
+            if (v.Contains(Visitors.Meteors)) foreach (var m in AlbumMeteors) SkyArt.DrawMeteor(g, m, 0.5f);
+        }
+
+        static void DrawNestOn(Graphics g, GardenDay day, SpiritPose pose, float night)
+        {
+            var (stage, progress) = Nest.On(day.Date.AddHours(12), false);
+            if (stage == NestStage.None || day.Season == Season.Winter) return;
+            var at = StoneSurface(pose, NestSeat, 0.95f);
+            var before = StoneSurface(pose, NestSeat - 0.03f, 0.95f);
+            CritterArt.DrawNest(g, at.X, at.Y, (float)Math.Atan2(at.Y - before.Y, at.X - before.X), stage, progress, 0.4f, 0, 0, 3, night);
+        }
 
         public static SpiritPose PoseFor(GardenDay day, float night)
         {
@@ -753,10 +785,13 @@ namespace Stillpoint
             var look = LookFor(day, night);
             DrawScene(g, look, area);
             DrawStars(g, 1.7f, night * (1 - look.Clouds));
+            DrawHappenings(g, day, night);
             DrawClouds(g, day.Date.DayOfYear * 37 % 300, look.Clouds, night, area);
-            if (night > 0.5f && day.Season == Season.Summer) DrawFireflies(g, 3.1f, night * 0.8f);
+            if (night > 0.5f && day.Season == Season.Summer) DrawFireflies(g, 3.1f, night * 0.8f, 0);
             var pose = PoseFor(day, night);
             var points = DrawSpirit(g, StoneX, StoneGround, StoneR, pose, 2f);
+            if (night > 0.5f && day.Season == Season.Summer) DrawFireflies(g, 3.1f, night * 0.8f, 1);
+            DrawNestOn(g, day, pose, night);
             if ((day.Keepsakes & Keepsake.Baby) != 0) DrawSpirit(g, BabyAt.X, BabyAt.Y, BabyR, BabyPose(pose, 0.5f), 2f);
             var v = day.Visitors;
             if (v.Contains(Visitors.Snail)) DrawSnail(g, 198, 213, 0.4f, -1);

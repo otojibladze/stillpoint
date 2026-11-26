@@ -20,6 +20,13 @@ namespace Stillpoint
             BackColor = Theme.Surface;
         }
 
+        public void Clear()
+        {
+            Controls.Clear();
+            RowStyles.Clear();
+            RowCount = 0;
+        }
+
         public void AddRow(Control left, Control right)
         {
             var row = Ui.TwoSides(left, right);
