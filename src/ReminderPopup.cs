@@ -50,12 +50,12 @@ namespace Stillpoint
                 Anchor = AnchorStyles.Right | AnchorStyles.Bottom,
                 Margin = new Padding(24, 0, 0, 0),
             };
-            var ok = new FlatButton(ButtonKind.Primary) { Text = "OK", MinimumSize = new Size(64, 36), Height = 36, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(8, 0, 0, 0), Font = Theme.SemiBold(9.5f) };
+            var ok = new FlatButton(ButtonKind.Primary) { Text = "Keep sitting", Uppercase = true, MinimumSize = new Size(64, 36), Height = 36, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(8, 0, 0, 0), Font = Theme.SemiBold(9.5f) };
             ok.Click += (s, e) => Close();
             buttons.Controls.Add(ok);
             if (stop != null)
             {
-                var stopButton = new FlatButton(ButtonKind.Ghost) { Text = "Stop counting", MinimumSize = new Size(88, 36), Height = 36, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0), Font = Theme.SemiBold(9.5f) };
+                var stopButton = new FlatButton(ButtonKind.Ghost) { Text = "I got up", Uppercase = true, MinimumSize = new Size(88, 36), Height = 36, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0), Font = Theme.SemiBold(9.5f) };
                 stopButton.Click += (s, e) => { stop(); Close(); };
                 buttons.Controls.Add(stopButton);
             }

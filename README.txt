@@ -30,7 +30,8 @@ right-click the tray icon > Start counting / Stop counting.
 
 Every hour (1 hour, 2 hours, 3 hours...) a small window pops up in the
 bottom corner of the screen. It doesn't take over your keyboard, so you
-can keep typing or playing. Click OK to close it.
+can keep typing or playing. Click KEEP SITTING to close it and keep
+counting, or I GOT UP to stop counting.
 Change "Remind me every 60 minutes" to get it more or less often.
 Click "Preview" to see what it looks like.
 
