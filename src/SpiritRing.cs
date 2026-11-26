@@ -68,7 +68,7 @@ namespace Stillpoint
         float nextAct = 8, bfAt = -1, frogAt = -1, snailNext = 20, petSaidT = -99, heartT, noteT, humT = -99, demoT = -99, rainbowT = -99, purrT = -99, cricketNext = 15;
         float rainAcc, ambientAcc;
         float fogK, wetReal, flashT = -99, lightningNext = 20, tracesT = -99;
-        float wind, windDrift, gustT = -99, gustNext = 15, starT = -99, starNext = 30, starX, starY, starDx, starDy, shimmerK, shownProgress;
+        float petK, wind, windDrift, gustT = -99, gustNext = 15, starT = -99, starNext = 30, starX, starY, starDx, starDy, shimmerK, shownProgress;
         float zoomT = -99, landT = -99, snowPile, vaporNext, splashAcc, dripAcc, boredT = -99;
         int petalsOnHead;
         readonly Critter dragonfly = new Critter();
@@ -416,6 +416,7 @@ namespace Stillpoint
             rub *= (float)Math.Exp(-dt * 1.6);
             bool was = petting;
             petting = rub > (was ? 70 : 150);
+            petK += ((petting && !Sleeping ? 1 : 0) - petK) * (1 - (float)Math.Exp(-dt * (petting ? 4.5f : 3.5f)));
             if (petting && !Sleeping)
             {
                 if (!was && t - petSaidT > 6) { petSaidT = t; Chat(Pick(new[] { "Mmm. That's nice.", "Purr... wait, I'm a rock." }), 2.2f); }
@@ -945,10 +946,24 @@ namespace Stillpoint
                 }
             }
             if (DemoActive(t) && !Sleeping && !Running) ApplyStretch(p, t - demoT);
-            if (petting && !Sleeping)
+            if (petK > 0.01f && !Sleeping)
             {
-                p.Eyes = Eyes.Happy; p.Mouth = Mouth.Grin; p.Blush = 0.75f; p.Sy -= 0.03f; p.Sx += 0.02f;
-                p.Tilt += SpiritArt.Clamp((pointer.X - SX) / 300, -0.12f, 0.12f);
+                float k = SpiritArt.Smooth(0, 1, petK);
+                p.Blush += (0.75f - p.Blush) * k;
+                p.Sy -= 0.03f * k;
+                p.Sx += 0.02f * k;
+                p.Tilt += SpiritArt.Clamp((pointer.X - SX) / 300, -0.12f, 0.12f) * k;
+                p.LookX *= 1 - k;
+                p.LookY *= 1 - k;
+                if (k < 0.5f)
+                {
+                    if (p.Eyes == Eyes.Open) p.EyeOpen = Math.Min(p.EyeOpen, 1 - k * 1.8f);
+                }
+                else
+                {
+                    p.Eyes = Eyes.Happy;
+                    p.Mouth = k > 0.75f ? Mouth.Grin : Mouth.Smile;
+                }
             }
             float pt = t - pokeT;
             if (pt >= 0 && pt < 1)
