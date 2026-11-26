@@ -118,6 +118,26 @@ namespace Stillpoint
             }
         }
 
+        public double IdleSeconds => unchecked((uint)Environment.TickCount - signals.LastInputTick()) / 1000.0;
+
+        public void SplitAway(DateTime leftAt, DateTime backAt, double secondsAtLeave, DateTime now)
+        {
+            if (current == null) return;
+            var away = current;
+            double counted = away.Seconds;
+            away.Seconds = Math.Max(0, Math.Min(counted, secondsAtLeave));
+            away.End = leftAt < away.Start ? away.Start : leftAt;
+            if (backAt < leftAt) backAt = leftAt;
+            if (backAt > now) backAt = now;
+            double since = Math.Max(0, Math.Min((now - backAt).TotalSeconds, counted - away.Seconds));
+            if (away.Seconds < MinSessionSeconds) sessions.Remove(away);
+            current = new Session { Start = backAt, End = now, Seconds = since };
+            sessions.Add(current);
+            last = current;
+            remindersShown = MarksReached();
+            Dirty = true;
+        }
+
         public bool TryTakeReminder(out double sessionMark)
         {
             long reached = MarksReached();

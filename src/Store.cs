@@ -7,16 +7,31 @@ using System.Text;
 
 namespace Stillpoint
 {
+    public enum Chattiness { Quiet, Normal, Chatty }
+
     public sealed class Settings
     {
         public const int MinReminderMinutes = 5;
         public const int MaxReminderMinutes = 720;
+        public const int MaxNameLength = 20;
 
         public bool Running;
         public int ReminderMinutes = 60;
         public string Sound = Sounds.Default;
         public bool FirstRunDone;
         public bool TrayTipShown;
+        public string StoneName = "";
+        public bool StoneNameAsked;
+        public Chattiness Chattiness = Chattiness.Normal;
+        public bool StoneSounds;
+        public bool DesktopBuddy;
+        public string EveningCardDate = "";
+
+        public static string CleanName(string name)
+        {
+            string clean = new string((name ?? "").Where(c => !char.IsControl(c)).ToArray()).Trim();
+            return clean.Length > MaxNameLength ? clean.Substring(0, MaxNameLength).Trim() : clean;
+        }
     }
 
     public sealed class Store
@@ -35,6 +50,15 @@ namespace Stillpoint
 
         public string SessionsPath => Path.Combine(Dir, "sessions.csv");
         string SettingsPath => Path.Combine(Dir, "settings.ini");
+        string AlbumPath => Path.Combine(Dir, "album.csv");
+
+        public Album LoadAlbum() => Album.Parse(ReadLines(AlbumPath) ?? ReadLines(AlbumPath + ".bak"));
+
+        public void SaveAlbum(Album album)
+        {
+            WriteAtomic(AlbumPath, album.Format());
+            album.Dirty = false;
+        }
         string LogPath => Path.Combine(Dir, "error.log");
 
         public List<Session> LoadSessions() =>
@@ -73,6 +97,14 @@ namespace Stillpoint
                     case "sound": settings.Sound = value; break;
                     case "firstRunDone": settings.FirstRunDone = on; break;
                     case "trayTipShown": settings.TrayTipShown = on; break;
+                    case "stoneName": settings.StoneName = Settings.CleanName(value); break;
+                    case "stoneNameAsked": settings.StoneNameAsked = on; break;
+                    case "chattiness":
+                        if (Enum.TryParse(value, true, out Chattiness chat) && Enum.IsDefined(typeof(Chattiness), chat)) settings.Chattiness = chat;
+                        break;
+                    case "stoneSounds": settings.StoneSounds = on; break;
+                    case "desktopBuddy": settings.DesktopBuddy = on; break;
+                    case "eveningCard": settings.EveningCardDate = value; break;
                 }
             }
             return settings;
@@ -88,6 +120,12 @@ namespace Stillpoint
                 "sound=" + s.Sound,
                 "firstRunDone=" + Flag(s.FirstRunDone),
                 "trayTipShown=" + Flag(s.TrayTipShown),
+                "stoneName=" + Settings.CleanName(s.StoneName),
+                "stoneNameAsked=" + Flag(s.StoneNameAsked),
+                "chattiness=" + s.Chattiness.ToString().ToLowerInvariant(),
+                "stoneSounds=" + Flag(s.StoneSounds),
+                "desktopBuddy=" + Flag(s.DesktopBuddy),
+                "eveningCard=" + s.EveningCardDate,
             };
             WriteAtomic(SettingsPath, string.Join("\r\n", lines) + "\r\n");
         }

@@ -20,7 +20,8 @@ SETUP (one time)
 Closing the window does NOT stop it. It keeps running in the tray.
 Click the clock icon to open it again. Right-click the icon > Exit to quit.
 
-The icon is green while it counts and grey while it doesn't.
+The tray icon is your stone's face: eyes open while it counts, sleepy
+after a long sit, asleep when it is not counting.
 
 
 HOW IT WORKS
@@ -35,6 +36,11 @@ counting, or I GOT UP to stop counting.
 The gear button next to History opens Settings. There you can change
 how often the reminder comes (- and +), pick its sound (or No sound,
 the round button plays it) and click "Preview reminder" to see it.
+Under Stone you can rename it, make it quieter or chattier, turn on
+its sounds (a chime when it hops, a purr when you pet it, crickets at
+night) and turn on the desktop buddy: a tiny stone that sits on top of
+the taskbar. Click the buddy to open Stillpoint, right-click it to hide
+it. It hides by itself while a full-screen game or video is running.
 
 THE STONE
 ---------
@@ -50,7 +56,39 @@ A small stone lives in the sand garden inside the ring.
 - "Breathe with me" under the ring starts one minute of slow breathing:
   breathe in while the stone grows, out while it shrinks.
 - At night (after 10 pm) and while the computer is locked it sleeps
-  under the stars, unless you are counting.
+  under the stars, unless you are counting. Sometimes a cat sleeps
+  next to it.
+- The first time you open the app it asks for the stone's name. Change
+  it any time in Settings.
+
+THE GARDEN
+----------
+- Seasons follow the calendar: snow in winter (and a snowman after four
+  breaks), blossoms in spring, fireflies on summer evenings, leaves in
+  autumn.
+- The weather follows your sitting. Sit long without a break and clouds
+  gather, then it starts to rain. A break clears the sky, sometimes
+  with a rainbow, and a frog may come out after the rain.
+- Visitors: a butterfly or a bird while you are up, a snail that slowly
+  crosses the sand when you have sat a long time.
+- After I GOT UP the stone shows you a short stretch (neck rolls,
+  shoulder shrugs, reaching up, side bends or looking far away).
+- Keepsakes stay in the garden for good: moss after 7 days in a row,
+  a stone lantern after 50 breaks, a pond after 100, and a baby pebble
+  after 30 days.
+- History > Garden shows each day's garden, a week at a time, and your
+  keepsakes. In History > Calendar, click the little garden next to a
+  day to open it.
+- The first time you open Stillpoint after 8 pm you get a short card
+  about the day: how long you sat, how often you got up, the longest
+  stretch and who visited.
+
+IF YOU WALK AWAY
+----------------
+If nothing moves for 10 minutes while it counts, a small window asks
+"Did you get up?". Click I GOT UP and the time you were away is taken
+out: the session ends when you left and a new one starts when you came
+back. Click I WAS HERE if you were reading or watching something.
 
 Each Start begins a new session at 0:00:00. After you stop, Resume
 carries on the last session instead, so a short break does not split
@@ -79,7 +117,7 @@ YOUR DATA
 ---------
 Click "Open data folder" in Settings. sessions.csv has one line per
 session (start, end, seconds, length) and opens in Excel. It is saved
-every minute.
+every minute. album.csv remembers which visitors came on each day.
 
 
 GOOD TO KNOW

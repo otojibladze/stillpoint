@@ -84,6 +84,8 @@ namespace Stillpoint
             updateLink.LinkClicked += (s, e) => app.InstallUpdate();
             breathe.LinkClicked += (s, e) => ring.ToggleBreathing();
             ring.BreathingChanged += (s, e) => Ui.SetText(breathe, ring.Breathing ? "Stop breathing" : "Breathe with me");
+            ring.Visited += app.AddVisitor;
+            ring.SoundRequested += app.PlayStoneSound;
         }
 
         public void OnReminder() => ring.Reminder();
@@ -116,9 +118,22 @@ namespace Stillpoint
                     break;
             }
             var today = DateTime.Today;
-            int breaks = tracker.Sessions.Count(s => s != tracker.Current && s.Start.Date == today);
-            var lastEnd = tracker.Sessions.Count > 0 ? tracker.Sessions.Max(s => s.End) : default(DateTime);
-            ring.SetSession(tracker.Running, tracker.State == TrackState.Paused, progress, progress, Fmt.Clock(tracker.SessionSeconds), caption, breaks, lastEnd);
+            ring.SetSession(new RingState
+            {
+                Running = tracker.Running,
+                Paused = tracker.State == TrackState.Paused,
+                Away = app.Away,
+                Progress = progress,
+                SessionSeconds = tracker.Running ? tracker.SessionSeconds : 0,
+                Interval = interval,
+                Time = Fmt.Clock(tracker.SessionSeconds),
+                Caption = caption,
+                BreaksToday = Garden.BreaksOn(tracker.Sessions, tracker.Current, today),
+                LastEnd = tracker.Sessions.Count > 0 ? tracker.Sessions.Max(s => s.End) : default(DateTime),
+                Keepsakes = Garden.Progress(tracker.Sessions, tracker.Current, today).Earned,
+                Name = app.Settings.StoneName,
+                Chat = app.Settings.Chattiness,
+            });
             Ui.SetText(status, state);
             startStop.Text = tracker.Running ? "I got up" : "Start";
             bool canResume = tracker.CanResume;
@@ -135,7 +150,7 @@ namespace Stillpoint
             Ui.SetLine(updateStatus, app.UpdateStatus);
             Ui.SetLine(saveError, app.SaveError == null ? null : "Could not save: " + app.SaveError);
 
-            if (history != null && !history.IsDisposed) history.SetSessions(app.Tracker.Sessions, app.Tracker.Current);
+            if (history != null && !history.IsDisposed) history.SetSessions(app.Tracker.Sessions, app.Tracker.Current, app.Album, interval);
             if (settings != null && !settings.IsDisposed) settings.UpdateView();
         }
 
@@ -165,7 +180,7 @@ namespace Stillpoint
         void ShowHistory() => Ui.ShowBeside(this, ref history, () =>
         {
             var next = new HistoryForm();
-            next.SetSessions(app.Tracker.Sessions, app.Tracker.Current);
+            next.SetSessions(app.Tracker.Sessions, app.Tracker.Current, app.Album, app.Tracker.ReminderIntervalSeconds);
             return next;
         });
 

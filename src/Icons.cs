@@ -18,19 +18,26 @@ namespace Stillpoint
 
         public static Icon Load(Color fill, Size size) => new Icon(new MemoryStream(BuildIco(fill)), size);
 
-        public static byte[] BuildIco(Color fill)
+        public static byte[] BuildIco(Color fill) =>
+            Ico(Sizes, Sizes.Select(size => size >= 256 ? Png(size, fill) : DibOf(size, fill)).ToArray());
+
+        static byte[] DibOf(int size, Color fill)
         {
-            var images = Sizes.Select(size => size >= 256 ? Png(size, fill) : Dib(size, fill)).ToArray();
+            using (var bitmap = Draw(size, fill)) return Dib(bitmap);
+        }
+
+        static byte[] Ico(int[] sizes, byte[][] images)
+        {
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream))
             {
                 writer.Write((ushort)0);
                 writer.Write((ushort)1);
-                writer.Write((ushort)Sizes.Length);
-                int offset = 6 + 16 * Sizes.Length;
-                for (int i = 0; i < Sizes.Length; i++)
+                writer.Write((ushort)sizes.Length);
+                int offset = 6 + 16 * sizes.Length;
+                for (int i = 0; i < sizes.Length; i++)
                 {
-                    byte dim = (byte)(Sizes[i] >= 256 ? 0 : Sizes[i]);
+                    byte dim = (byte)(sizes[i] >= 256 ? 0 : sizes[i]);
                     writer.Write(dim);
                     writer.Write(dim);
                     writer.Write((byte)0);
@@ -66,16 +73,20 @@ namespace Stillpoint
             return bitmap;
         }
 
-        static byte[] Dib(int size, Color fill)
+        public static Icon FromBitmap(Bitmap bitmap)
         {
+            using (var stream = new MemoryStream(Ico(new[] { bitmap.Width }, new[] { Dib(bitmap) })))
+                return new Icon(stream);
+        }
+
+        static byte[] Dib(Bitmap bitmap)
+        {
+            int size = bitmap.Width;
             var pixels = new byte[size * size * 4];
-            using (var bitmap = Draw(size, fill))
-            {
-                var data = bitmap.LockBits(new Rectangle(0, 0, size, size), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-                for (int y = 0; y < size; y++)
-                    Marshal.Copy(data.Scan0 + y * data.Stride, pixels, y * size * 4, size * 4);
-                bitmap.UnlockBits(data);
-            }
+            var data = bitmap.LockBits(new Rectangle(0, 0, size, size), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+            for (int y = 0; y < size; y++)
+                Marshal.Copy(data.Scan0 + y * data.Stride, pixels, y * size * 4, size * 4);
+            bitmap.UnlockBits(data);
             int maskStride = (size + 31) / 32 * 4;
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream))
