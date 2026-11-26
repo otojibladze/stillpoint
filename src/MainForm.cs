@@ -13,6 +13,8 @@ namespace Stillpoint
         readonly SessionRing ring;
         readonly Label status;
         readonly FlatButton startStop;
+        readonly FlatButton resume;
+        readonly TableLayoutPanel buttonRow;
         readonly UnderlineBox reminderMinutes;
         readonly SessionList sessions;
         readonly ToggleSwitch startWithWindows;
@@ -43,6 +45,13 @@ namespace Stillpoint
             ring = new SessionRing { Size = new Size(196, 196), Anchor = AnchorStyles.None, Margin = new Padding(0, 6, 0, 6) };
             status = new Label { AutoSize = true, Anchor = AnchorStyles.None, ForeColor = Theme.Muted, Margin = new Padding(0, 0, 0, 14) };
             startStop = new FlatButton(ButtonKind.Primary) { Text = "Start", Uppercase = true, Height = 44, Dock = DockStyle.Fill, Margin = new Padding(0), Font = Theme.SemiBold(10.5f) };
+            resume = new FlatButton(ButtonKind.Ghost) { Text = "Resume", Uppercase = true, Height = 44, Dock = DockStyle.Fill, Margin = new Padding(10, 0, 0, 0), Font = Theme.SemiBold(10.5f), Visible = false };
+            buttonRow = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, Height = 44, Dock = DockStyle.Fill, Margin = new Padding(0) };
+            buttonRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            buttonRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 0F));
+            buttonRow.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
+            buttonRow.Controls.Add(startStop, 0, 0);
+            buttonRow.Controls.Add(resume, 1, 0);
 
             reminderMinutes = new UnderlineBox(10f, 44, HorizontalAlignment.Center) { Anchor = AnchorStyles.Left, Margin = new Padding(8, 0, 8, 0) };
             var preview = Link("Preview");
@@ -68,7 +77,7 @@ namespace Stillpoint
 
             AddRow(root, ring);
             AddRow(root, status);
-            AddRow(root, startStop);
+            AddRow(root, buttonRow);
             AddRow(root, reminderRow);
             AddRow(root, sessions, fill: true);
             AddRow(root, updateStatus);
@@ -82,6 +91,7 @@ namespace Stillpoint
             PerformLayout();
 
             startStop.Click += (s, e) => app.ToggleRunning();
+            resume.Click += (s, e) => app.Resume();
             reminderMinutes.Box.KeyPress += (s, e) => { if (!char.IsDigit(e.KeyChar) && !char.IsControl(e.KeyChar)) e.Handled = true; };
             reminderMinutes.Box.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; CommitReminder(); } };
             reminderMinutes.Box.Leave += (s, e) => CommitReminder();
@@ -127,6 +137,12 @@ namespace Stillpoint
             ring.Set(progress, "THIS SESSION", Fmt.Clock(tracker.SessionSeconds), note);
             SetText(status, app.DescribeState());
             startStop.Text = tracker.Running ? "Stop" : "Start";
+            bool canResume = tracker.CanResume;
+            if (resume.Visible != canResume)
+            {
+                resume.Visible = canResume;
+                buttonRow.ColumnStyles[1] = canResume ? new ColumnStyle(SizeType.Percent, 50F) : new ColumnStyle(SizeType.Absolute, 0F);
+            }
 
             SetLine(updateStatus, app.UpdateStatus);
             SetLine(saveError, app.SaveError == null ? null : "Could not save: " + app.SaveError);

@@ -17,6 +17,7 @@ namespace Stillpoint
         readonly Icon iconOn;
         readonly Icon iconOff;
         readonly ToolStripMenuItem startStopItem;
+        readonly ToolStripMenuItem resumeItem;
         readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer { Interval = 1000 };
         readonly Stopwatch clock = Stopwatch.StartNew();
         readonly RegisteredWaitHandle showWait;
@@ -57,8 +58,9 @@ namespace Stillpoint
             var open = new ToolStripMenuItem("Open Stillpoint", null, (s, e) => ShowWindow());
             open.Font = new Font(open.Font, FontStyle.Bold);
             startStopItem = new ToolStripMenuItem("Start counting", null, (s, e) => ToggleRunning());
+            resumeItem = new ToolStripMenuItem("Resume counting", null, (s, e) => Resume());
             var folder = new ToolStripMenuItem("Open data folder", null, (s, e) => Process.Start("explorer.exe", "\"" + store.Dir + "\""));
-            menu.Items.AddRange(new ToolStripItem[] { open, startStopItem, folder, new ToolStripSeparator(), new ToolStripMenuItem("Exit", null, (s, e) => ExitFromMenu()) });
+            menu.Items.AddRange(new ToolStripItem[] { open, startStopItem, resumeItem, folder, new ToolStripSeparator(), new ToolStripMenuItem("Exit", null, (s, e) => ExitFromMenu()) });
             tray = new NotifyIcon { Icon = iconOff, Text = "Stillpoint", ContextMenuStrip = menu, Visible = true };
             tray.MouseClick += (s, e) => { if (e.Button == MouseButtons.Left) ShowWindow(); };
 
@@ -177,7 +179,7 @@ namespace Stillpoint
             switch (Tracker.State)
             {
                 case TrackState.Counting: return $"Counting since {Tracker.SessionStarted:t}";
-                case TrackState.Stopped: return "Stopped - press Start when you sit down";
+                case TrackState.Stopped: return Tracker.CanResume ? "Stopped - Start a new session or Resume" : "Stopped - press Start when you sit down";
                 default:
                     return (Tracker.Paused & PauseReason.Locked) != 0 ? "Paused while the computer is locked" : "Paused while the computer is asleep";
             }
@@ -254,11 +256,16 @@ namespace Stillpoint
             }));
         }
 
-        void SetRunning(bool running)
+        public void Resume()
+        {
+            if (Tracker.CanResume) SetRunning(true, continueLast: true);
+        }
+
+        void SetRunning(bool running, bool continueLast = false)
         {
             Apply(() =>
             {
-                Tracker.SetRunning(running, DateTime.Now);
+                Tracker.SetRunning(running, DateTime.Now, continueLast);
                 Settings.Running = running;
             });
             if (!running) popup?.Close();
@@ -352,6 +359,7 @@ namespace Stillpoint
                 trayText = text;
             }
             startStopItem.Text = Tracker.Running ? "Stop counting" : "Start counting";
+            resumeItem.Visible = Tracker.CanResume;
             if (form.Visible) form.UpdateView();
         }
 

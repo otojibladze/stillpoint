@@ -43,6 +43,7 @@ namespace Stillpoint
         }
 
         public bool Running => current != null;
+        public bool CanResume => current == null && last != null;
         public Session Current => current;
         public DateTime SessionStarted => (current ?? last)?.Start ?? default(DateTime);
         public double SessionSeconds => (current ?? last)?.Seconds ?? 0;

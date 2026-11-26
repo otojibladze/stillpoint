@@ -40,7 +40,9 @@ can keep typing or playing. To close it you click OK and solve a puzzle.
 Change "Remind me every 60 minutes" to get it more or less often.
 Click "Preview" to see what it looks like.
 
-Each Start begins a new session at 0:00:00. The Sessions list shows
+Each Start begins a new session at 0:00:00. After you stop, Resume
+carries on the last session instead, so a short break does not split
+it in two (the break itself is not counted). The Sessions list shows
 every session: when it started, when it ended and how long it was.
 
 It pauses while the computer is locked or asleep and carries on when
