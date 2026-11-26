@@ -16,7 +16,8 @@ namespace Stillpoint
         readonly FlatButton resume;
         readonly TableLayoutPanel buttonRow;
         readonly UnderlineBox reminderMinutes;
-        readonly SessionList sessions;
+        readonly FlatButton historyButton;
+        HistoryForm history;
         readonly ToggleSwitch startWithWindows;
         readonly LinkLabel updateLink;
         readonly Label updateStatus;
@@ -33,7 +34,7 @@ namespace Stillpoint
             ForeColor = Theme.Ink;
             BackColor = Theme.Background;
             Text = "Stillpoint";
-            ClientSize = new Size(400, 606);
+            ClientSize = new Size(400, 600);
             MinimumSize = new Size(380, 560);
             StartPosition = FormStartPosition.CenterScreen;
             MaximizeBox = false;
@@ -42,7 +43,7 @@ namespace Stillpoint
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             root.SuspendLayout();
 
-            ring = new SessionRing { Size = new Size(196, 196), Anchor = AnchorStyles.None, Margin = new Padding(0, 6, 0, 6) };
+            ring = new SessionRing { Size = new Size(300, 300), Anchor = AnchorStyles.None, Margin = new Padding(0, 6, 0, 6) };
             status = new Label { AutoSize = true, Anchor = AnchorStyles.None, ForeColor = Theme.Muted, Margin = new Padding(0, 0, 0, 14) };
             startStop = new FlatButton(ButtonKind.Primary) { Text = "Start", Uppercase = true, Height = 44, Dock = DockStyle.Fill, Margin = new Padding(0), Font = Theme.SemiBold(10.5f) };
             resume = new FlatButton(ButtonKind.Ghost) { Text = "Resume", Uppercase = true, Height = 44, Dock = DockStyle.Fill, Margin = new Padding(10, 0, 0, 0), Font = Theme.SemiBold(10.5f), Visible = false };
@@ -62,7 +63,7 @@ namespace Stillpoint
             var reminderRow = TwoSides(reminderLeft, preview);
             reminderRow.Margin = new Padding(0, 18, 0, 14);
 
-            sessions = new SessionList { Dock = DockStyle.Fill, Margin = new Padding(0) };
+            historyButton = new FlatButton(ButtonKind.Ghost) { Text = "History", Height = 40, Dock = DockStyle.Fill, Margin = new Padding(0), Font = Theme.SemiBold(10f) };
 
             updateStatus = Small(Theme.Muted);
             saveError = Small(Theme.AccentText);
@@ -75,11 +76,11 @@ namespace Stillpoint
             var footer = TwoSides(Row(startWithWindows, autoLabel), Row(version, updateLink));
             footer.Margin = new Padding(0, 12, 0, 0);
 
-            AddRow(root, ring);
+            AddRow(root, ring, fill: true);
             AddRow(root, status);
             AddRow(root, buttonRow);
             AddRow(root, reminderRow);
-            AddRow(root, sessions, fill: true);
+            AddRow(root, historyButton);
             AddRow(root, updateStatus);
             AddRow(root, saveError);
             AddRow(root, footer);
@@ -92,6 +93,7 @@ namespace Stillpoint
 
             startStop.Click += (s, e) => app.ToggleRunning();
             resume.Click += (s, e) => app.Resume();
+            historyButton.Click += (s, e) => ShowHistory();
             reminderMinutes.Box.KeyPress += (s, e) => { if (!char.IsDigit(e.KeyChar) && !char.IsControl(e.KeyChar)) e.Handled = true; };
             reminderMinutes.Box.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; CommitReminder(); } };
             reminderMinutes.Box.Leave += (s, e) => CommitReminder();
@@ -150,7 +152,7 @@ namespace Stillpoint
             if (updateLink.Text != link) updateLink.Text = link;
             updateLink.Enabled = !app.UpdateBusy;
 
-            sessions.SetRows(tracker.Sessions.OrderByDescending(s => s.Start).Select(s => Cells(s, tracker.Current)).ToList());
+            if (history != null && !history.IsDisposed) history.List.SetRows(HistoryRows());
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -185,6 +187,25 @@ namespace Stillpoint
                 if (minutes != app.Settings.ReminderMinutes) app.SetReminderMinutes(minutes);
             }
             SyncControls();
+        }
+
+        List<string[]> HistoryRows() =>
+            app.Tracker.Sessions.OrderByDescending(s => s.Start).Select(s => Cells(s, app.Tracker.Current)).ToList();
+
+        void ShowHistory()
+        {
+            if (history == null || history.IsDisposed)
+            {
+                history = new HistoryForm { Icon = Icon, Owner = this };
+                history.List.SetRows(HistoryRows());
+                var area = Screen.FromControl(this).WorkingArea;
+                int x = Right + 12 + history.Width <= area.Right ? Right + 12 : Math.Max(area.Left, Left - 12 - history.Width);
+                history.Location = new Point(x, Math.Max(area.Top, Math.Min(Top, area.Bottom - history.Height)));
+                history.Show();
+                return;
+            }
+            if (history.WindowState == FormWindowState.Minimized) history.WindowState = FormWindowState.Normal;
+            history.Activate();
         }
 
         static string[] Cells(Session session, Session current)

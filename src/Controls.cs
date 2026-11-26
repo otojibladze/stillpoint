@@ -133,9 +133,11 @@ namespace Stillpoint
             var box = new RectangleF((Width - size) / 2, (Height - size) / 2, size, size);
             Draw.Ring(g, box, size * 0.04f, Theme.Track, Theme.Accent, Progress);
 
-            using (var captionFont = Theme.SemiBold(8f))
-            using (var valueFont = Theme.Light(28f))
-            using (var noteFont = Theme.Regular(9f))
+            float grow = size / (196f * g.DpiX / 96f);
+            float small = Math.Min(grow, 1.25f);
+            using (var captionFont = Theme.SemiBold(8f * small))
+            using (var valueFont = Theme.Light(28f * grow))
+            using (var noteFont = Theme.Regular(9f * small))
             {
                 var lines = new[]
                 {
