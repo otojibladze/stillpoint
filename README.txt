@@ -85,6 +85,24 @@ THE GARDEN
   about the day: how long you sat, how often you got up, the longest
   stretch and who visited.
 
+THE GARDEN LIVES WHILE YOU ARE AWAY
+-----------------------------------
+- Open Pebble after 20 minutes or more and the stone tells you what
+  happened: who came by, whether it rained. You can see the traces for a
+  while: a snail track, cat paw prints, a feather, wet sand and puddles,
+  fallen leaves. The next hop blows the feather and leaves away.
+- Yesterday's rake lines stay and slowly fade. The sprout grows a bud
+  at 2 breaks and flowers at 4; the next morning yesterday's flower is
+  wilted until today's blooms. In winter the snowman half melts
+  overnight.
+- The moon shows its real phase.
+- Settings > Garden > Your town: the sky follows that town's real
+  sunrise and sunset, with an evening glow. Turn on Real weather and the
+  garden gets its clouds, rain, snow (also on the ground), fog and
+  storms, checked every 30 minutes. The first real snow of the winter
+  gets a little moment. Weather comes from Open-Meteo.com (free, no
+  account). Only the town is sent to look it up.
+
 IF YOU WALK AWAY
 ----------------
 If nothing moves for 10 minutes while it counts, a small window asks

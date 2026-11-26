@@ -15,6 +15,8 @@ namespace Stillpoint
         readonly LinkLabel chatLink;
         readonly LinkLabel sizeLink;
         readonly ToggleSwitch autoUpdate;
+        readonly LinkLabel townLink;
+        readonly ToggleSwitch realWeather;
         readonly ToggleSwitch stoneSounds;
         readonly ToggleSwitch desktopBuddy;
         readonly ToggleSwitch startWithWindows;
@@ -55,6 +57,12 @@ namespace Stillpoint
             stone.AddRow(soundsLabel, stoneSounds);
             stone.AddRow(buddyLabel, desktopBuddy);
 
+            townLink = MenuLink();
+            realWeather = new ToggleSwitch { Margin = new Padding(0) };
+            var garden = new Card();
+            garden.AddRow(Ui.Text("Your town"), townLink);
+            garden.AddRow(TwoLines("Real weather", "Rain and snow from Open-Meteo.com", realWeather), realWeather);
+
             startWithWindows = new ToggleSwitch { Margin = new Padding(0) };
             var autoLabel = Ui.Text("Start with Windows");
             autoLabel.Cursor = Cursors.Hand;
@@ -84,6 +92,8 @@ namespace Stillpoint
             Ui.AddRow(root, reminder);
             Ui.AddRow(root, Caption("Stone"));
             Ui.AddRow(root, stone);
+            Ui.AddRow(root, Caption("Garden"));
+            Ui.AddRow(root, garden);
             Ui.AddRow(root, Caption("General"));
             Ui.AddRow(root, general);
             Ui.AddRow(root, footer);
@@ -103,6 +113,8 @@ namespace Stillpoint
             chatLink.LinkClicked += (s, e) => ShowMenu(chatLink, ((Chattiness[])Enum.GetValues(typeof(Chattiness))).Select(c => (ChatLabel(c), c == app.Settings.Chattiness, (Action)(() => app.SetChattiness(c)))), separatorAfterFirst: false);
             sizeLink.LinkClicked += (s, e) => ShowMenu(sizeLink, ((WindowSize[])Enum.GetValues(typeof(WindowSize))).Select(w => (Settings.Label(w), w == app.Settings.WindowSize, (Action)(() => app.SetWindowSize(w)))), separatorAfterFirst: false);
             autoUpdate.CheckedChanged += (s, e) => { if (!syncing) app.SetAutoUpdate(autoUpdate.Checked); };
+            townLink.LinkClicked += (s, e) => app.AskTown(this);
+            realWeather.CheckedChanged += (s, e) => { if (!syncing) app.SetRealWeather(this, realWeather.Checked); };
             stoneSounds.CheckedChanged += (s, e) => { if (!syncing) app.SetStoneSounds(stoneSounds.Checked); };
             desktopBuddy.CheckedChanged += (s, e) => { if (!syncing) app.SetDesktopBuddy(desktopBuddy.Checked); };
             startWithWindows.CheckedChanged += (s, e) => { if (!syncing) { app.SetAutoStart(startWithWindows.Checked); SyncControls(); } };
@@ -130,6 +142,8 @@ namespace Stillpoint
             chatLink.Text = ChatLabel(app.Settings.Chattiness) + "  ›";
             sizeLink.Text = Settings.Label(app.Settings.WindowSize) + "  ›";
             autoUpdate.Checked = app.Settings.AutoUpdate;
+            realWeather.Checked = app.Settings.RealWeather && app.Settings.HasTown;
+            townLink.Text = (app.Settings.HasTown ? app.Settings.TownName : "Set your town") + "  ›";
             syncing = false;
         }
 
@@ -145,7 +159,11 @@ namespace Stillpoint
 
         void FitHeight()
         {
-            int height = Controls[0].GetPreferredSize(new Size(ClientSize.Width, 0)).Height;
+            var root = (ScrollableControl)Controls[0];
+            int height = root.GetPreferredSize(new Size(ClientSize.Width, 0)).Height;
+            int room = Screen.FromControl(this).WorkingArea.Height - (Height - ClientSize.Height) - 24;
+            root.AutoScroll = height > room;
+            height = Math.Min(height, room);
             if (ClientSize.Height != height) ClientSize = new Size(ClientSize.Width, height);
         }
 

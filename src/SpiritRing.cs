@@ -20,6 +20,10 @@ namespace Stillpoint
         public Keepsake Keepsakes;
         public string Name = "";
         public Chattiness Chat = Chattiness.Normal;
+        public int BreaksYesterday;
+        public SunTimes Sun;
+        public bool Southern;
+        public WeatherNow Weather;
     }
 
     sealed class Critter
@@ -63,6 +67,10 @@ namespace Stillpoint
         float stretchT = -99, pokeT = -99, dizzyT = -99, wakeT = -99, yawnT = -99, rakeT = -99, bloomT = -99, snowmanT = -99, breatheT = -1;
         float nextAct = 8, bfAt = -1, frogAt = -1, snailNext = 20, petSaidT = -99, heartT, noteT, humT = -99, demoT = -99, rainbowT = -99, purrT = -99, cricketNext = 15;
         float rainAcc, ambientAcc;
+        float fogK, wetReal, flashT = -99, lightningNext = 20, tracesT = -99;
+        bool snowing, snowGround;
+        readonly Traces traces = new Traces();
+        AwayReport away;
         bool sparked = true, landed = true, petting;
         float rub, nightK = -1, cloudK, rainK, maxRain;
         float lookX, lookY, lookMidX, lookMidY;
@@ -176,6 +184,42 @@ namespace Stillpoint
             }
             if (maxRain > 0.25f) frogAt = demoT + DemoLength + 1;
             maxRain = 0;
+            BlowAwayTraces();
+        }
+
+        public void ShowAway(AwayReport report)
+        {
+            away = report;
+            tracesT = Now;
+            traces.Feather = report.Saw(Visitors.Bird);
+            traces.Leaves = report.Leaves;
+            StepTraces(tracesT);
+            string line = report.Message();
+            if (line != null) { if (state.Chat != Chattiness.Quiet) Later(line, tracesT + 1.4f, 4f); }
+        }
+
+        void StepTraces(float t)
+        {
+            if (away == null) return;
+            float since = t - tracesT;
+            traces.SnailTrack = away.Saw(Visitors.Snail) ? 1 - SpiritArt.Smooth(240, 300, since) : 0;
+            traces.Paws = away.Saw(Visitors.Cat) ? 1 - SpiritArt.Smooth(480, 600, since) : 0;
+            if (since > 1800) { traces.Feather = false; traces.Leaves = 0; }
+        }
+
+        float AwayWet(float t) => away != null && away.Rained ? 1 - SpiritArt.Smooth(120, 240, t - tracesT) : 0;
+
+        void BlowAwayTraces()
+        {
+            if (traces.Feather)
+                Emit(new Particle { Kind = Bit.Feather, X = GardenArt.FeatherAt.X, Y = GardenArt.FeatherAt.Y, Vx = -55, Vy = -35, Vr = 2.5f, Life = 4, Night = nightK });
+            for (int i = 0; i < Math.Min(traces.Leaves, GardenArt.ExtraLeaves.Length); i++)
+            {
+                var f = GardenArt.ExtraLeaves[i];
+                Emit(new Particle { Kind = Bit.Autumn, X = f[0], Y = f[1], Vx = (f[0] < SX ? -1 : 1) * (40 + Rand * 30), Vy = -25 - Rand * 20, Vr = 3 + Rand * 2, Size = 3.2f, Hue = (int)f[2], Life = 3 });
+            }
+            traces.Feather = false;
+            traces.Leaves = 0;
         }
 
         public void Reminder()
@@ -291,10 +335,21 @@ namespace Stillpoint
         public void Step(float t, float dt)
         {
             if (nightK < 0) nightK = 0;
-            bool nightSky = Sleeping || NightHour(21);
-            nightK += ((nightSky ? 1 : 0) - nightK) * (1 - (float)Math.Exp(-dt * 2.5));
-            float cloudTarget = Running ? Weather.Clouds(state.SessionSeconds, state.Interval) : 0;
-            float rainTarget = Running ? Weather.Rain(state.SessionSeconds, state.Interval) : 0;
+            var now = Clock();
+            float nightTarget = Sleeping ? 1 : Sky.Darkness(now, state.Sun);
+            nightK += (nightTarget - nightK) * (1 - (float)Math.Exp(-dt * 2.5));
+            var real = state.Weather != null && state.Weather.Fresh(now) ? state.Weather : null;
+            float realClouds = real == null ? 0 : real.CloudCover / 100f * 0.85f;
+            float realRain = real == null || real.Rain <= 0.02f ? 0 : SpiritArt.Clamp(0.3f + real.Rain * 0.35f, 0, 1);
+            float realSnow = real == null || real.Snowfall <= 0.01f ? 0 : SpiritArt.Clamp(0.35f + real.Snowfall * 0.6f, 0, 1);
+            snowing = realSnow > 0 || (season == Season.Winter && realRain == 0);
+            snowGround = season == Season.Winter || (real != null && real.SnowDepth > 0.005f);
+            fogK += ((real != null && real.Fog ? 1 : 0) - fogK) * (1 - (float)Math.Exp(-dt * 0.3));
+            wetReal = real == null ? 0 : real.Wetness(now);
+            if (real != null && real.Storm && t > lightningNext) { flashT = t; lightningNext = t + 12 + Rand * 25; }
+            StepTraces(t);
+            float cloudTarget = Math.Max(Running ? Weather.Clouds(state.SessionSeconds, state.Interval) : 0, Math.Max(realClouds, realRain + realSnow > 0 ? 0.7f : 0));
+            float rainTarget = Math.Max(Running ? Weather.Rain(state.SessionSeconds, state.Interval) : 0, Math.Max(realRain, realSnow));
             cloudK += (cloudTarget - cloudK) * (1 - (float)Math.Exp(-dt * 0.35));
             rainK += (rainTarget - rainK) * (1 - (float)Math.Exp(-dt * (rainTarget > rainK ? 0.3 : 0.9)));
             maxRain = Math.Max(maxRain, rainK);
@@ -365,7 +420,7 @@ namespace Stillpoint
 
         void EmitWeather(float dt)
         {
-            bool winter = season == Season.Winter;
+            bool winter = snowing;
             rainAcc += dt * rainK * (winter ? 26 : 44);
             while (rainAcc >= 1)
             {
@@ -387,7 +442,7 @@ namespace Stillpoint
         void Schedule(float t, bool calm)
         {
             if (Sleeping) return;
-            if (bfAt > 0 && t > bfAt && calm && !Running)
+            if (bfAt > 0 && t > bfAt && calm && !Running && rainK < 0.3f)
             {
                 bfAt = -1;
                 if (rng.NextDouble() < 0.5) StartFlyer(butterfly, t); else StartFlyer(bird, t);
@@ -406,7 +461,7 @@ namespace Stillpoint
             nextAct = t + (state.Chat == Chattiness.Chatty ? 7 + Rand * 5 : 11 + Rand * 8);
             if (Running && Drowsiness > 0.45f) return;
             double r = rng.NextDouble();
-            if (!Running && hasLast && r < 0.3) { if (rng.NextDouble() < 0.5) StartFlyer(butterfly, t); else StartFlyer(bird, t); }
+            if (!Running && hasLast && r < 0.3 && rainK < 0.3f) { if (rng.NextDouble() < 0.5) StartFlyer(butterfly, t); else StartFlyer(bird, t); }
             else if (r < (state.Chat == Chattiness.Chatty ? 0.5 : 0.62)) humT = t;
             else Chat(Pick(Running ? ThoughtsSitting : ThoughtsFree), 3.4f, thought: true);
         }
@@ -609,7 +664,9 @@ namespace Stillpoint
                 Leaves = Math.Min(3, 1 + Math.Max(0, breaks)),
                 Stem = Math.Min(4, Math.Max(0, breaks)),
                 Bloom = breaks >= Garden.FlowerBreaks && season != Season.Winter ? SpiritArt.Clamp((t - bloomT) / 1.5f, 0, 1) : 0,
-                Snow = season == Season.Winter ? 1 : 0,
+                Snow = snowGround ? 1 : 0,
+                Wilt = breaks < Garden.FlowerBreaks && state.BreaksYesterday >= Garden.FlowerBreaks && season != Season.Winter ? 1 : 0,
+                Bud = breaks >= 2 && breaks < Garden.FlowerBreaks && season != Season.Winter && state.BreaksYesterday < Garden.FlowerBreaks ? 1 : 0,
             };
             float b = SpiritArt.Sin(t * 1.7f) * 0.014f;
             p.Sy += b;
@@ -984,8 +1041,16 @@ namespace Stillpoint
                 RakeLines = 2 + Math.Min(Math.Max(0, breaks), 8),
                 NewestRake = breaks > 0 ? SpiritArt.Clamp((t - rakeT) / 1.4f, 0, 1) : 1,
                 Keepsakes = state.Keepsakes,
-                Snowman = season == Season.Winter && breaks >= Garden.FlowerBreaks ? SpiritArt.Clamp((t - snowmanT) / 1.5f, 0, 1) : 0,
+                Snowman = season != Season.Winter ? 0 : breaks >= Garden.FlowerBreaks ? SpiritArt.Clamp((t - snowmanT) / 1.5f, 0, 1) : state.BreaksYesterday >= Garden.FlowerBreaks ? 1 : 0,
+                SnowmanMelted = season == Season.Winter && breaks < Garden.FlowerBreaks && state.BreaksYesterday >= Garden.FlowerBreaks,
                 Rainbow = RainbowLevel(t),
+                Dusk = Sky.Glow(Clock(), state.Sun),
+                MoonPhase = Sky.MoonPhase(Clock()),
+                Southern = state.Southern,
+                Wet = Math.Max(wetReal, AwayWet(t)),
+                SnowGround = snowGround,
+                FadedRakes = state.BreaksYesterday > breaks ? 2 + Math.Min(state.BreaksYesterday, 8) : 0,
+                FadeAlpha = 0.65f - 0.45f * SpiritArt.Clamp((float)Clock().TimeOfDay.TotalHours / 18f, 0, 1),
             };
             var scene = SceneImage((int)Math.Ceiling(size) + 1, s, look);
             g.DrawImage(scene, new Rectangle((int)o.X, (int)o.Y, scene.Width, scene.Height));
@@ -998,6 +1063,8 @@ namespace Stillpoint
             var clip = g.Save();
             if (clipped) using (var disc = Disc()) g.SetClip(disc, CombineMode.Intersect);
             GardenArt.DrawClouds(g, t, cloudK, night, new RectangleF(0, 0, 300, 300));
+            GardenArt.DrawFog(g, t, fogK, night);
+            if (traces.Any) GardenArt.DrawTraces(g, traces, night, snowGround);
             points = SpiritArt.DrawSpirit(g, SX, Ground, R, pose, t);
             if ((state.Keepsakes & Keepsake.Baby) != 0)
                 SpiritArt.DrawSpirit(g, GardenArt.BabyAt.X, GardenArt.BabyAt.Y, GardenArt.BabyR, GardenArt.BabyPose(pose, t), t);
@@ -1022,6 +1089,12 @@ namespace Stillpoint
                 ringColor = SpiritArt.Moss;
             }
             else if (Running) ring = state.Progress;
+            float flash = t - flashT;
+            if (flash >= 0 && flash < 0.45f)
+            {
+                float k = flash < 0.08f ? 1 : flash < 0.16f ? 0.2f : flash < 0.24f ? 0.7f : 1 - SpiritArt.Smooth(0.24f, 0.45f, flash);
+                SpiritArt.FillEllipse(g, SpiritArt.Alpha(Color.White, 0.45f * k), 150, 150, 140, 140);
+            }
             Draw.Ring(g, new RectangleF(1, 1, 298, 298), 10, Theme.Track, ringColor, ring);
             g.Restore(state0);
 

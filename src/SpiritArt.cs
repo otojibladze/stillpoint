@@ -9,12 +9,12 @@ namespace Stillpoint
 {
     enum Eyes { Open, Happy, Closed, Squeeze, Dizzy }
     enum Mouth { Dot, Smile, O, Flat, Wavy }
-    enum Bit { Puff, Spark, Heart, Note, Dot, Leaf, Rain, Splash, Snow, Petal, Autumn, Ripple }
+    enum Bit { Puff, Spark, Heart, Note, Dot, Leaf, Rain, Splash, Snow, Petal, Autumn, Ripple, Feather }
     enum MiniMood { Yawn, Look, Happy }
 
     sealed class SpiritPose
     {
-        public float Sx = 1, Sy = 1, Tilt, Dy, EyeOpen = 1, LookX, LookY, Yawn, Blush = 0.35f, Sprout = 1, Zzz, Night, Bloom, Snow, EyeScale = 1;
+        public float Sx = 1, Sy = 1, Tilt, Dy, EyeOpen = 1, LookX, LookY, Yawn, Blush = 0.35f, Sprout = 1, Zzz, Night, Bloom, Snow, EyeScale = 1, Bud, Wilt;
         public Eyes Eyes = Eyes.Open;
         public Mouth Mouth = Mouth.Dot;
         public bool Cushion, Bare;
@@ -190,6 +190,23 @@ namespace Stillpoint
                         FillEllipse(g, Petal, fx + Cos(a) * R * 0.075f * k, fy + Sin(a) * R * 0.075f * k, R * 0.06f * k, R * 0.06f * k);
                     }
                     FillEllipse(g, PetalCenter, fx, fy, R * 0.045f * k, R * 0.045f * k);
+                }
+                else if (p.Wilt > 0)
+                {
+                    float w = p.Wilt, fx = P1.X + R * 0.05f * w, fy = P1.Y + R * 0.03f * w;
+                    var dry = Mix(Petal, Hex(0x9C6B4E), 0.55f * w);
+                    for (int i = 0; i < 4; i++)
+                    {
+                        float a = Pi * 0.25f + i * Pi * 0.33f;
+                        FillEllipse(g, dry, fx + Cos(a) * R * 0.075f, fy + Sin(a) * R * 0.085f, R * 0.06f, R * 0.08f);
+                    }
+                    FillEllipse(g, Mix(PetalCenter, Hex(0x8A6A3E), 0.6f * w), fx, fy, R * 0.045f, R * 0.045f);
+                }
+                else if (p.Bud > 0)
+                {
+                    float b = p.Bud, fx = P1.X, fy = P1.Y - R * 0.06f * b;
+                    FillEllipse(g, LeafTop2, fx, fy, R * 0.055f * b, R * 0.085f * b);
+                    FillEllipse(g, Mix(Petal, LeafTop2, 0.25f), fx, fy - R * 0.05f * b, R * 0.035f * b, R * 0.045f * b);
                 }
                 points[0] = new PointF(P1.X, P1.Y - (p.Bloom > 0 ? R * 0.12f : 0));
             }
@@ -411,6 +428,7 @@ namespace Stillpoint
                     case Bit.Leaf: FillEllipse(g, Alpha(Hex(0x8AA56E), a), 0, 0, q.Size * 0.5f, q.Size); break;
                     case Bit.Autumn: FillEllipse(g, Alpha(AutumnHues[q.Hue % AutumnHues.Length], a), 0, 0, q.Size * 0.55f, q.Size); break;
                     case Bit.Petal: FillEllipse(g, Alpha(Hex(0xEFB3B8), a), 0, 0, q.Size * 0.6f, q.Size * 0.9f); break;
+                    case Bit.Feather: GardenArt.DrawFeather(g, 0, 0, 0, q.Night); break;
                     case Bit.Snow:
                         FillEllipse(g, Alpha(Hex(0xAEBBCB), a * 0.45f), 0, 0.3f, q.Size + 0.5f, q.Size + 0.5f);
                         FillEllipse(g, Alpha(Color.White, a), 0, 0, q.Size, q.Size);

@@ -92,6 +92,8 @@ namespace Stillpoint
 
         public void Announce(string text) => ring.Announce(text);
 
+        public void ShowAway(AwayReport report) => ring.ShowAway(report);
+
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
@@ -152,6 +154,10 @@ namespace Stillpoint
                 Keepsakes = Garden.Progress(tracker.Sessions, tracker.Current, today).Earned,
                 Name = app.Settings.StoneName,
                 Chat = app.Settings.Chattiness,
+                BreaksYesterday = Garden.BreaksOn(tracker.Sessions, tracker.Current, today.AddDays(-1)),
+                Sun = app.SunToday,
+                Southern = app.Settings.HasTown && app.Settings.TownLat < 0,
+                Weather = app.Weather,
             });
             Ui.SetText(status, state);
             startStop.Text = tracker.Running ? "I got up" : "Start";

@@ -43,6 +43,13 @@ namespace Stillpoint
         const int FirstUpdateCheckSeconds = 60;
         const int UpdateCheckEverySeconds = 3 * 3600;
         Version readyVersion;
+        WeatherNow weather;
+        bool weatherBusy;
+        int ticksUntilWeather = 5, ticksSinceSeenSave;
+        const int WeatherEverySeconds = 30 * 60;
+        DateTime lastSeen;
+        DateTime sunDate;
+        SunTimes sun;
         DateTime lastWindowUse = DateTime.MinValue, wokeAt = DateTime.MinValue;
         readonly bool justUpdated;
         bool updateNoteDue;
@@ -51,6 +58,7 @@ namespace Stillpoint
         public TrayApp(Store store, bool showWindow, WaitHandle showEvent, bool continueSession = false, string extraArgs = "", bool updated = false)
         {
             justUpdated = updateNoteDue = updated;
+            lastSeen = store.LoadSettings().LastSeen;
             Store = store;
             this.extraArgs = extraArgs;
             Settings = store.LoadSettings();
@@ -155,6 +163,100 @@ namespace Stillpoint
             }
             form.SyncControls();
             Refresh();
+        }
+
+        public WeatherNow Weather => Settings.RealWeather && Settings.HasTown ? weather : null;
+
+        public SunTimes SunToday
+        {
+            get
+            {
+                if (!Settings.HasTown) return default(SunTimes);
+                if (sunDate != DateTime.Today) { sunDate = DateTime.Today; sun = Sky.Sun(sunDate, Settings.TownLat, Settings.TownLon); }
+                return sun;
+            }
+        }
+
+        public void AskTown(IWin32Window owner)
+        {
+            using (var dialog = new TownForm(Settings.TownName))
+            {
+                if (dialog.ShowDialog(owner) != DialogResult.OK) return;
+                var town = dialog.Town;
+                Settings.TownName = town?.Name ?? "";
+                Settings.TownLat = town?.Lat ?? double.NaN;
+                Settings.TownLon = town?.Lon ?? double.NaN;
+                if (town == null) Settings.RealWeather = false;
+                sunDate = DateTime.MinValue;
+                weather = null;
+                SaveSettings();
+            }
+            form.SyncControls();
+            RefreshWeather();
+            Refresh();
+        }
+
+        public void SetRealWeather(IWin32Window owner, bool on)
+        {
+            if (on && !Settings.HasTown) AskTown(owner);
+            Settings.RealWeather = on && Settings.HasTown;
+            SaveSettings();
+            form.SyncControls();
+            RefreshWeather();
+            Refresh();
+        }
+
+        async void RefreshWeather()
+        {
+            ticksUntilWeather = WeatherEverySeconds;
+            if (weatherBusy || !Settings.RealWeather || !Settings.HasTown) return;
+            weatherBusy = true;
+            try
+            {
+                weather = await RealWeather.Fetch(Settings.TownLat, Settings.TownLon);
+                CheckFirstSnow();
+            }
+            catch (Exception ex)
+            {
+                Store.Log("Weather: " + ex.Message);
+            }
+            finally
+            {
+                weatherBusy = false;
+            }
+        }
+
+        void CheckFirstSnow()
+        {
+            if (weather == null || (weather.Snowfall <= 0.01f && weather.SnowDepth <= 0.005f)) return;
+            var today = DateTime.Today;
+            string key = today.Month >= 7 ? today.Year + "-" + (today.Year + 1) : (today.Year - 1) + "-" + today.Year;
+            if (Settings.FirstSnow == key) return;
+            Settings.FirstSnow = key;
+            SaveSettings();
+            form.Announce("Look! The first snow of the winter.");
+        }
+
+        void TrackSeen()
+        {
+            if (!form.Visible || form.WindowState == FormWindowState.Minimized) return;
+            var now = DateTime.Now;
+            if (lastSeen != DateTime.MinValue && (now - lastSeen).TotalMinutes >= 20)
+            {
+                var report = Garden.WhileAway(lastSeen, now, Garden.SeasonOf(now), Weather, new Random());
+                foreach (var visit in report.Visits) Album.Add(visit.At, visit.Visitor);
+                if (Album.Dirty)
+                    try { Store.SaveAlbum(Album); }
+                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { SaveError = ex.Message; }
+                form.ShowAway(report);
+            }
+            lastSeen = now;
+            if (++ticksSinceSeenSave >= 60)
+            {
+                ticksSinceSeenSave = 0;
+                Settings.LastSeen = now;
+                SaveSettings();
+            }
         }
 
         public void SetWindowSize(WindowSize size)
@@ -504,6 +606,8 @@ namespace Stillpoint
             if (++ticksSinceSave >= 60) SaveUsage();
             if (--ticksUntilUpdateCheck <= 0) CheckForUpdates(false);
             if (Form.ActiveForm != null) lastWindowUse = DateTime.Now;
+            if (--ticksUntilWeather <= 0) RefreshWeather();
+            TrackSeen();
             if (++secondsAlive == 120 && justUpdated) Updater.CleanUp(Application.ExecutablePath);
             TryQuietUpdate();
             Refresh();
@@ -661,6 +765,8 @@ namespace Stillpoint
             SystemEvents.SessionEnding -= OnSessionEnding;
             Tracker.Tick(DateTime.Now, TakeDelta());
             SaveUsage();
+            if (form.Visible && form.WindowState != FormWindowState.Minimized) lastSeen = DateTime.Now;
+            if (lastSeen != DateTime.MinValue) Settings.LastSeen = lastSeen;
             SaveSettings();
             shutDown = true;
             popup?.Close();

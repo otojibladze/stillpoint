@@ -30,6 +30,13 @@ namespace Stillpoint
         public string EveningCardDate = "";
         public WindowSize WindowSize = WindowSize.Medium;
         public bool AutoUpdate = true;
+        public bool RealWeather;
+        public string TownName = "";
+        public double TownLat = double.NaN, TownLon = double.NaN;
+        public DateTime LastSeen = DateTime.MinValue;
+        public string FirstSnow = "";
+
+        public bool HasTown => !double.IsNaN(TownLat) && !double.IsNaN(TownLon);
 
         public static float Scale(WindowSize size) =>
             size == WindowSize.Small ? 0.85f : size == WindowSize.Large ? 1.2f : size == WindowSize.ExtraLarge ? 1.4f : 1f;
@@ -116,6 +123,18 @@ namespace Stillpoint
                     case "desktopBuddy": settings.DesktopBuddy = on; break;
                     case "eveningCard": settings.EveningCardDate = value; break;
                     case "autoUpdate": settings.AutoUpdate = on; break;
+                    case "realWeather": settings.RealWeather = on; break;
+                    case "town": settings.TownName = value; break;
+                    case "townLat":
+                        if (double.TryParse(value, NumberStyles.Float, Inv, out double lat)) settings.TownLat = lat;
+                        break;
+                    case "townLon":
+                        if (double.TryParse(value, NumberStyles.Float, Inv, out double lon)) settings.TownLon = lon;
+                        break;
+                    case "lastSeen":
+                        if (DateTime.TryParseExact(value, TimeFormat, Inv, DateTimeStyles.None, out var seen)) settings.LastSeen = seen;
+                        break;
+                    case "firstSnow": settings.FirstSnow = value; break;
                     case "windowSize":
                         if (Enum.TryParse(value, true, out WindowSize size) && Enum.IsDefined(typeof(WindowSize), size)) settings.WindowSize = size;
                         break;
@@ -142,6 +161,12 @@ namespace Stillpoint
                 "eveningCard=" + s.EveningCardDate,
                 "windowSize=" + s.WindowSize.ToString().ToLowerInvariant(),
                 "autoUpdate=" + Flag(s.AutoUpdate),
+                "realWeather=" + Flag(s.RealWeather),
+                "town=" + (s.TownName ?? "").Replace("\r", "").Replace("\n", ""),
+                "townLat=" + (s.HasTown ? s.TownLat.ToString("R", Inv) : ""),
+                "townLon=" + (s.HasTown ? s.TownLon.ToString("R", Inv) : ""),
+                "lastSeen=" + (s.LastSeen == DateTime.MinValue ? "" : s.LastSeen.ToString(TimeFormat, Inv)),
+                "firstSnow=" + s.FirstSnow,
             };
             WriteAtomic(SettingsPath, string.Join("\r\n", lines) + "\r\n");
         }

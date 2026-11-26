@@ -20,7 +20,7 @@ New-Item -ItemType Directory -Force $obj, $dist | Out-Null
 
 $common = @(
     '-nologo', '-noconfig', '-langversion:latest', '-warnaserror+', '-optimize+',
-    '-r:System.dll', '-r:System.Core.dll', '-r:System.Drawing.dll', '-r:System.Windows.Forms.dll'
+    '-r:System.dll', '-r:System.Core.dll', '-r:System.Drawing.dll', '-r:System.Windows.Forms.dll', '-r:System.Web.Extensions.dll'
 )
 
 $iconSources = Get-ChildItem "$root\src\*.cs" | Where-Object Name -ne 'Program.cs' | ForEach-Object { $_.FullName }
