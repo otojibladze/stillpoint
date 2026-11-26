@@ -332,7 +332,13 @@ namespace Stillpoint
             for (int i = 0; i < 5; i++) { FlyPhase[i] = i * 1.3f + (float)rnd.NextDouble(); FlySpeed[i] = 0.6f + (float)rnd.NextDouble() * 0.5f; }
         }
 
-        public static void DrawScene(Graphics g, float t, float night, int rakeLines, float newestProgress, float stoneX, float stoneGround)
+        public static void DrawStars(Graphics g, float t, float night)
+        {
+            if (night <= 0.01f) return;
+            foreach (var s in Stars) FillEllipse(g, Alpha(Hex(0xF0ECDC), night * (0.45f + 0.45f * Sin(t * 1.6f + s.Ph))), s.X, s.Y, s.S, s.S);
+        }
+
+        public static void DrawScene(Graphics g, float night, int rakeLines, float newestProgress, float stoneX, float stoneGround)
         {
             float n = night;
             using (var floor = new SolidBrush(Mix(Hex(0xEDE6DD), Hex(0x3A3E52), n))) g.FillRectangle(floor, 0, 0, 300, 300);
@@ -343,7 +349,6 @@ namespace Stillpoint
             if (n < 0.99f) FillRadial(g, 92, 64, 90, 90, Color.FromArgb((int)(140 * (1 - n)), 250, 214, 170), Color.FromArgb(0, 250, 214, 170));
             if (n > 0.01f)
             {
-                foreach (var s in Stars) FillEllipse(g, Alpha(Hex(0xF0ECDC), n * (0.45f + 0.45f * Sin(t * 1.6f + s.Ph))), s.X, s.Y, s.S, s.S);
                 FillEllipse(g, Alpha(Hex(0xF4ECD6), n), 206, 66, 13, 13);
                 FillEllipse(g, Mix(Hex(0xF4EFE8), Hex(0x232838), n), 212, 61, 11.5f, 11.5f);
             }
@@ -478,7 +483,7 @@ namespace Stillpoint
 
         readonly Random rng = new Random();
         readonly Stopwatch watch = Stopwatch.StartNew();
-        readonly System.Windows.Forms.Timer anim = new System.Windows.Forms.Timer { Interval = 33 };
+        readonly System.Windows.Forms.Timer wake = new System.Windows.Forms.Timer { Interval = 250 };
         readonly List<Particle> bits = new List<Particle>();
         readonly List<float> pokes = new List<float>();
         SpiritPose pose;
@@ -512,8 +517,9 @@ namespace Stillpoint
         public SpiritRing()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-            anim.Tick += (s, e) => OnFrame();
-            anim.Start();
+            wake.Tick += (s, e) => { };
+            wake.Start();
+            Application.Idle += OnIdle;
         }
 
         public Func<DateTime> Clock { get; set; } = () => DateTime.Now;
@@ -626,16 +632,73 @@ namespace Stillpoint
 
         float Drowsiness => running ? SpiritArt.Clamp(drowsy, 0, 1.2f) : 0;
 
-        void OnFrame()
+        bool Animating
         {
-            var form = FindForm();
-            float t = Now;
-            float dt = Math.Min(0.1f, t - last);
-            last = t;
-            if (!Visible || form == null || !form.Visible || form.WindowState == FormWindowState.Minimized) return;
-            Step(t, dt);
-            Invalidate();
+            get
+            {
+                if (IsDisposed || !IsHandleCreated || !Visible) return false;
+                var form = FindForm();
+                return form != null && form.Visible && form.WindowState != FormWindowState.Minimized;
+            }
         }
+
+        IntPtr frameTimer;
+        double nextFrame;
+
+        void OnIdle(object sender, EventArgs e)
+        {
+            while (Animating && !PeekMessage(out _, IntPtr.Zero, 0, 0, 0))
+            {
+                float t = Now;
+                float dt = Math.Min(0.1f, t - last);
+                last = t;
+                Step(t, dt);
+                Refresh();
+                double period = FindForm()?.ContainsFocus == true ? 1 / 60.0 : 1 / 30.0;
+                double now = watch.Elapsed.TotalSeconds;
+                nextFrame = now - nextFrame > period ? now + period : nextFrame + period;
+                WaitUntil(nextFrame);
+            }
+        }
+
+        void WaitUntil(double target)
+        {
+            double wait = target - watch.Elapsed.TotalSeconds;
+            if (wait <= 0) return;
+            if (frameTimer == IntPtr.Zero) frameTimer = CreateWaitableTimerExW(IntPtr.Zero, null, 2, 0x1F0003);
+            long due = -(long)(wait * 10000000);
+            if (frameTimer != IntPtr.Zero && SetWaitableTimer(frameTimer, ref due, 0, IntPtr.Zero, IntPtr.Zero, false))
+                WaitForSingleObject(frameTimer, 100);
+            else
+                System.Threading.Thread.Sleep(Math.Max(1, (int)(wait * 1000)));
+        }
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        static extern IntPtr CreateWaitableTimerExW(IntPtr attributes, string name, uint flags, uint access);
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+        static extern bool SetWaitableTimer(IntPtr timer, ref long dueTime, int period, IntPtr completion, IntPtr arg, bool resume);
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+        static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+        static extern bool CloseHandle(IntPtr handle);
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        struct NativeMessage
+        {
+            public IntPtr Handle;
+            public uint Message;
+            public IntPtr WParam;
+            public IntPtr LParam;
+            public uint Time;
+            public Point Location;
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        static extern bool PeekMessage(out NativeMessage message, IntPtr window, uint filterMin, uint filterMax, uint remove);
+
 
         public void Step(float t, float dt)
         {
@@ -935,7 +998,7 @@ namespace Stillpoint
         }
 
         float SceneScale => Math.Min(Width, Height) / 300f;
-        PointF Origin => new PointF((Width - Math.Min(Width, Height)) / 2f, (Height - Math.Min(Width, Height)) / 2f);
+        PointF Origin => new PointF((Width - Math.Min(Width, Height)) / 2, (Height - Math.Min(Width, Height)) / 2);
 
         PointF ToScene(Point p)
         {
@@ -1007,6 +1070,32 @@ namespace Stillpoint
             bubbleFont = Theme.Regular(Math.Max(6f, size * 0.046f * pt));
         }
 
+        Bitmap sceneCache;
+        long sceneKey = -1;
+
+        Bitmap SceneImage(int px, float s, float night, int lines, float newest)
+        {
+            long key = ((((long)px * 64 + (int)Math.Round(night * 48)) * 16 + lines) * 64) + (int)Math.Round(newest * 60);
+            if (sceneCache != null && key == sceneKey) return sceneCache;
+            if (sceneCache == null || sceneCache.Width != px)
+            {
+                sceneCache?.Dispose();
+                sceneCache = new Bitmap(px, px, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            }
+            sceneKey = key;
+            using (var g = Graphics.FromImage(sceneCache))
+            using (var disc = new GraphicsPath())
+            {
+                g.Clear(Color.Transparent);
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.ScaleTransform(s, s);
+                disc.AddEllipse(150 - 140, 150 - 140, 280, 280);
+                g.SetClip(disc, CombineMode.Intersect);
+                SpiritArt.DrawScene(g, night, lines, newest, SX, Ground);
+            }
+            return sceneCache;
+        }
+
         protected override void OnPaint(PaintEventArgs e) => Render(e.Graphics, Now);
 
         public void Render(Graphics g, float t)
@@ -1022,18 +1111,26 @@ namespace Stillpoint
             g.ScaleTransform(s, s);
             float night = Math.Max(0, nightK);
 
-            using (var disc = new GraphicsPath())
+            int lines = 2 + Math.Min(Math.Max(0, breaks), 8);
+            float newest = breaks > 0 ? SpiritArt.Clamp((t - rakeT) / 1.4f, 0, 1) : 1;
+            var scene = SceneImage((int)Math.Ceiling(size) + 1, s, night, lines, newest);
+            g.ResetTransform();
+            g.DrawImage(scene, new Rectangle((int)o.X, (int)o.Y, scene.Width, scene.Height));
+            g.TranslateTransform(o.X, o.Y);
+            g.ScaleTransform(s, s);
+            SpiritArt.DrawStars(g, t, night);
+            SpiritArt.DrawFireflies(g, t, night);
+            tip = SpiritArt.DrawSpirit(g, SX, Ground, R, pose, t);
+            SpiritArt.DrawParticles(g, bits);
+            if (bfState != 0)
             {
-                disc.AddEllipse(150 - 140, 150 - 140, 280, 280);
                 var clip = g.Save();
-                g.SetClip(disc, CombineMode.Intersect);
-                int lines = 2 + Math.Min(Math.Max(0, breaks), 8);
-                float newest = breaks > 0 ? SpiritArt.Clamp((t - rakeT) / 1.4f, 0, 1) : 1;
-                SpiritArt.DrawScene(g, t, night, lines, newest, SX, Ground);
-                SpiritArt.DrawFireflies(g, t, night);
-                tip = SpiritArt.DrawSpirit(g, SX, Ground, R, pose, t);
-                SpiritArt.DrawParticles(g, bits);
-                if (bfState != 0) SpiritArt.DrawButterfly(g, bfX, bfY, t, bfState == 2);
+                using (var disc = new GraphicsPath())
+                {
+                    disc.AddEllipse(150 - 140, 150 - 140, 280, 280);
+                    g.SetClip(disc, CombineMode.Intersect);
+                }
+                SpiritArt.DrawButterfly(g, bfX, bfY, t, bfState == 2);
                 g.Restore(clip);
             }
 
@@ -1107,7 +1204,11 @@ namespace Stillpoint
         {
             if (disposing)
             {
-                anim.Dispose();
+                Application.Idle -= OnIdle;
+                wake.Dispose();
+                if (frameTimer != IntPtr.Zero) CloseHandle(frameTimer);
+                frameTimer = IntPtr.Zero;
+                sceneCache?.Dispose();
                 timeFont?.Dispose();
                 captionFont?.Dispose();
                 bubbleFont?.Dispose();
@@ -1119,7 +1220,7 @@ namespace Stillpoint
     sealed class MiniSpirit : Control
     {
         readonly Stopwatch watch = Stopwatch.StartNew();
-        readonly System.Windows.Forms.Timer anim = new System.Windows.Forms.Timer { Interval = 40 };
+        readonly System.Windows.Forms.Timer anim = new System.Windows.Forms.Timer { Interval = 15 };
 
         public MiniSpirit()
         {
