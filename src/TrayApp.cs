@@ -254,11 +254,15 @@ namespace Stillpoint
             }));
         }
 
-        void SetRunning(bool running) => Apply(() =>
+        void SetRunning(bool running)
         {
-            Tracker.SetRunning(running, DateTime.Now);
-            Settings.Running = running;
-        });
+            Apply(() =>
+            {
+                Tracker.SetRunning(running, DateTime.Now);
+                Settings.Running = running;
+            });
+            if (!running) popup?.Close();
+        }
 
         public void SetReminderMinutes(int minutes) => Apply(() =>
         {
