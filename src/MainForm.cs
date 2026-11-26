@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
-using System.Linq;
 using System.Windows.Forms;
 
 namespace Stillpoint
@@ -152,7 +150,7 @@ namespace Stillpoint
             if (updateLink.Text != link) updateLink.Text = link;
             updateLink.Enabled = !app.UpdateBusy;
 
-            if (history != null && !history.IsDisposed) history.List.SetRows(HistoryRows());
+            if (history != null && !history.IsDisposed) history.SetSessions(app.Tracker.Sessions, app.Tracker.Current);
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -189,15 +187,12 @@ namespace Stillpoint
             SyncControls();
         }
 
-        List<string[]> HistoryRows() =>
-            app.Tracker.Sessions.OrderByDescending(s => s.Start).Select(s => Cells(s, app.Tracker.Current)).ToList();
-
         void ShowHistory()
         {
             if (history == null || history.IsDisposed)
             {
                 history = new HistoryForm { Icon = Icon, Owner = this };
-                history.List.SetRows(HistoryRows());
+                history.SetSessions(app.Tracker.Sessions, app.Tracker.Current);
                 var area = Screen.FromControl(this).WorkingArea;
                 int x = Right + 12 + history.Width <= area.Right ? Right + 12 : Math.Max(area.Left, Left - 12 - history.Width);
                 history.Location = new Point(x, Math.Max(area.Top, Math.Min(Top, area.Bottom - history.Height)));
@@ -206,16 +201,6 @@ namespace Stillpoint
             }
             if (history.WindowState == FormWindowState.Minimized) history.WindowState = FormWindowState.Normal;
             history.Activate();
-        }
-
-        static string[] Cells(Session session, Session current)
-        {
-            var culture = CultureInfo.CurrentCulture;
-            string started = session.Start.ToString("ddd d MMM, ", culture) + session.Start.ToString("t", culture);
-            string ended = session == current ? "now"
-                : session.End.Date == session.Start.Date ? session.End.ToString("t", culture)
-                : session.End.ToString("ddd ", culture) + session.End.ToString("t", culture);
-            return new[] { started, ended, Fmt.Hm(session.Seconds) };
         }
 
         static void SetText(Label label, string text)

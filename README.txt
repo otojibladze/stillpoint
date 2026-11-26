@@ -36,8 +36,12 @@ Click "Preview" to see what it looks like.
 
 Each Start begins a new session at 0:00:00. After you stop, Resume
 carries on the last session instead, so a short break does not split
-it in two (the break itself is not counted). The History button shows
-every session: when it started, when it ended and how long it was.
+it in two (the break itself is not counted).
+
+The History button opens your history. List shows every session grouped
+by day, with each day's total. Calendar shows the month: the darker a
+day, the longer you sat. Click a day to see its sessions. The arrows (or
+the mouse wheel) change the month; Today jumps back.
 
 It pauses while the computer is locked or asleep and carries on when
 you come back. If you leave it counting and shut down, it is still

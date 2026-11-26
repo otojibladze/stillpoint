@@ -269,10 +269,22 @@ namespace Stillpoint
         }
     }
 
+    sealed class ListRow
+    {
+        public string Left = "";
+        public string Middle = "";
+        public string Right = "";
+        public bool Header;
+
+        public bool Same(ListRow other) =>
+            Left == other.Left && Middle == other.Middle && Right == other.Right && Header == other.Header;
+    }
+
     sealed class SessionList : Control
     {
-        List<string[]> rows = new List<string[]>();
+        List<ListRow> rows = new List<ListRow>();
         int offset;
+        readonly Font bold = Theme.SemiBold(9.5f);
 
         public SessionList()
         {
@@ -280,15 +292,23 @@ namespace Stillpoint
             Font = Theme.Regular(9.5f);
         }
 
-        public void SetRows(List<string[]> next)
+        public string EmptyText { get; set; } = "Sessions you count show up here.";
+
+        public void SetRows(List<ListRow> next, bool toTop = false)
         {
             bool same = next.Count == rows.Count;
-            for (int i = 0; same && i < next.Count; i++)
-                same = next[i][0] == rows[i][0] && next[i][1] == rows[i][1] && next[i][2] == rows[i][2];
-            if (same) return;
+            for (int i = 0; same && i < next.Count; i++) same = next[i].Same(rows[i]);
+            if (toTop) offset = 0;
+            if (same && !toTop) return;
             rows = next;
             offset = Math.Min(offset, MaxOffset());
             Invalidate();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) bold.Dispose();
+            base.Dispose(disposing);
         }
 
         int RowHeight => (int)(Font.Height * 1.9f);
@@ -333,26 +353,32 @@ namespace Stillpoint
             g.SetClip(inner);
             if (rows.Count == 0)
             {
-                Draw.Text(g, "Sessions you count show up here.", Font, Theme.Muted, new Rectangle(inner.Left, inner.Top, inner.Width, h), TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                Draw.Text(g, EmptyText, Font, Theme.Muted, new Rectangle(inner.Left, inner.Top, inner.Width, h), TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
                 return;
             }
             int gap = h / 2;
             int left = inner.Left;
             int right = inner.Right;
-            int lengthWidth = TextRenderer.MeasureText(g, "00h 00m", Font, Size.Empty, TextFormatFlags.NoPadding).Width;
-            int endWidth = TextRenderer.MeasureText(g, "Wed 00:00 PM", Font, Size.Empty, TextFormatFlags.NoPadding).Width;
-            using (var pen = new Pen(Theme.Line))
+            int indent = rows[0].Header ? Font.Height / 2 : 0;
+            int lengthWidth = TextRenderer.MeasureText(g, "00h 00m", bold, Size.Empty, TextFormatFlags.NoPadding).Width;
+            int middleWidth = TextRenderer.MeasureText(g, "00 sessions", Font, Size.Empty, TextFormatFlags.NoPadding).Width;
+            using (var line = new Pen(Theme.Line))
+            using (var strong = new Pen(Theme.Border))
             {
                 for (int i = 0; i < rows.Count; i++)
                 {
                     int y = inner.Top + i * h - offset;
                     if (y + h < inner.Top) continue;
                     if (y > inner.Bottom) break;
-                    if (i > 0) g.DrawLine(pen, left, y, right, y);
                     var row = rows[i];
-                    Draw.Text(g, row[0], Font, Theme.Ink, new Rectangle(left, y, right - left - lengthWidth - endWidth - gap * 2, h), TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-                    Draw.Text(g, row[1], Font, Theme.Muted, new Rectangle(right - lengthWidth - gap - endWidth, y, endWidth, h), TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
-                    Draw.Text(g, row[2], Font, Theme.Ink, new Rectangle(right - lengthWidth, y, lengthWidth, h), TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
+                    if (i > 0) g.DrawLine(row.Header ? strong : line, left, y, right, y);
+                    var font = row.Header ? bold : Font;
+                    int x = row.Header ? left : left + indent;
+                    int leftWidth = right - x - lengthWidth - gap - (row.Middle.Length > 0 ? middleWidth + gap : 0);
+                    Draw.Text(g, row.Left, font, Theme.Ink, new Rectangle(x, y, leftWidth, h), TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                    if (row.Middle.Length > 0)
+                        Draw.Text(g, row.Middle, Font, Theme.Muted, new Rectangle(right - lengthWidth - gap - middleWidth, y, middleWidth, h), TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
+                    Draw.Text(g, row.Right, font, row.Header ? Theme.AccentText : Theme.Ink, new Rectangle(right - lengthWidth, y, lengthWidth, h), TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
                 }
             }
             g.ResetClip();
