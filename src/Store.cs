@@ -18,7 +18,9 @@ namespace Stillpoint
         public const int MaxNameLength = 20;
 
         public bool Running;
-        public int ReminderMinutes = 60;
+        public int ReminderMinutes = 30;
+        public bool StoneOn = true;
+        public int Defaults = 2;
         public string Sound = Sounds.Default;
         public bool FirstRunDone;
         public bool TrayTipShown;
@@ -97,7 +99,9 @@ namespace Stillpoint
         public Settings LoadSettings()
         {
             var settings = new Settings();
-            foreach (var line in ReadLines(SettingsPath) ?? new string[0])
+            var saved = ReadLines(SettingsPath);
+            if (saved != null) settings.Defaults = 1;
+            foreach (var line in saved ?? new string[0])
             {
                 int eq = line.IndexOf('=');
                 if (eq <= 0) continue;
@@ -123,6 +127,10 @@ namespace Stillpoint
                     case "desktopBuddy": settings.DesktopBuddy = on; break;
                     case "eveningCard": settings.EveningCardDate = value; break;
                     case "autoUpdate": settings.AutoUpdate = on; break;
+                    case "stone": settings.StoneOn = on; break;
+                    case "defaults":
+                        if (int.TryParse(value, NumberStyles.Integer, Inv, out int defaults)) settings.Defaults = defaults;
+                        break;
                     case "realWeather": settings.RealWeather = on; break;
                     case "town": settings.TownName = value; break;
                     case "townLat":
@@ -139,6 +147,11 @@ namespace Stillpoint
                         if (Enum.TryParse(value, true, out WindowSize size) && Enum.IsDefined(typeof(WindowSize), size)) settings.WindowSize = size;
                         break;
                 }
+            }
+            if (settings.Defaults < 2)
+            {
+                if (settings.ReminderMinutes == 60) settings.ReminderMinutes = 30;
+                settings.Defaults = 2;
             }
             return settings;
         }
@@ -161,6 +174,8 @@ namespace Stillpoint
                 "eveningCard=" + s.EveningCardDate,
                 "windowSize=" + s.WindowSize.ToString().ToLowerInvariant(),
                 "autoUpdate=" + Flag(s.AutoUpdate),
+                "stone=" + Flag(s.StoneOn),
+                "defaults=" + s.Defaults.ToString(Inv),
                 "realWeather=" + Flag(s.RealWeather),
                 "town=" + (s.TownName ?? "").Replace("\r", "").Replace("\n", ""),
                 "townLat=" + (s.HasTown ? s.TownLat.ToString("R", Inv) : ""),

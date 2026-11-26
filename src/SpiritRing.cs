@@ -14,7 +14,7 @@ namespace Stillpoint
         public bool Running, Paused, Away;
         public float Progress;
         public double SessionSeconds, Interval = 3600;
-        public string Time = "0:00:00", Caption = "";
+        public string Time = "0:00:00", Caption = "", Note = "";
         public int BreaksToday;
         public DateTime LastEnd;
         public Keepsake Keepsakes;
@@ -64,7 +64,7 @@ namespace Stillpoint
         DateTime breaksDate, lastEnd;
         Season season = Season.Autumn;
 
-        float stretchT = -99, pokeT = -99, dizzyT = -99, wakeT = -99, yawnT = -99, rakeT = -99, bloomT = -99, snowmanT = -99, breatheT = -1;
+        float stretchT = -99, pokeT = -99, dizzyT = -99, wakeT = -99, yawnT = -99, rakeT = -99, bloomT = -99, snowmanT = -99;
         float nextAct = 8, bfAt = -1, frogAt = -1, snailNext = 20, petSaidT = -99, heartT, noteT, humT = -99, demoT = -99, rainbowT = -99, purrT = -99, cricketNext = 15;
         float rainAcc, ambientAcc;
         float fogK, wetReal, flashT = -99, lightningNext = 20, tracesT = -99;
@@ -85,7 +85,14 @@ namespace Stillpoint
         readonly List<(float At, string Text, float Seconds)> pending = new List<(float At, string Text, float Seconds)>();
         bool bubbleThought;
 
-        Font timeFont, captionFont, bubbleFont;
+        Font timeFont, captionFont, bubbleFont, plainFont;
+        bool plain;
+
+        public bool Plain
+        {
+            get => plain;
+            set { if (plain == value) return; plain = value; Invalidate(); }
+        }
         int fontKey;
 
         public SpiritRing()
@@ -97,10 +104,8 @@ namespace Stillpoint
         }
 
         public Func<DateTime> Clock { get; set; } = () => DateTime.Now;
-        public event EventHandler BreathingChanged;
         public event Action<string> Visited;
         public event Action<StoneSound> SoundRequested;
-        public bool Breathing => breatheT >= 0;
         public float Now => (float)watch.Elapsed.TotalSeconds;
 
         bool Running => state.Running;
@@ -230,14 +235,6 @@ namespace Stillpoint
 
         public void Announce(string text) => Later(text, Now + 1.2f, 3.4f);
 
-        public void ToggleBreathing()
-        {
-            float t = Now;
-            if (Breathing) { breatheT = -1; Say("We can try later."); }
-            else { breatheT = t; humT = -99; demoT = -99; Say("Follow me. In through the nose.", 3f); }
-            BreathingChanged?.Invoke(this, EventArgs.Empty);
-        }
-
         string Pick(string[] list) => list[rng.Next(list.Length)];
 
         void Say(string text, float seconds = 2.6f, bool thought = false)
@@ -269,7 +266,7 @@ namespace Stillpoint
         {
             get
             {
-                if (IsDisposed || !IsHandleCreated || !Visible) return false;
+                if (plain || IsDisposed || !IsHandleCreated || !Visible) return false;
                 var form = FindForm();
                 return form != null && form.Visible && form.WindowState != FormWindowState.Minimized;
             }
@@ -376,19 +373,9 @@ namespace Stillpoint
                 SoundRequested?.Invoke(StoneSound.Crickets);
             }
 
-            if (Breathing && !Sleeping)
-            {
-                float c = (t - breatheT) % 12;
-                if (rng.NextDouble() < dt * 7)
-                {
-                    float a = Rand * SpiritArt.Pi * 2, ca = SpiritArt.Cos(a), sa = SpiritArt.Sin(a);
-                    if (c < 4) Emit(new Particle { Kind = Bit.Dot, X = SX + ca * 118, Y = 148 + sa * 100, Vx = -ca * 30, Vy = -sa * 26, Life = 2, Size = 1.8f });
-                    else if (c >= 8) Emit(new Particle { Kind = Bit.Dot, X = SX + ca * 52, Y = 148 + sa * 44, Vx = ca * 32, Vy = sa * 28, Life = 2, Size = 1.8f });
-                }
-            }
             EmitWeather(dt);
 
-            bool calm = !Breathing && t - humT > 3.8f && !petting && !butterfly.Active && !bird.Active && t - stretchT > 3 && !DemoActive(t) && t - pokeT > 2 && t - dizzyT > 3;
+            bool calm = t - humT > 3.8f && !petting && !butterfly.Active && !bird.Active && t - stretchT > 3 && !DemoActive(t) && t - pokeT > 2 && t - dizzyT > 3;
             Schedule(t, calm);
             StepButterfly(t);
             StepBird(t);
@@ -700,26 +687,6 @@ namespace Stillpoint
                 return p;
             }
 
-            if (Breathing)
-            {
-                float bt = t - breatheT;
-                if (bt >= 60)
-                {
-                    breatheT = -1;
-                    pokeT = t;
-                    Say("Nice. Five slow breaths.");
-                    BreathingChanged?.Invoke(this, EventArgs.Empty);
-                }
-                else
-                {
-                    float c = bt % 12;
-                    float k = c < 4 ? SpiritArt.Smooth(0, 4, c) : c < 8 ? 1 : 1 - SpiritArt.Smooth(8, 12, c);
-                    p.Sx = 1 + 0.09f * k; p.Sy = 1 + 0.12f * k;
-                    p.Eyes = Eyes.Closed; p.LookX = 0; p.LookY = 0; p.Sprout = 0.6f + 0.4f * k; p.Blush = 0.3f + 0.15f * k;
-                    return p;
-                }
-            }
-
             if (Running && state.Away)
             {
                 p.EyeOpen = 1;
@@ -976,10 +943,28 @@ namespace Stillpoint
             timeFont?.Dispose();
             captionFont?.Dispose();
             bubbleFont?.Dispose();
+            plainFont?.Dispose();
             float pt = 72f / Math.Max(1, DeviceDpi);
             timeFont = Theme.Light(Math.Max(6f, size * 0.1f * pt));
             captionFont = Theme.SemiBold(Math.Max(5f, size * 0.033f * pt));
             bubbleFont = Theme.Regular(Math.Max(6f, size * 0.046f * pt));
+            plainFont = Theme.Light(Math.Max(6f, size * 0.15f * pt));
+        }
+
+        void RenderPlain(Graphics g)
+        {
+            g.Clear(Parent?.BackColor ?? Theme.Background);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            float size = Math.Min(Width, Height);
+            if (size < 20) return;
+            var o = Origin;
+            Draw.Ring(g, new RectangleF(o.X, o.Y, size, size), size * 0.04f, Theme.Track, Theme.Accent, Running ? state.Progress : 0);
+            EnsureFonts(size);
+            g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            float cx = o.X + size / 2, cy = o.Y + size / 2;
+            CenteredText(g, state.Caption, captionFont, Theme.Muted, cx, cy - size * 0.14f);
+            CenteredText(g, state.Time, plainFont, Running ? Theme.Ink : Theme.Muted, cx, cy);
+            CenteredText(g, state.Note, bubbleFont, Theme.AccentText, cx, cy + size * 0.14f);
         }
 
         Bitmap sceneCache;
@@ -1025,6 +1010,11 @@ namespace Stillpoint
 
         public void Render(Graphics g, float t)
         {
+            if (plain)
+            {
+                RenderPlain(g);
+                return;
+            }
             g.Clear(Parent?.BackColor ?? Theme.Background);
             if (pose == null) pose = Pose(t);
             g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -1080,33 +1070,20 @@ namespace Stillpoint
             if (butterfly.Active) SpiritArt.DrawButterfly(g, butterfly.X, butterfly.Y, t, butterfly.State == 2);
             g.Restore(clip);
 
-            float ring = 0;
-            var ringColor = Theme.Accent;
-            if (Breathing)
-            {
-                float c = (t - breatheT) % 12;
-                ring = c < 4 ? c / 4 : c < 8 ? 1 : 1 - (c - 8) / 4;
-                ringColor = SpiritArt.Moss;
-            }
-            else if (Running) ring = state.Progress;
+            float ring = Running ? state.Progress : 0;
             float flash = t - flashT;
             if (flash >= 0 && flash < 0.45f)
             {
                 float k = flash < 0.08f ? 1 : flash < 0.16f ? 0.2f : flash < 0.24f ? 0.7f : 1 - SpiritArt.Smooth(0.24f, 0.45f, flash);
                 SpiritArt.FillEllipse(g, SpiritArt.Alpha(Color.White, 0.45f * k), 150, 150, 140, 140);
             }
-            Draw.Ring(g, new RectangleF(1, 1, 298, 298), 10, Theme.Track, ringColor, ring);
+            Draw.Ring(g, new RectangleF(1, 1, 298, 298), 10, Theme.Track, Theme.Accent, ring);
             g.Restore(state0);
 
             EnsureFonts(size);
             bool dark = night > 0.5f;
             string cap = state.Caption;
-            if (Breathing)
-            {
-                float bt = t - breatheT, c = bt % 12;
-                cap = (c < 4 ? "BREATHE IN" : c < 8 ? "HOLD" : "BREATHE OUT") + "  ·  " + Math.Min(5, (int)(bt / 12) + 1) + " OF 5";
-            }
-            else if (DemoActive(t) && !Running) cap = "STRETCH  ·  " + Stretches[demoIndex].Name;
+            if (DemoActive(t) && !Running) cap = "STRETCH  ·  " + Stretches[demoIndex].Name;
             var timeColor = dark ? SpiritArt.Hex(0xE6E2DA) : Running ? Theme.Ink : Theme.Muted;
             var capColor = dark ? SpiritArt.Hex(0xB9BACB) : Theme.Muted;
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
@@ -1179,6 +1156,7 @@ namespace Stillpoint
                 timeFont?.Dispose();
                 captionFont?.Dispose();
                 bubbleFont?.Dispose();
+                plainFont?.Dispose();
             }
             base.Dispose(disposing);
         }

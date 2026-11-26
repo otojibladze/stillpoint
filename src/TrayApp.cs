@@ -140,7 +140,7 @@ namespace Stillpoint
 
         public void PlayStoneSound(StoneSound sound)
         {
-            if (Settings.StoneSounds) Sounds.PlayStone(sound);
+            if (Settings.StoneOn && Settings.StoneSounds) Sounds.PlayStone(sound);
         }
 
         public void AskName(IWin32Window owner, bool rename)
@@ -209,7 +209,7 @@ namespace Stillpoint
         async void RefreshWeather()
         {
             ticksUntilWeather = WeatherEverySeconds;
-            if (weatherBusy || !Settings.RealWeather || !Settings.HasTown) return;
+            if (weatherBusy || !Settings.StoneOn || !Settings.RealWeather || !Settings.HasTown) return;
             weatherBusy = true;
             try
             {
@@ -241,7 +241,7 @@ namespace Stillpoint
         {
             if (!form.Visible || form.WindowState == FormWindowState.Minimized) return;
             var now = DateTime.Now;
-            if (lastSeen != DateTime.MinValue && (now - lastSeen).TotalMinutes >= 20)
+            if (Settings.StoneOn && lastSeen != DateTime.MinValue && (now - lastSeen).TotalMinutes >= 20)
             {
                 var report = Garden.WhileAway(lastSeen, now, Garden.SeasonOf(now), Weather, new Random());
                 foreach (var visit in report.Visits) Album.Add(visit.At, visit.Visitor);
@@ -257,6 +257,21 @@ namespace Stillpoint
                 Settings.LastSeen = now;
                 SaveSettings();
             }
+        }
+
+        public void SetStoneOn(bool on)
+        {
+            Settings.StoneOn = on;
+            SaveSettings();
+            SyncBuddy();
+            form.ApplyStoneMode();
+            form.SyncControls();
+            if (on)
+            {
+                lastSeen = DateTime.Now;
+                RefreshWeather();
+            }
+            Refresh();
         }
 
         public void SetWindowSize(WindowSize size)
@@ -292,14 +307,14 @@ namespace Stillpoint
 
         void SyncBuddy()
         {
-            if (Settings.DesktopBuddy && buddy == null && !shutDown)
+            if (Settings.DesktopBuddy && Settings.StoneOn && buddy == null && !shutDown)
             {
                 buddy = new BuddyWindow();
                 buddy.OpenRequested += (s, e) => ShowWindow();
                 buddy.HideRequested += (s, e) => SetDesktopBuddy(false);
                 buddy.ShowOnTaskbar();
             }
-            else if (!Settings.DesktopBuddy && buddy != null)
+            else if ((!Settings.DesktopBuddy || !Settings.StoneOn) && buddy != null)
             {
                 buddy.Close();
                 buddy.Dispose();
@@ -315,6 +330,7 @@ namespace Stillpoint
                 updateNoteDue = false;
                 form.Announce("I learned something new. Pebble " + AppVersion.Text + ".");
             }
+            if (!Settings.StoneOn) return;
             if (!Settings.StoneNameAsked)
             {
                 AskName(form, rename: false);
@@ -341,7 +357,7 @@ namespace Stillpoint
             popup?.Close();
             awayPopup?.Close();
             string since = leftAt.ToString("t", System.Globalization.CultureInfo.CurrentCulture);
-            var next = new ReminderPopup("Did you get up?", $"Nothing moved since {since}. If you were away, that time won't count.", MiniMood.Look,
+            var next = new ReminderPopup("Did you get up?", $"Nothing moved since {since}. If you were away, that time won't count.", Settings.StoneOn ? MiniMood.Look : (MiniMood?)null,
                 "I got up", () => AnswerAway(true), "I was here", null);
             next.FormClosed += (s, e) => { if (awayPopup == s) awayPopup = null; };
             awayPopup = next;
@@ -568,8 +584,8 @@ namespace Stillpoint
             if (shutDown) return;
             popup?.Close();
             string body = Messages.For(sessionMark, messageRandom);
-            if (!string.IsNullOrEmpty(Settings.StoneName)) body += "\n" + Settings.StoneName + " is getting sleepy.";
-            var next = new ReminderPopup(Fmt.Words(sessionMark) + " at the computer", body, MiniMood.Yawn, "Keep sitting", null,
+            if (Settings.StoneOn && !string.IsNullOrEmpty(Settings.StoneName)) body += "\n" + Settings.StoneName + " is getting sleepy.";
+            var next = new ReminderPopup(Fmt.Words(sessionMark) + " at the computer", body, Settings.StoneOn ? MiniMood.Yawn : (MiniMood?)null, "Keep sitting", null,
                 "I got up", preview ? null : (Action)(() => SetRunning(false)));
             next.FormClosed += (s, e) => { if (popup == s) popup = null; };
             popup = next;
@@ -641,7 +657,7 @@ namespace Stillpoint
                 tray.Icon = faces[mood];
                 trayMood = mood;
             }
-            string who = string.IsNullOrEmpty(Settings.StoneName) ? "" : Settings.StoneName + " · ";
+            string who = !Settings.StoneOn || string.IsNullOrEmpty(Settings.StoneName) ? "" : Settings.StoneName + " · ";
             string text = Tracker.State == TrackState.Counting
                 ? $"Pebble: {who}{Fmt.Hm(Tracker.SessionSeconds)} this session"
                 : $"Pebble: {who}{(Tracker.State == TrackState.Stopped ? "not counting" : "paused")}";

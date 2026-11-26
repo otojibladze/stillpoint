@@ -1,7 +1,7 @@
 PEBBLE
 ======
 
-Counts how long you sit at your computer and reminds you every hour.
+Counts how long you sit at your computer and reminds you every 30 minutes.
 Pebble used to be called Stillpoint. Older copies may still be named
 Stillpoint.exe: that is fine, it updates itself either way.
 
@@ -31,7 +31,7 @@ HOW IT WORKS
 Press Start when you sit down and I GOT UP when you leave. You can also
 right-click the tray icon > Start counting / Stop counting.
 
-Every hour (1 hour, 2 hours, 3 hours...) a small window pops up in the
+Every 30 minutes (you can change it in Settings) a small window pops up in the
 bottom corner of the screen. It doesn't take over your keyboard, so you
 can keep typing or playing. Click KEEP SITTING to close it and keep
 counting, or I GOT UP to stop counting.
@@ -46,7 +46,9 @@ it. It hides by itself while a full-screen game or video is running.
 
 THE STONE
 ---------
-A small stone lives in the sand garden inside the ring.
+A small stone lives in the sand garden inside the ring. Don't want it?
+Turn off "Stone and garden" at the top of the window and Pebble is a
+plain timer: just the ring, the time and the reminders.
 - While you sit it slowly gets sleepy: its eyes droop, its sprout wilts
   and near the reminder it nods off.
 - When you press I GOT UP it stretches and hops. Butterflies only visit
@@ -55,8 +57,6 @@ A small stone lives in the sand garden inside the ring.
   After four breaks it flowers. The garden starts fresh each morning.
 - Its eyes follow your mouse. Move the mouse slowly over it to pet it,
   click to poke it (five quick pokes make it dizzy).
-- "Breathe with me" under the ring starts one minute of slow breathing:
-  breathe in while the stone grows, out while it shrinks.
 - At night (after 10 pm) and while the computer is locked it sleeps
   under the stars, unless you are counting. Sometimes a cat sleeps
   next to it.
@@ -78,9 +78,10 @@ THE GARDEN
 - Keepsakes stay in the garden for good: moss after 7 days in a row,
   a stone lantern after 50 breaks, a pond after 100, and a baby pebble
   after 30 days.
-- History > Garden shows each day's garden, a week at a time, and your
-  keepsakes. In History > Calendar, click the little garden next to a
-  day to open it.
+- The Garden button opens the garden: each day's garden, a week at a
+  time, and your keepsakes. Double-click a day to open it in History >
+  Calendar; in the calendar, click the little garden next to a day to
+  open it in the garden.
 - The first time you open Pebble after 8 pm you get a short card
   about the day: how long you sat, how often you got up, the longest
   stretch and who visited.

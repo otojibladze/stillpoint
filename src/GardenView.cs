@@ -187,11 +187,24 @@ namespace Stillpoint
                 }
         }
 
+        public event Action<DateTime> DayDoubleClicked;
+
+        DateTime? DayAt(int x)
+        {
+            int i = (int)(x / Cell);
+            return i >= 0 && i < days.Count && days[i].Date <= DateTime.Today ? days[i].Date : (DateTime?)null;
+        }
+
         protected override void OnMouseClick(MouseEventArgs e)
         {
             base.OnMouseClick(e);
-            int i = (int)(e.X / Cell);
-            if (i >= 0 && i < days.Count && days[i].Date <= DateTime.Today) DayClicked?.Invoke(days[i].Date);
+            if (DayAt(e.X) is DateTime day) DayClicked?.Invoke(day);
+        }
+
+        protected override void OnMouseDoubleClick(MouseEventArgs e)
+        {
+            base.OnMouseDoubleClick(e);
+            if (DayAt(e.X) is DateTime day) DayDoubleClicked?.Invoke(day);
         }
 
         protected override void Dispose(bool disposing)

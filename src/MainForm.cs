@@ -10,7 +10,9 @@ namespace Stillpoint
         readonly TrayApp app;
         readonly SpiritRing ring;
         readonly Label status;
-        readonly LinkLabel breathe;
+        readonly ToggleSwitch stoneToggle;
+        readonly FlatButton gardenButton;
+        readonly TableLayoutPanel bottomRow;
         readonly FlatButton startStop;
         readonly FlatButton resume;
         readonly TableLayoutPanel buttonRow;
@@ -18,7 +20,9 @@ namespace Stillpoint
         readonly Label updateStatus;
         readonly Label saveError;
         HistoryForm history;
+        GardenForm garden;
         SettingsForm settings;
+        bool syncing;
 
         public MainForm(TrayApp app)
         {
@@ -31,11 +35,14 @@ namespace Stillpoint
             var root = Ui.Column(new Padding(26, 12, 26, 18));
             root.SuspendLayout();
 
-            ring = new SpiritRing { Size = new Size(300, 300), Dock = DockStyle.Fill, Margin = new Padding(0, 6, 0, 6) };
-            status = new Label { AutoSize = true, Anchor = AnchorStyles.None, ForeColor = Theme.Muted, Margin = new Padding(0, 0, 0, 6) };
-            breathe = Ui.Link("Breathe with me");
-            breathe.Anchor = AnchorStyles.None;
-            breathe.Margin = new Padding(0, 0, 0, 14);
+            stoneToggle = new ToggleSwitch { Margin = new Padding(8, 2, 0, 0) };
+            var stoneLabel = new Label { Text = "Stone and garden", AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9f), Margin = new Padding(0), Cursor = Cursors.Hand };
+            var stoneRow = Ui.Row(stoneLabel, stoneToggle);
+            stoneRow.Anchor = AnchorStyles.Right;
+            stoneRow.Margin = new Padding(0);
+            new ToolTip().SetToolTip(stoneToggle, "Turn off to use Pebble as a plain timer");
+            ring = new SpiritRing { Size = new Size(300, 300), Dock = DockStyle.Fill, Margin = new Padding(0, 4, 0, 6) };
+            status = new Label { AutoSize = true, Anchor = AnchorStyles.None, ForeColor = Theme.Muted, Margin = new Padding(0, 0, 0, 14) };
             startStop = new FlatButton(ButtonKind.Primary) { Text = "Start", Uppercase = true, Height = 44, Dock = DockStyle.Fill, Margin = new Padding(0), Font = Theme.SemiBold(10.5f) };
             resume = new FlatButton(ButtonKind.Ghost) { Text = "Resume", Uppercase = true, Height = 44, Dock = DockStyle.Fill, Margin = new Padding(10, 0, 0, 0), Font = Theme.SemiBold(10.5f), Visible = false };
             buttonRow = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, Height = 44, Dock = DockStyle.Fill, Margin = new Padding(0) };
@@ -46,14 +53,17 @@ namespace Stillpoint
             buttonRow.Controls.Add(resume, 1, 0);
 
             var historyButton = new FlatButton(ButtonKind.Ghost) { Text = "History", Height = 40, Dock = DockStyle.Fill, Margin = new Padding(0), Font = Theme.SemiBold(10f) };
+            gardenButton = new FlatButton(ButtonKind.Ghost) { Text = "Garden", Height = 40, Dock = DockStyle.Fill, Margin = new Padding(10, 0, 0, 0), Font = Theme.SemiBold(10f) };
             var settingsButton = new FlatButton(ButtonKind.Ghost) { Size = new Size(40, 40), Margin = new Padding(10, 0, 0, 0), Glyph = Draw.Gear, AccessibleName = "Settings" };
             new ToolTip().SetToolTip(settingsButton, "Settings");
-            var bottomRow = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, Height = 40, Dock = DockStyle.Fill, Margin = new Padding(0, 12, 0, 0) };
-            bottomRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            bottomRow = new TableLayoutPanel { ColumnCount = 3, RowCount = 1, Height = 40, Dock = DockStyle.Fill, Margin = new Padding(0, 12, 0, 0) };
+            bottomRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            bottomRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             bottomRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             bottomRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             bottomRow.Controls.Add(historyButton, 0, 0);
-            bottomRow.Controls.Add(settingsButton, 1, 0);
+            bottomRow.Controls.Add(gardenButton, 1, 0);
+            bottomRow.Controls.Add(settingsButton, 2, 0);
 
             updateLink = Ui.Link("");
             updateLink.Anchor = AnchorStyles.Left;
@@ -62,9 +72,9 @@ namespace Stillpoint
             updateStatus = Ui.Small(Theme.Muted);
             saveError = Ui.Small(Theme.AccentText);
 
+            Ui.AddRow(root, stoneRow);
             Ui.AddRow(root, ring, fill: true);
             Ui.AddRow(root, status);
-            Ui.AddRow(root, breathe);
             Ui.AddRow(root, buttonRow);
             Ui.AddRow(root, bottomRow);
             Ui.AddRow(root, updateLink);
@@ -79,13 +89,28 @@ namespace Stillpoint
 
             startStop.Click += (s, e) => app.ToggleRunning();
             resume.Click += (s, e) => app.Resume();
-            historyButton.Click += (s, e) => ShowHistory();
+            historyButton.Click += (s, e) => ShowHistory(null);
+            gardenButton.Click += (s, e) => ShowGarden(null);
             settingsButton.Click += (s, e) => ShowSettings();
             updateLink.LinkClicked += (s, e) => app.InstallUpdate();
-            breathe.LinkClicked += (s, e) => ring.ToggleBreathing();
-            ring.BreathingChanged += (s, e) => Ui.SetText(breathe, ring.Breathing ? "Stop breathing" : "Breathe with me");
+            stoneToggle.CheckedChanged += (s, e) => { if (!syncing) app.SetStoneOn(stoneToggle.Checked); };
+            stoneLabel.Click += (s, e) => stoneToggle.Checked = !stoneToggle.Checked;
             ring.Visited += app.AddVisitor;
             ring.SoundRequested += app.PlayStoneSound;
+            ApplyStoneMode();
+        }
+
+        public void ApplyStoneMode()
+        {
+            bool on = app.Settings.StoneOn;
+            syncing = true;
+            stoneToggle.Checked = on;
+            syncing = false;
+            ring.Plain = !on;
+            gardenButton.Visible = on;
+            bottomRow.ColumnStyles[1] = on ? new ColumnStyle(SizeType.Percent, 50F) : new ColumnStyle(SizeType.Absolute, 0F);
+            if (history != null && !history.IsDisposed) history.GardenShown = on;
+            if (!on && garden != null && !garden.IsDisposed) garden.Close();
         }
 
         public void OnReminder() => ring.Reminder();
@@ -123,19 +148,22 @@ namespace Stillpoint
             double into = tracker.Running && interval > 0 ? tracker.SessionSeconds % interval : 0;
             float progress = interval > 0 ? (float)(into / interval) : 0;
             string state = app.DescribeState();
-            string caption;
+            string caption, note;
             switch (tracker.State)
             {
                 case TrackState.Counting:
                     int minutes = (int)Math.Ceiling((interval - into) / 60);
+                    note = minutes <= 1 ? "Reminder in a moment" : $"{minutes} min to next reminder";
                     state += minutes <= 1 ? "  ·  reminder in a moment" : $"  ·  reminder in {minutes} min";
                     caption = "THIS SESSION";
                     break;
                 case TrackState.Paused:
                     caption = "PAUSED";
+                    note = "Paused";
                     break;
                 default:
                     caption = tracker.CanResume ? "LAST SESSION" : "READY";
+                    note = "Not counting";
                     break;
             }
             var today = DateTime.Today;
@@ -149,6 +177,7 @@ namespace Stillpoint
                 Interval = interval,
                 Time = Fmt.Clock(tracker.SessionSeconds),
                 Caption = caption,
+                Note = note,
                 BreaksToday = Garden.BreaksOn(tracker.Sessions, tracker.Current, today),
                 LastEnd = tracker.Sessions.Count > 0 ? tracker.Sessions.Max(s => s.End) : default(DateTime),
                 Keepsakes = Garden.Progress(tracker.Sessions, tracker.Current, today).Earned,
@@ -176,6 +205,7 @@ namespace Stillpoint
             Ui.SetLine(saveError, app.SaveError == null ? null : "Could not save: " + app.SaveError);
 
             if (history != null && !history.IsDisposed) history.SetSessions(app.Tracker.Sessions, app.Tracker.Current, app.Album, interval);
+            if (garden != null && !garden.IsDisposed) garden.SetData(app.Tracker.Sessions, app.Tracker.Current, app.Album, interval);
             if (settings != null && !settings.IsDisposed) settings.UpdateView();
         }
 
@@ -202,12 +232,30 @@ namespace Stillpoint
             app.Exit(fromForm: true);
         }
 
-        void ShowHistory() => Ui.ShowBeside(this, ref history, () =>
+        void ShowHistory(DateTime? day)
         {
-            var next = new HistoryForm();
-            next.SetSessions(app.Tracker.Sessions, app.Tracker.Current, app.Album, app.Tracker.ReminderIntervalSeconds);
-            return next;
-        });
+            Ui.ShowBeside(this, ref history, () =>
+            {
+                var next = new HistoryForm { GardenShown = app.Settings.StoneOn };
+                next.SetSessions(app.Tracker.Sessions, app.Tracker.Current, app.Album, app.Tracker.ReminderIntervalSeconds);
+                next.GardenRequested += d => ShowGarden(d);
+                return next;
+            });
+            if (day != null) history.ShowDay(day.Value);
+        }
+
+        void ShowGarden(DateTime? day)
+        {
+            if (!app.Settings.StoneOn) return;
+            Ui.ShowBeside(this, ref garden, () =>
+            {
+                var next = new GardenForm();
+                next.SetData(app.Tracker.Sessions, app.Tracker.Current, app.Album, app.Tracker.ReminderIntervalSeconds);
+                next.CalendarRequested += d => ShowHistory(d);
+                return next;
+            });
+            if (day != null) garden.ShowDay(day.Value);
+        }
 
         void ShowSettings() => Ui.ShowBeside(this, ref settings, () => new SettingsForm(app));
     }
