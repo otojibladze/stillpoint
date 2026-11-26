@@ -65,6 +65,8 @@ namespace Stillpoint
         float rainAcc, ambientAcc;
         bool sparked = true, landed = true, petting;
         float rub, nightK = -1, cloudK, rainK, maxRain;
+        float lookX, lookY, lookMidX, lookMidY;
+        bool lookReady;
         SpiritPoints points = new SpiritPoints { Tip = new PointF(SX, 90), Head = new PointF(132, 106) };
         PointF pointer;
         bool pointerIn;
@@ -338,6 +340,25 @@ namespace Stillpoint
             StepCat(t, dt);
             StepBits(dt, t);
             pose = Pose(t);
+            SmoothLook(pose, dt);
+        }
+
+        void SmoothLook(SpiritPose p, float dt)
+        {
+            if (!lookReady)
+            {
+                lookX = lookMidX = p.LookX;
+                lookY = lookMidY = p.LookY;
+                lookReady = true;
+                return;
+            }
+            float a = 1 - (float)Math.Exp(-dt * 13);
+            lookMidX += (p.LookX - lookMidX) * a;
+            lookMidY += (p.LookY - lookMidY) * a;
+            lookX += (lookMidX - lookX) * a;
+            lookY += (lookMidY - lookY) * a;
+            p.LookX = lookX;
+            p.LookY = lookY;
         }
 
         void EmitWeather(float dt)
