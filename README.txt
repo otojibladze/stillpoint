@@ -25,7 +25,7 @@ The icon is green while it counts and grey while it doesn't.
 
 HOW IT WORKS
 ------------
-Press Start when you sit down and Stop when you leave. You can also
+Press Start when you sit down and I GOT UP when you leave. You can also
 right-click the tray icon > Start counting / Stop counting.
 
 Every hour (1 hour, 2 hours, 3 hours...) a small window pops up in the

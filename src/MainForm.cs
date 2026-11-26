@@ -136,7 +136,7 @@ namespace Stillpoint
             }
             ring.Set(progress, "THIS SESSION", Fmt.Clock(tracker.SessionSeconds), note);
             SetText(status, app.DescribeState());
-            startStop.Text = tracker.Running ? "Stop" : "Start";
+            startStop.Text = tracker.Running ? "I got up" : "Start";
             bool canResume = tracker.CanResume;
             if (resume.Visible != canResume)
             {
