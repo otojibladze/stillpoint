@@ -15,11 +15,11 @@ Set-Content $versionFile $text -Encoding utf8 -NoNewline
 
 $latest = Join-Path $root 'latest'
 New-Item -ItemType Directory -Force $latest | Out-Null
-Copy-Item (Join-Path $root 'obj\Stillpoint.exe') $latest -Force
-Copy-Item (Join-Path $root 'obj\Stillpoint.exe') (Join-Path $latest 'Pebble.exe') -Force
+Copy-Item (Join-Path $root 'obj\Pebble.exe') (Join-Path $latest 'Stillpoint.exe') -Force
+Copy-Item (Join-Path $root 'obj\Pebble.exe') $latest -Force
 Set-Content (Join-Path $latest 'version.txt') $Version -Encoding ascii -NoNewline
 
-$built = (Get-Item (Join-Path $latest 'Stillpoint.exe')).VersionInfo.FileVersion
+$built = (Get-Item (Join-Path $latest 'Pebble.exe')).VersionInfo.FileVersion
 if ($built -ne "$Version.0") { throw "Built exe reports $built, expected $Version.0" }
 
 Push-Location $root

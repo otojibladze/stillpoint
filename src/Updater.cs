@@ -29,7 +29,7 @@ namespace Stillpoint
             try
             {
                 using (var web = Client())
-                    await web.DownloadFileTaskAsync(Source + "Stillpoint.exe?t=" + DateTime.UtcNow.Ticks, partial);
+                    await web.DownloadFileTaskAsync(Source + "Pebble.exe?t=" + DateTime.UtcNow.Ticks, partial);
                 Validate(partial, expected);
                 if (File.Exists(incoming)) File.Delete(incoming);
                 File.Move(partial, incoming);

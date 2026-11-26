@@ -32,15 +32,15 @@ if ($LASTEXITCODE -ne 0) { throw 'Icon generation failed' }
 $sources = Get-ChildItem "$root\src\*.cs" | ForEach-Object { $_.FullName }
 $sources += Get-ChildItem "$root\fonts\*.ttf" | ForEach-Object { "-resource:$($_.FullName),Stillpoint.Fonts.$($_.Name)" }
 $sources += Get-ChildItem "$root\sounds\*.wav" -ErrorAction SilentlyContinue | ForEach-Object { "-resource:$($_.FullName),Stillpoint.Sounds.$($_.Name)" }
-& $csc @common -target:winexe -platform:anycpu "-win32manifest:$root\app.manifest" "-win32icon:$obj\app.ico" "-out:$obj\Stillpoint.exe" @sources
+& $csc @common -target:winexe -platform:anycpu "-win32manifest:$root\app.manifest" "-win32icon:$obj\app.ico" "-out:$obj\Pebble.exe" @sources
 if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
 
 Copy-Item "$root\README.txt" $dist -Force
 try {
-    Copy-Item "$obj\Stillpoint.exe" $dist -Force
-    Write-Host "Built $dist\Stillpoint.exe"
+    Copy-Item "$obj\Pebble.exe" $dist -Force
+    Write-Host "Built $dist\Pebble.exe"
 }
 catch {
-    Write-Warning "dist\Stillpoint.exe is in use, so it was not replaced. The new build is $obj\Stillpoint.exe"
+    Write-Warning "dist\Pebble.exe is in use, so it was not replaced. The new build is $obj\Pebble.exe"
 }
 
