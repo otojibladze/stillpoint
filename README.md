@@ -1,7 +1,6 @@
 # Stillpoint
 
-A small Windows tray app for people who want to sit less. Press Start when you sit down; every hour a reminder pops up. Stopping it, or closing a reminder, takes a small random puzzle, so it is a choice and not a reflex.
-
+A small Windows tray app for people who want to sit less. Press Start when you sit down; every hour a reminder pops up.
 **Download:** [latest/Stillpoint.exe](https://github.com/otojibladze/stillpoint/raw/main/latest/Stillpoint.exe) (Windows 10/11, nothing to install). How to use it: [README.txt](README.txt).
 
 ## Build and publish

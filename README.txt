@@ -28,17 +28,9 @@ HOW IT WORKS
 Press Start when you sit down and Stop when you leave. You can also
 right-click the tray icon > Start counting / Stop counting.
 
-Stopping takes a little effort on purpose: you solve a small random
-puzzle. It can be picking shapes, typing CONFIRM, breathing with a
-circle, drawing a circle, stacking a stone, waiting for a lotus to open,
-pouring tea, finding a shadow, spotting a difference and more. When you
-have done it, press the button (Stop, Close reminder...). A wrong answer gives
-you a new random puzzle. Exiting the app while it counts asks for a
-puzzle too.
-
 Every hour (1 hour, 2 hours, 3 hours...) a small window pops up in the
 bottom corner of the screen. It doesn't take over your keyboard, so you
-can keep typing or playing. To close it you click OK and solve a puzzle.
+can keep typing or playing. Click OK to close it.
 Change "Remind me every 60 minutes" to get it more or less often.
 Click "Preview" to see what it looks like.
 

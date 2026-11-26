@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Media;
 using System.Threading;
 using System.Windows.Forms;
@@ -21,10 +20,8 @@ namespace Stillpoint
         readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer { Interval = 1000 };
         readonly Stopwatch clock = Stopwatch.StartNew();
         readonly RegisteredWaitHandle showWait;
-        readonly HotKey quitKey;
         ReminderPopup popup;
         readonly Random messageRandom = new Random();
-        bool challengeOpen;
         double lastClock;
         int ticksSinceSave;
         bool shutDown;
@@ -68,8 +65,7 @@ namespace Stillpoint
             SystemEvents.PowerModeChanged += OnPowerModeChanged;
             SystemEvents.SessionEnding += OnSessionEnding;
             showWait = ThreadPool.RegisterWaitForSingleObject(showEvent, (state, timedOut) => OnShowSignal(), null, Timeout.Infinite, false);
-            quitKey = new HotKey(HotKey.Control | HotKey.Alt | HotKey.Shift, Keys.Q, QuitNow);
-            if (!quitKey.Registered) store.Log("Quit shortcut Ctrl+Alt+Shift+Q is taken by another app");
+
 
             if (!Settings.FirstRunDone)
             {
@@ -205,57 +201,13 @@ namespace Stillpoint
                 ToolTipIcon.Info);
         }
 
-        public void ToggleRunning()
-        {
-            if (Tracker.Running) RequestStop();
-            else SetRunning(true);
-        }
-
-        public bool RequestStop() => RequestStop(null);
-
-        bool RequestStop(Form above)
-        {
-            if (!Tracker.Running) return true;
-            if (!Verify("Stop counting?", "To stop, solve this puzzle.", "Stop", "Keep counting", above)) return false;
-            SetRunning(false);
-            return true;
-        }
-
-        bool Verify(string title, string hint, string confirmText, string cancelText, Form above = null)
-        {
-            if (challengeOpen) return false;
-            challengeOpen = true;
-            try
-            {
-                using (var challenge = new ChallengeDialog(title, hint, confirmText, cancelText) { Above = above })
-                {
-                    var owner = form.Visible ? form : null;
-                    return challenge.ShowDialog(owner) == DialogResult.OK;
-                }
-            }
-            finally
-            {
-                challengeOpen = false;
-            }
-        }
+        public void ToggleRunning() => SetRunning(!Tracker.Running);
 
         void ExitFromMenu()
         {
-            if (RequestStop()) Exit();
+            if (Tracker.Running) SetRunning(false);
+            Exit();
         }
-
-        void QuitNow()
-        {
-            if (exited) return;
-            foreach (var dialog in Application.OpenForms.OfType<ChallengeDialog>().ToList()) dialog.DialogResult = DialogResult.Cancel;
-            form.BeginInvoke((Action)(() =>
-            {
-                if (exited) return;
-                if (Tracker.Running) SetRunning(false);
-                Exit();
-            }));
-        }
-
         public void Resume()
         {
             if (Tracker.CanResume) SetRunning(true, continueLast: true);
@@ -288,9 +240,7 @@ namespace Stillpoint
             if (shutDown) return;
             popup?.Close();
             string body = Messages.For(sessionMark, messageRandom);
-            ReminderPopup next = null;
-            Func<bool> confirmClose = () => Verify("Close the reminder?", "To close the reminder, solve this puzzle.", "Close reminder", "Cancel", next);
-            next = new ReminderPopup(Fmt.Words(sessionMark) + " at the computer", Fmt.Badge(sessionMark), body, confirmClose, preview ? null : (Func<bool>)(() => RequestStop(next)));
+            var next = new ReminderPopup(Fmt.Words(sessionMark) + " at the computer", Fmt.Badge(sessionMark), body, preview ? null : (Action)(() => SetRunning(false)));
             next.FormClosed += (s, e) => { if (popup == s) popup = null; };
             popup = next;
             next.ShowNearTray();
@@ -456,7 +406,6 @@ namespace Stillpoint
             if (shutDown) return;
             timer.Stop();
             showWait.Unregister(null);
-            quitKey.Dispose();
             SystemEvents.SessionSwitch -= OnSessionSwitch;
             SystemEvents.PowerModeChanged -= OnPowerModeChanged;
             SystemEvents.SessionEnding -= OnSessionEnding;

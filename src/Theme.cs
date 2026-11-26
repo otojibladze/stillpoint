@@ -21,7 +21,6 @@ namespace Stillpoint
         public static readonly Color Accent = Color.FromArgb(0xC4, 0x60, 0x40);
         public static readonly Color AccentText = Color.FromArgb(0x9A, 0x3F, 0x22);
         public static readonly Color Tile = Color.FromArgb(0xE2, 0xDF, 0xDB);
-        public static readonly Color TileSelected = Color.FromArgb(0xF3, 0xE3, 0xDC);
         public static readonly Color OnInk = Color.FromArgb(0xF7, 0xF6, 0xF4);
 
         static readonly Dictionary<string, FontFamily> families = new Dictionary<string, FontFamily>();

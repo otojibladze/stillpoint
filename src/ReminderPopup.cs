@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -10,7 +10,7 @@ namespace Stillpoint
         const int WsExToolWindow = 0x80;
         const int WsExNoActivate = 0x08000000;
 
-        public ReminderPopup(string title, string badge, string body, Func<bool> confirmClose, Func<bool> stop)
+        public ReminderPopup(string title, string badge, string body, Action stop)
         {
             SuspendLayout();
             AutoScaleDimensions = new SizeF(96F, 96F);
@@ -51,12 +51,12 @@ namespace Stillpoint
                 Margin = new Padding(24, 0, 0, 0),
             };
             var ok = new FlatButton(ButtonKind.Primary) { Text = "OK", MinimumSize = new Size(64, 36), Height = 36, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(8, 0, 0, 0), Font = Theme.SemiBold(9.5f) };
-            ok.Click += (s, e) => { if (confirmClose == null || confirmClose()) Close(); };
+            ok.Click += (s, e) => Close();
             buttons.Controls.Add(ok);
             if (stop != null)
             {
                 var stopButton = new FlatButton(ButtonKind.Ghost) { Text = "Stop counting", MinimumSize = new Size(88, 36), Height = 36, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0), Font = Theme.SemiBold(9.5f) };
-                stopButton.Click += (s, e) => { if (stop()) Close(); };
+                stopButton.Click += (s, e) => { stop(); Close(); };
                 buttons.Controls.Add(stopButton);
             }
 
@@ -108,7 +108,6 @@ namespace Stillpoint
 
         public void FollowCursor()
         {
-            if (Form.ActiveForm is ChallengeDialog) return;
             var screen = Screen.FromPoint(Cursor.Position);
             if (!screen.Equals(Screen.FromControl(this))) PlaceOn(screen);
         }
