@@ -100,7 +100,7 @@ namespace Stillpoint
             Ui.AddRow(root, footer);
             Ui.AddRow(root, updateStatus);
 
-            Controls.Add(Ui.QuietScroll(root));
+            Controls.Add(new ScrollView(root));
             root.ResumeLayout(false);
             root.PerformLayout();
             ResumeLayout(false);

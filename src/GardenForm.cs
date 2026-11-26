@@ -65,7 +65,7 @@ namespace Stillpoint
                 root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
                 root.Controls.Add(c, 0, root.RowCount++);
             }
-            Controls.Add(Ui.QuietScroll(root));
+            Controls.Add(new ScrollView(root));
             ResumeLayout(false);
             PerformLayout();
 

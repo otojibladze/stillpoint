@@ -77,22 +77,6 @@ namespace Stillpoint
         public static TableLayoutPanel Column(Padding padding) =>
             new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = padding, BackColor = Theme.Background, ColumnStyles = { new ColumnStyle(SizeType.Percent, 100F) } };
 
-        public static Control QuietScroll(ScrollableControl content)
-        {
-            var clip = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0), BackColor = content.BackColor };
-            content.Dock = DockStyle.None;
-            content.AutoScroll = true;
-            clip.Controls.Add(content);
-            Action fit = () =>
-            {
-                var bounds = new Rectangle(0, 0, clip.ClientSize.Width + (content.VerticalScroll.Visible ? SystemInformation.VerticalScrollBarWidth : 0), clip.ClientSize.Height);
-                if (content.Bounds != bounds) content.Bounds = bounds;
-            };
-            clip.Resize += (s, e) => fit();
-            content.ClientSizeChanged += (s, e) => fit();
-            return clip;
-        }
-
         public static void SetupWindow(Form form, string title, Size client)
         {
             form.AutoScaleDimensions = new SizeF(96F, 96F);
