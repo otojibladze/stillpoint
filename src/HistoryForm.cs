@@ -50,7 +50,7 @@ namespace Stillpoint
             var tabs = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Anchor = AnchorStyles.Right, Margin = new Padding(0) };
             tabs.Controls.Add(listTab);
             tabs.Controls.Add(calendarTab);
-            var head = Sides(title, tabs);
+            var head = Ui.TwoSides(title, tabs);
             head.Margin = new Padding(0, 0, 0, 4);
 
             summary = new Label { AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9.5f), Margin = new Padding(0, 0, 0, 12) };
@@ -60,7 +60,7 @@ namespace Stillpoint
             month = new MonthView { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) };
             dayTitle = new Label { AutoSize = true, Font = Theme.SemiBold(10f), Anchor = AnchorStyles.Left, Margin = new Padding(0) };
             dayTotal = new Label { AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9.5f), Anchor = AnchorStyles.Right, Margin = new Padding(0) };
-            var dayHead = Sides(dayTitle, dayTotal);
+            var dayHead = Ui.TwoSides(dayTitle, dayTotal);
             dayHead.Margin = new Padding(0, 0, 0, 8);
             day = new SessionList { Dock = DockStyle.Fill, Margin = new Padding(0), EmptyText = "Nothing counted on this day." };
             calendarPanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = new Padding(0), Visible = false };
@@ -97,7 +97,7 @@ namespace Stillpoint
             double today = Total(totals, DateTime.Today, 1);
             double week = Total(totals, DateTime.Today, 7);
             double everything = totals.Values.Sum();
-            SetText(summary, $"Today {Fmt.Hm(today)}   ·   Last 7 days {Fmt.Hm(week)}   ·   All time {Fmt.Hm(everything)}");
+            Ui.SetText(summary, $"Today {Fmt.Hm(today)}   ·   Last 7 days {Fmt.Hm(week)}   ·   All time {Fmt.Hm(everything)}");
             all.SetRows(GroupedRows(totals));
             month.SetTotals(totals);
             RefreshDay(toTop: false);
@@ -120,8 +120,8 @@ namespace Stillpoint
             var date = month.Selected;
             var list = sessions.Where(s => s.Start.Date == date).OrderBy(s => s.Start).ToList();
             double total = list.Sum(s => s.Seconds);
-            SetText(dayTitle, date.ToString("dddd d MMMM yyyy", culture));
-            SetText(dayTotal, list.Count == 0 ? "" : $"{Fmt.Hm(total)} in {Count(list.Count)}");
+            Ui.SetText(dayTitle, date.ToString("dddd d MMMM yyyy", culture));
+            Ui.SetText(dayTotal, list.Count == 0 ? "" : $"{Fmt.Hm(total)} in {Count(list.Count)}");
             day.SetRows(list.Select(s => new ListRow { Left = Range(s), Right = Length(s.Seconds) }).ToList(), toTop);
         }
 
@@ -178,22 +178,7 @@ namespace Stillpoint
 
         static string Count(int n) => n == 1 ? "1 session" : n + " sessions";
 
-        static void SetText(Label label, string text)
-        {
-            if (label.Text != text) label.Text = text;
-        }
-
         static FlatButton Tab(string text) => new FlatButton(ButtonKind.Ghost) { Text = text, AutoSize = true, Height = 30, Margin = new Padding(0), Font = Theme.SemiBold(9.5f) };
-
-        static TableLayoutPanel Sides(Control left, Control right)
-        {
-            var table = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
-            table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            table.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            table.Controls.Add(left, 0, 0);
-            table.Controls.Add(right, 1, 0);
-            return table;
-        }
 
         protected override void OnHandleCreated(EventArgs e)
         {

@@ -14,6 +14,7 @@ namespace Stillpoint
 
         public bool Running;
         public int ReminderMinutes = 60;
+        public string Sound = Sounds.Default;
         public bool FirstRunDone;
         public bool TrayTipShown;
     }
@@ -69,6 +70,7 @@ namespace Stillpoint
                         if (int.TryParse(value, NumberStyles.Integer, Inv, out int minutes))
                             settings.ReminderMinutes = Math.Max(Settings.MinReminderMinutes, Math.Min(Settings.MaxReminderMinutes, minutes));
                         break;
+                    case "sound": settings.Sound = value; break;
                     case "firstRunDone": settings.FirstRunDone = on; break;
                     case "trayTipShown": settings.TrayTipShown = on; break;
                 }
@@ -83,6 +85,7 @@ namespace Stillpoint
             {
                 "running=" + Flag(s.Running),
                 "reminderMinutes=" + s.ReminderMinutes.ToString(Inv),
+                "sound=" + s.Sound,
                 "firstRunDone=" + Flag(s.FirstRunDone),
                 "trayTipShown=" + Flag(s.TrayTipShown),
             };

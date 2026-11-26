@@ -1,6 +1,5 @@
 using System;
 using System.Drawing;
-using System.Globalization;
 using System.Windows.Forms;
 
 namespace Stillpoint
@@ -13,32 +12,21 @@ namespace Stillpoint
         readonly FlatButton startStop;
         readonly FlatButton resume;
         readonly TableLayoutPanel buttonRow;
-        readonly UnderlineBox reminderMinutes;
-        readonly FlatButton historyButton;
-        HistoryForm history;
-        readonly ToggleSwitch startWithWindows;
         readonly LinkLabel updateLink;
         readonly Label updateStatus;
         readonly Label saveError;
-        bool syncing;
+        HistoryForm history;
+        SettingsForm settings;
 
         public MainForm(TrayApp app)
         {
             this.app = app;
             SuspendLayout();
-            AutoScaleDimensions = new SizeF(96F, 96F);
-            AutoScaleMode = AutoScaleMode.Dpi;
-            Font = Theme.Regular(10f);
-            ForeColor = Theme.Ink;
-            BackColor = Theme.Background;
-            Text = "Stillpoint";
-            ClientSize = new Size(400, 600);
-            MinimumSize = new Size(380, 560);
+            Ui.SetupWindow(this, "Stillpoint", new Size(400, 560));
+            MinimumSize = new Size(380, 520);
             StartPosition = FormStartPosition.CenterScreen;
-            MaximizeBox = false;
 
-            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(26, 12, 26, 16), BackColor = Theme.Background };
-            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            var root = Ui.Column(new Padding(26, 12, 26, 18));
             root.SuspendLayout();
 
             ring = new SessionRing { Size = new Size(300, 300), Anchor = AnchorStyles.None, Margin = new Padding(0, 6, 0, 6) };
@@ -52,36 +40,30 @@ namespace Stillpoint
             buttonRow.Controls.Add(startStop, 0, 0);
             buttonRow.Controls.Add(resume, 1, 0);
 
-            reminderMinutes = new UnderlineBox(10f, 44, HorizontalAlignment.Center) { Anchor = AnchorStyles.Left, Margin = new Padding(8, 0, 8, 0) };
-            var preview = Link("Preview");
-            var reminderLeft = Row(
-                new Label { Text = "Remind me every", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0) },
-                reminderMinutes,
-                new Label { Text = "minutes", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0) });
-            var reminderRow = TwoSides(reminderLeft, preview);
-            reminderRow.Margin = new Padding(0, 18, 0, 14);
+            var historyButton = new FlatButton(ButtonKind.Ghost) { Text = "History", Height = 40, Dock = DockStyle.Fill, Margin = new Padding(0), Font = Theme.SemiBold(10f) };
+            var settingsButton = new FlatButton(ButtonKind.Ghost) { Size = new Size(40, 40), Margin = new Padding(10, 0, 0, 0), Glyph = Draw.Gear, AccessibleName = "Settings" };
+            new ToolTip().SetToolTip(settingsButton, "Settings");
+            var bottomRow = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, Height = 40, Dock = DockStyle.Fill, Margin = new Padding(0, 12, 0, 0) };
+            bottomRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            bottomRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            bottomRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            bottomRow.Controls.Add(historyButton, 0, 0);
+            bottomRow.Controls.Add(settingsButton, 1, 0);
 
-            historyButton = new FlatButton(ButtonKind.Ghost) { Text = "History", Height = 40, Dock = DockStyle.Fill, Margin = new Padding(0), Font = Theme.SemiBold(10f) };
+            updateLink = Ui.Link("");
+            updateLink.Anchor = AnchorStyles.Left;
+            updateLink.Margin = new Padding(0, 10, 0, 0);
+            updateLink.Visible = false;
+            updateStatus = Ui.Small(Theme.Muted);
+            saveError = Ui.Small(Theme.AccentText);
 
-            updateStatus = Small(Theme.Muted);
-            saveError = Small(Theme.AccentText);
-
-            startWithWindows = new ToggleSwitch { Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 8, 0) };
-            var autoLabel = new Label { Text = "Start with Windows", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0), Font = Theme.Regular(9f), Cursor = Cursors.Hand };
-            var version = new Label { Text = "v" + AppVersion.Text + "  ·", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0), Font = Theme.Regular(9f), ForeColor = Theme.Muted };
-            updateLink = Link("Check for updates");
-            updateLink.Font = Theme.Regular(9f);
-            var footer = TwoSides(Row(startWithWindows, autoLabel), Row(version, updateLink));
-            footer.Margin = new Padding(0, 12, 0, 0);
-
-            AddRow(root, ring, fill: true);
-            AddRow(root, status);
-            AddRow(root, buttonRow);
-            AddRow(root, reminderRow);
-            AddRow(root, historyButton);
-            AddRow(root, updateStatus);
-            AddRow(root, saveError);
-            AddRow(root, footer);
+            Ui.AddRow(root, ring, fill: true);
+            Ui.AddRow(root, status);
+            Ui.AddRow(root, buttonRow);
+            Ui.AddRow(root, bottomRow);
+            Ui.AddRow(root, updateLink);
+            Ui.AddRow(root, updateStatus);
+            Ui.AddRow(root, saveError);
 
             Controls.Add(root);
             root.ResumeLayout(false);
@@ -92,25 +74,13 @@ namespace Stillpoint
             startStop.Click += (s, e) => app.ToggleRunning();
             resume.Click += (s, e) => app.Resume();
             historyButton.Click += (s, e) => ShowHistory();
-            reminderMinutes.Box.KeyPress += (s, e) => { if (!char.IsDigit(e.KeyChar) && !char.IsControl(e.KeyChar)) e.Handled = true; };
-            reminderMinutes.Box.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; CommitReminder(); } };
-            reminderMinutes.Box.Leave += (s, e) => CommitReminder();
-            preview.LinkClicked += (s, e) => app.ShowReminder(app.Settings.ReminderMinutes * 60, preview: true);
-            startWithWindows.CheckedChanged += (s, e) => { if (!syncing) { app.SetAutoStart(startWithWindows.Checked); SyncControls(); } };
-            autoLabel.Click += (s, e) => startWithWindows.Checked = !startWithWindows.Checked;
-            updateLink.LinkClicked += (s, e) =>
-            {
-                if (app.UpdateAvailable != null) app.InstallUpdate();
-                else app.CheckForUpdates(manual: true);
-            };
+            settingsButton.Click += (s, e) => ShowSettings();
+            updateLink.LinkClicked += (s, e) => app.InstallUpdate();
         }
 
         public void SyncControls()
         {
-            syncing = true;
-            reminderMinutes.Box.Text = app.Settings.ReminderMinutes.ToString(CultureInfo.InvariantCulture);
-            startWithWindows.Checked = app.AutoStartEnabled;
-            syncing = false;
+            if (settings != null && !settings.IsDisposed) settings.SyncControls();
         }
 
         public void UpdateView()
@@ -135,7 +105,7 @@ namespace Stillpoint
                     break;
             }
             ring.Set(progress, "THIS SESSION", Fmt.Clock(tracker.SessionSeconds), note);
-            SetText(status, app.DescribeState());
+            Ui.SetText(status, app.DescribeState());
             startStop.Text = tracker.Running ? "I got up" : "Start";
             bool canResume = tracker.CanResume;
             if (resume.Visible != canResume)
@@ -144,13 +114,15 @@ namespace Stillpoint
                 buttonRow.ColumnStyles[1] = canResume ? new ColumnStyle(SizeType.Percent, 50F) : new ColumnStyle(SizeType.Absolute, 0F);
             }
 
-            SetLine(updateStatus, app.UpdateStatus);
-            SetLine(saveError, app.SaveError == null ? null : "Could not save: " + app.SaveError);
-            string link = app.UpdateAvailable != null ? $"Update to {app.UpdateAvailable}" : "Check for updates";
-            if (updateLink.Text != link) updateLink.Text = link;
+            bool hasUpdate = app.UpdateAvailable != null;
+            updateLink.Visible = hasUpdate;
+            if (hasUpdate) Ui.SetText(updateLink, $"Update to {app.UpdateAvailable}");
             updateLink.Enabled = !app.UpdateBusy;
+            Ui.SetLine(updateStatus, app.UpdateStatus);
+            Ui.SetLine(saveError, app.SaveError == null ? null : "Could not save: " + app.SaveError);
 
             if (history != null && !history.IsDisposed) history.SetSessions(app.Tracker.Sessions, app.Tracker.Current);
+            if (settings != null && !settings.IsDisposed) settings.UpdateView();
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -176,96 +148,13 @@ namespace Stillpoint
             app.Exit(fromForm: true);
         }
 
-        void CommitReminder()
+        void ShowHistory() => Ui.ShowBeside(this, ref history, () =>
         {
-            if (syncing) return;
-            if (int.TryParse(reminderMinutes.Box.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minutes))
-            {
-                minutes = Math.Max(Settings.MinReminderMinutes, Math.Min(Settings.MaxReminderMinutes, minutes));
-                if (minutes != app.Settings.ReminderMinutes) app.SetReminderMinutes(minutes);
-            }
-            SyncControls();
-        }
+            var next = new HistoryForm();
+            next.SetSessions(app.Tracker.Sessions, app.Tracker.Current);
+            return next;
+        });
 
-        void ShowHistory()
-        {
-            if (history == null || history.IsDisposed)
-            {
-                history = new HistoryForm { Icon = Icon, Owner = this };
-                history.SetSessions(app.Tracker.Sessions, app.Tracker.Current);
-                var area = Screen.FromControl(this).WorkingArea;
-                int x = Right + 12 + history.Width <= area.Right ? Right + 12 : Math.Max(area.Left, Left - 12 - history.Width);
-                history.Location = new Point(x, Math.Max(area.Top, Math.Min(Top, area.Bottom - history.Height)));
-                history.Show();
-                return;
-            }
-            if (history.WindowState == FormWindowState.Minimized) history.WindowState = FormWindowState.Normal;
-            history.Activate();
-        }
-
-        static void SetText(Label label, string text)
-        {
-            if (label.Text != text) label.Text = text;
-        }
-
-        static void SetLine(Label label, string text)
-        {
-            label.Visible = text != null;
-            if (text != null) SetText(label, text);
-        }
-
-        static Label Small(Color color) => new Label
-        {
-            AutoSize = true,
-            Visible = false,
-            ForeColor = color,
-            Font = Theme.Regular(9f),
-            Anchor = AnchorStyles.Left | AnchorStyles.Right,
-            Margin = new Padding(0, 8, 0, 0),
-        };
-
-        static LinkLabel Link(string text) => new LinkLabel
-        {
-            Text = text,
-            AutoSize = true,
-            Anchor = AnchorStyles.Right,
-            Margin = new Padding(0),
-            LinkColor = Theme.AccentText,
-            ActiveLinkColor = Theme.Accent,
-            VisitedLinkColor = Theme.AccentText,
-            LinkBehavior = LinkBehavior.HoverUnderline,
-        };
-
-        static FlowLayoutPanel Row(params Control[] controls)
-        {
-            var row = new FlowLayoutPanel
-            {
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                WrapContents = false,
-                Margin = new Padding(0),
-                Anchor = AnchorStyles.Left,
-            };
-            row.Controls.AddRange(controls);
-            return row;
-        }
-
-        static TableLayoutPanel TwoSides(Control left, Control right)
-        {
-            var table = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
-            table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            table.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            left.Anchor = AnchorStyles.Left;
-            right.Anchor = AnchorStyles.Right;
-            table.Controls.Add(left, 0, 0);
-            table.Controls.Add(right, 1, 0);
-            return table;
-        }
-
-        static void AddRow(TableLayoutPanel table, Control control, bool fill = false)
-        {
-            table.RowStyles.Add(fill ? new RowStyle(SizeType.Percent, 100F) : new RowStyle(SizeType.AutoSize));
-            table.Controls.Add(control, 0, table.RowCount++);
-        }
+        void ShowSettings() => Ui.ShowBeside(this, ref settings, () => new SettingsForm(app));
     }
 }

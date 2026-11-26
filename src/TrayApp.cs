@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.Media;
 using System.Threading;
 using System.Windows.Forms;
 using Microsoft.Win32;
@@ -56,7 +55,7 @@ namespace Stillpoint
             open.Font = new Font(open.Font, FontStyle.Bold);
             startStopItem = new ToolStripMenuItem("Start counting", null, (s, e) => ToggleRunning());
             resumeItem = new ToolStripMenuItem("Resume counting", null, (s, e) => Resume());
-            var folder = new ToolStripMenuItem("Open data folder", null, (s, e) => Process.Start("explorer.exe", "\"" + store.Dir + "\""));
+            var folder = new ToolStripMenuItem("Open data folder", null, (s, e) => OpenDataFolder());
             menu.Items.AddRange(new ToolStripItem[] { open, startStopItem, resumeItem, folder, new ToolStripSeparator(), new ToolStripMenuItem("Exit", null, (s, e) => ExitFromMenu()) });
             tray = new NotifyIcon { Icon = iconOff, Text = "Stillpoint", ContextMenuStrip = menu, Visible = true };
             tray.MouseClick += (s, e) => { if (e.Button == MouseButtons.Left) ShowWindow(); };
@@ -229,6 +228,16 @@ namespace Stillpoint
             Tracker.ReminderIntervalSeconds = minutes * 60;
         });
 
+        public void OpenDataFolder() => Process.Start("explorer.exe", "\"" + Store.Dir + "\"");
+
+        public void SetSound(string id)
+        {
+            Settings.Sound = Sounds.Normalize(id);
+            SaveSettings();
+            Sounds.Play(Settings.Sound);
+            Refresh();
+        }
+
         public void SetAutoStart(bool on)
         {
             TrySetAutoStart(on);
@@ -244,7 +253,7 @@ namespace Stillpoint
             next.FormClosed += (s, e) => { if (popup == s) popup = null; };
             popup = next;
             next.ShowNearTray();
-            SystemSounds.Asterisk.Play();
+            Sounds.Play(Sounds.Normalize(Settings.Sound));
         }
 
         public void Exit(bool fromForm = false)

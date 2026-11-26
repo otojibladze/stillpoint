@@ -1,4 +1,4 @@
-﻿$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 
 function Find-Csc {
@@ -30,6 +30,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Icon generation failed' }
 
 $sources = Get-ChildItem "$root\src\*.cs" | ForEach-Object { $_.FullName }
 $sources += Get-ChildItem "$root\fonts\*.ttf" | ForEach-Object { "-resource:$($_.FullName),Stillpoint.Fonts.$($_.Name)" }
+$sources += Get-ChildItem "$root\sounds\*.wav" -ErrorAction SilentlyContinue | ForEach-Object { "-resource:$($_.FullName),Stillpoint.Sounds.$($_.Name)" }
 & $csc @common -target:winexe -platform:anycpu "-win32manifest:$root\app.manifest" "-win32icon:$obj\app.ico" "-out:$obj\Stillpoint.exe" @sources
 if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
 

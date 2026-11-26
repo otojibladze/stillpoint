@@ -1,4 +1,4 @@
-﻿STILLPOINT
+STILLPOINT
 ==========
 
 Counts how long you sit at your computer and reminds you every hour.
@@ -32,8 +32,9 @@ Every hour (1 hour, 2 hours, 3 hours...) a small window pops up in the
 bottom corner of the screen. It doesn't take over your keyboard, so you
 can keep typing or playing. Click KEEP SITTING to close it and keep
 counting, or I GOT UP to stop counting.
-Change "Remind me every 60 minutes" to get it more or less often.
-Click "Preview" to see what it looks like.
+The gear button next to History opens Settings. There you can change
+"Remind me every 60 minutes", pick the reminder sound (or No sound),
+and click "Preview" to see and hear what it looks like.
 
 Each Start begins a new session at 0:00:00. After you stop, Resume
 carries on the last session instead, so a short break does not split
@@ -55,12 +56,12 @@ Stillpoint checks for a new version a few times a day. When there is
 one, a message pops up and the window shows "Update to ...". Click it:
 the app downloads the new version and restarts by itself in a couple of
 seconds. Your sessions and settings stay, and a running session keeps
-counting. You can also click "Check for updates" any time.
+counting. You can also click "Check for updates" in Settings any time.
 
 
 YOUR DATA
 ---------
-Click "Open data folder" in the window. sessions.csv has one line per
+Click "Open data folder" in Settings. sessions.csv has one line per
 session (start, end, seconds, length) and opens in Excel. It is saved
 every minute.
 
@@ -75,7 +76,7 @@ GOOD TO KNOW
 
 UNINSTALL
 ---------
-Untick "Start with Windows", right-click the tray icon > Exit, then delete
+Untick "Start with Windows" in Settings, right-click the tray icon > Exit, then delete
 Stillpoint.exe. Your data is in %LOCALAPPDATA%\Stillpoint if you want to
 delete that too.
 

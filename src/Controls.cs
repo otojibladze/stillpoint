@@ -30,6 +30,24 @@ namespace Stillpoint
         public static void Text(Graphics g, string text, Font font, Color color, Rectangle bounds, TextFormatFlags align) =>
             TextRenderer.DrawText(g, text, font, bounds, color, align | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
 
+        public static void Gear(Graphics g, Rectangle bounds, Color color)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            float r = Math.Min(bounds.Width, bounds.Height) * 0.2f;
+            float cx = bounds.Left + bounds.Width / 2f, cy = bounds.Top + bounds.Height / 2f;
+            using (var teeth = new Pen(color, r * 0.42f) { StartCap = LineCap.Flat, EndCap = LineCap.Flat })
+            {
+                for (int i = 0; i < 8; i++)
+                {
+                    double a = i * Math.PI / 4;
+                    float dx = (float)Math.Cos(a), dy = (float)Math.Sin(a);
+                    g.DrawLine(teeth, cx + dx * r * 0.7f, cy + dy * r * 0.7f, cx + dx * r * 1.18f, cy + dy * r * 1.18f);
+                }
+            }
+            using (var body = new Pen(color, r * 0.42f))
+                g.DrawEllipse(body, cx - r * 0.66f, cy - r * 0.66f, r * 1.32f, r * 1.32f);
+        }
+
         public static void Ring(Graphics g, RectangleF bounds, float width, Color track, Color fill, float progress)
         {
             var r = RectangleF.Inflate(bounds, -width / 2, -width / 2);
@@ -97,9 +115,16 @@ namespace Stillpoint
                     text = Enabled ? Theme.Ink : Theme.Muted;
                 }
             }
+            if (Glyph != null)
+            {
+                Glyph(g, ClientRectangle, text);
+                return;
+            }
             string label = Uppercase ? Text.ToUpperInvariant() : Text;
             Draw.Text(g, label, Font, text, ClientRectangle, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
+
+        public Action<Graphics, Rectangle, Color> Glyph { get; set; }
     }
 
     sealed class SessionRing : Control
