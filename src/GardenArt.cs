@@ -56,10 +56,10 @@ namespace Stillpoint
 
     sealed class Traces
     {
-        public float SnailTrack, Paws;
+        public float SnailTrack, Paws, FoxPrints;
         public bool Feather;
         public int Leaves;
-        public bool Any => SnailTrack > 0.01f || Paws > 0.01f || Feather || Leaves > 0;
+        public bool Any => SnailTrack > 0.01f || Paws > 0.01f || FoxPrints > 0.01f || Feather || Leaves > 0;
     }
 
     static class GardenArt
@@ -67,6 +67,50 @@ namespace Stillpoint
         public const float StoneX = 150, StoneGround = 194, StoneR = 56, Horizon = 174, BabyR = 11;
         public static readonly PointF LanternAt = new PointF(262, 192), PondAt = new PointF(72, 184), SnowmanAt = new PointF(40, 196);
         public static readonly PointF BabyAt = new PointF(220, 201), CatAt = new PointF(229, 217), FrogAt = new PointF(90, 213);
+        public static readonly PointF DigAt = new PointF(204, 216), SproutAt = new PointF(193, 218), FoxAt = new PointF(52, 217), MoonAt = new PointF(206, 66);
+        public const float LadybugSeat = 1.32f * Pi, OwlSeat = 1.37f * Pi;
+
+        public static PointF StoneSurface(SpiritPose p, float a, float inset = 0.99f)
+        {
+            float rx = StoneR, ry = StoneR * 0.84f, ground = StoneGround - (p.Cushion ? 10 : 0);
+            float c = Cos(a), s = Sin(a);
+            float y = s > 0 ? (float)Math.Pow(s, 0.72) * 0.94f : s;
+            float x = Math.Sign(c) * (float)Math.Pow(Math.Abs(c), 0.88) + 0.05f * s;
+            float lx = x * rx * inset * p.Sx, ly = (y * ry * inset - ry * 0.94f) * p.Sy;
+            float tc = Cos(p.Tilt), ts = Sin(p.Tilt);
+            return new PointF(StoneX + lx * tc - ly * ts, ground + p.Dy + lx * ts + ly * tc);
+        }
+
+        public static PointF OwlPerch(SpiritPose p, Keepsake keepsakes) =>
+            (keepsakes & Keepsake.Lantern) != 0 ? new PointF(LanternAt.X, LanternAt.Y - 37.5f) : StoneSurface(p, OwlSeat);
+
+        public static void DrawDig(Graphics g, float hole, float mound, Season season, float night)
+        {
+            float x = DigAt.X, y = DigAt.Y;
+            if (hole > 0.01f) FillEllipse(g, Alpha(Mix(Hex(0x7E6A52), Hex(0x25262F), night), 0.8f), x, y, 3.8f * hole, 1.3f * hole);
+            if (mound <= 0.01f) return;
+            var sand = Mix(SandDay(season), SandNight(season), night);
+            FillEllipse(g, Alpha(Mix(Hex(0x9C8668), Hex(0x2C2E3A), night), 0.35f * mound), x + 0.4f, y + 0.7f, 5.6f * mound, 1.5f * mound);
+            FillEllipse(g, Mix(sand, Hex(0x9C8668), 0.35f), x, y - 0.5f * mound, 4.8f * mound, 2 * mound);
+            FillEllipse(g, Alpha(Color.White, 0.4f * (1 - night) * mound), x - 1.3f, y - 1.4f * mound, 2.1f * mound, 0.6f * mound);
+        }
+
+        public static void DrawSprout(Graphics g, float night, float wind)
+        {
+            float x = SproutAt.X, y = SproutAt.Y;
+            var green = Mix(Hex(0x7FA35F), Hex(0x3D4B48), night * 0.8f);
+            FillEllipse(g, Alpha(Mix(Hex(0x9C8668), Hex(0x2C2E3A), night), 0.3f), x, y + 0.4f, 3, 0.8f);
+            float tip = x + 0.6f + wind * 0.6f;
+            using (var stem = RoundPen(Mix(Hex(0x5E7E45), Hex(0x36423F), night * 0.8f), 0.8f)) g.DrawLine(stem, x, y, tip, y - 5);
+            foreach (int s in new[] { -1, 1 })
+            {
+                var st = g.Save();
+                g.TranslateTransform(tip, y - 4.6f);
+                g.RotateTransform(s * 50 + wind * 8);
+                FillEllipse(g, green, 0, -1.4f, 0.9f, 1.6f);
+                g.Restore(st);
+            }
+        }
         public const float PondRx = 26, PondRy = 6.5f;
         static readonly float[][] Rocks = { new[] { 62f, 207f, 7f }, new[] { 74f, 212f, 4.5f }, new[] { 238f, 205f, 5.5f } };
         static readonly float[][] FallenLeaves = { new[] { 46f, 193f, 0f }, new[] { 86f, 200f, 1f }, new[] { 112f, 182f, 2f }, new[] { 190f, 184f, 3f }, new[] { 214f, 214f, 0f }, new[] { 250f, 200f, 2f }, new[] { 30f, 208f, 1f }, new[] { 270f, 212f, 3f } };
@@ -155,8 +199,8 @@ namespace Stillpoint
                     }
             if (n > 0.01f)
             {
-                if (look.Halo > 0.01f) FillRadial(g, 206, 66, 34, 34, Color.FromArgb((int)(80 * look.Halo * n), 240, 236, 220), Color.FromArgb(0, 240, 236, 220));
-                DrawMoon(g, 206, 66, 13, look.MoonPhase, look.Southern, n * (1 - look.Clouds * 0.7f), top);
+                if (look.Halo > 0.01f) FillRadial(g, MoonAt.X, MoonAt.Y, 34, 34, Color.FromArgb((int)(80 * look.Halo * n), 240, 236, 220), Color.FromArgb(0, 240, 236, 220));
+                DrawMoon(g, MoonAt.X, MoonAt.Y, 13, look.MoonPhase, look.Southern, n * (1 - look.Clouds * 0.7f), top);
             }
             float bow = look.Rainbow * (1 - n);
             if (bow > 0.01f)
@@ -319,6 +363,19 @@ namespace Stillpoint
                 {
                     FillEllipse(g, c, p[0], p[1], 1.7f, 1.3f);
                     for (int i = -1; i <= 1; i++) FillEllipse(g, c, p[0] - 1.9f + Math.Abs(i) * 0.4f, p[1] + i * 1.3f, 0.55f, 0.55f);
+                }
+            }
+            if (traces.FoxPrints > 0.01f)
+            {
+                var c = Alpha(snowy ? Hex(0x8C98AE) : Mix(Hex(0x8F7C66), Hex(0x2A2C38), night), 0.5f * traces.FoxPrints);
+                for (int i = 0; i < 5; i++)
+                {
+                    float x = 28 + i * 6.5f, y = 222 - i * 0.6f + (i % 2) * 1.2f;
+                    FillEllipse(g, c, x, y, 1.5f, 1.15f);
+                    FillEllipse(g, c, x + 2.5f, y - 0.5f, 0.5f, 0.55f);
+                    FillEllipse(g, c, x + 2.5f, y + 0.5f, 0.5f, 0.55f);
+                    FillEllipse(g, c, x + 1.5f, y - 1.5f, 0.45f, 0.5f);
+                    FillEllipse(g, c, x + 1.5f, y + 1.5f, 0.45f, 0.5f);
                 }
             }
             if (traces.Leaves > 0)
@@ -589,7 +646,7 @@ namespace Stillpoint
         {
             if (night <= 0.01f) return;
             foreach (var s in Stars)
-                if (Math.Abs(s.X - 206) > 16 || Math.Abs(s.Y - 66) > 16)
+                if (Math.Abs(s.X - MoonAt.X) > 16 || Math.Abs(s.Y - MoonAt.Y) > 16)
                     FillEllipse(g, Alpha(Hex(0xF0ECDC), night * (0.45f + 0.45f * Sin(t * 1.6f + s.Ph))), s.X, s.Y, s.S, s.S);
         }
 
@@ -708,6 +765,27 @@ namespace Stillpoint
             if (v.Contains(Visitors.Bird)) DrawBird(g, points.Head.X, points.Head.Y, 0, 1, false);
             if (v.Contains(Visitors.Butterfly)) DrawButterfly(g, points.Tip.X, points.Tip.Y - 5, 0.6f, true);
             if (v.Contains(Visitors.Dragonfly)) DrawDragonfly(g, 96, 118, 0.3f, 1);
+            var still = new CritterPose();
+            if (v.Contains(Visitors.Fox)) CritterArt.DrawFox(g, 84, 217, 0, 1, new CritterPose { Sit = 1, Curl = 1 }, night);
+            if (v.Contains(Visitors.Snails)) { DrawSnail(g, 132, 224, 0.4f, 1); DrawSnail(g, 154, 224, 0.9f, -1); }
+            if (v.Contains(Visitors.Turtle)) CritterArt.DrawTurtle(g, 186, 228, 0.5f, -1, still, night);
+            if (v.Contains(Visitors.Squirrel))
+            {
+                DrawDig(g, 0, 1, day.Season, night);
+                CritterArt.DrawSquirrel(g, DigAt.X + 9, DigAt.Y, 0.3f, -1, new CritterPose { Acorn = true }, night);
+            }
+            if (v.Contains(Visitors.Owl)) { var perch = OwlPerch(pose, Keepsake.None); CritterArt.DrawOwl(g, perch.X, perch.Y, 0, new CritterPose { Turn = -0.4f }, night); }
+            if (v.Contains(Visitors.Moth))
+            {
+                CritterArt.DrawMoth(g, MoonAt.X - 8, MoonAt.Y - 4, 0.02f, new CritterPose { Shadow = 0.85f }, 0.8f);
+            }
+            if (v.Contains(Visitors.Ladybug))
+            {
+                var seat = StoneSurface(pose, 1.12f * Pi);
+                var before = StoneSurface(pose, 1.12f * Pi - 0.03f);
+                CritterArt.DrawLadybug(g, seat.X, seat.Y, (float)Math.Atan2(seat.Y - before.Y, seat.X - before.X), 0, still);
+            }
+            if (v.Contains(Visitors.Bee)) CritterArt.DrawBee(g, points.Tip.X + 15, points.Tip.Y - 9, 0.37f, -1, still);
             g.Restore(state);
         }
     }

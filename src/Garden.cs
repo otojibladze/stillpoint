@@ -13,19 +13,28 @@ namespace Stillpoint
     static class Visitors
     {
         public const string Butterfly = "butterfly", Bird = "bird", Snail = "snail", Frog = "frog", Cat = "cat", Dragonfly = "dragonfly", Rainbow = "rainbow";
-        public static readonly string[] Order = { Butterfly, Bird, Dragonfly, Snail, Frog, Cat, Rainbow };
+        public const string Ladybug = "ladybug", Bee = "bee", Squirrel = "squirrel", Owl = "owl", Moth = "moth", Fox = "fox", Snails = "snails", Turtle = "turtle";
+        public static readonly string[] Order = { Butterfly, Bird, Bee, Ladybug, Dragonfly, Squirrel, Snail, Snails, Turtle, Frog, Owl, Moth, Fox, Cat, Rainbow };
 
-        public static string Label(string id) => id == Rainbow ? "Rain, then a rainbow" : char.ToUpperInvariant(id[0]) + id.Substring(1);
+        public static string Label(string id) => id == Rainbow ? "Rain, then a rainbow" : Capital(id == Snails ? "two snails" : id);
+
+        public static string Noun(string id) => id == Snails ? "two snails" : ("aeiou".IndexOf(id[0]) >= 0 ? "an " : "a ") + id;
+
+        public static string Capital(string text) => char.ToUpperInvariant(text[0]) + text.Substring(1);
+
+        public static string List(IEnumerable<string> ids)
+        {
+            var animals = Sorted(ids).Where(v => v != Rainbow).Select(Noun).ToList();
+            if (animals.Count == 0) return null;
+            return animals.Count == 1 ? animals[0] : string.Join(", ", animals.Take(animals.Count - 1)) + " and " + animals[animals.Count - 1];
+        }
 
         public static IEnumerable<string> Sorted(IEnumerable<string> ids) => Order.Where(ids.Contains);
 
         public static string Sentence(IEnumerable<string> ids)
         {
-            var animals = Sorted(ids).Where(v => v != Rainbow).Select(v => "a " + v).ToList();
-            if (animals.Count == 0) return null;
-            string list = animals.Count == 1 ? animals[0]
-                : string.Join(", ", animals.Take(animals.Count - 1)) + " and " + animals[animals.Count - 1];
-            return char.ToUpperInvariant(list[0]) + list.Substring(1) + " stopped by.";
+            string list = List(ids);
+            return list == null ? null : Capital(list) + " stopped by.";
         }
     }
 
@@ -76,9 +85,8 @@ namespace Stillpoint
             if (Saw(Visitors.Cat) && Overnight && animals.Count == 1) return "The cat kept me company last night.";
             string rain = Snowed ? "It snowed while you were away." : Rained ? "It rained while you were away." : null;
             if (animals.Count == 0) return rain ?? (Overnight ? "Good morning. Quiet night here." : null);
-            string list = animals.Count == 1 ? "a " + animals[0]
-                : string.Join(", ", animals.Take(animals.Count - 1).Select(a => "a " + a)) + " and a " + animals[animals.Count - 1];
-            string line = animals.Count == 1 ? $"A {animals[0]} came by while you were gone." : $"While you were away, {list} came by.";
+            string list = Visitors.List(animals);
+            string line = animals.Count == 1 ? Visitors.Capital(list) + " came by while you were gone." : $"While you were away, {list} came by.";
             return rain == null ? line : line + " " + (Snowed ? "And it snowed." : "And it rained.");
         }
     }
@@ -109,6 +117,11 @@ namespace Stillpoint
             if (day && rnd.NextDouble() < Math.Min(0.6, 0.2 + hours * 0.08)) report.Visits.Add((Visitors.Bird, anyTime()));
             if (nightHours.Count > 0 && rnd.NextDouble() < 0.55) report.Visits.Add((Visitors.Cat, nightHours[rnd.Next(nightHours.Count)]));
             if (report.Rained && season != Season.Winter && rnd.NextDouble() < 0.7) report.Visits.Add((Visitors.Frog, anyTime()));
+            if (report.Rained && season != Season.Winter && rnd.NextDouble() < 0.35) report.Visits.Add((Visitors.Snails, anyTime()));
+            if (season != Season.Winter && day && rnd.NextDouble() < Math.Min(0.45, 0.15 + hours * 0.06)) report.Visits.Add((Visitors.Squirrel, anyTime()));
+            if ((season == Season.Spring || season == Season.Summer) && day && rnd.NextDouble() < 0.25) report.Visits.Add((Visitors.Ladybug, anyTime()));
+            if (nightHours.Count > 0 && rnd.NextDouble() < 0.35) report.Visits.Add((Visitors.Owl, nightHours[rnd.Next(nightHours.Count)]));
+            if (nightHours.Count > 0 && rnd.NextDouble() < 0.3) report.Visits.Add((Visitors.Fox, nightHours[rnd.Next(nightHours.Count)]));
             if (season == Season.Autumn) report.Leaves = (int)Math.Min(8, 1 + hours);
             return report;
         }

@@ -186,6 +186,8 @@ namespace Stillpoint
                 Sun = app.SunToday,
                 Southern = app.Settings.HasTown && app.Settings.TownLat < 0,
                 Weather = app.Weather,
+                DugToday = app.Album.On(today).Contains(Visitors.Squirrel),
+                DugYesterday = app.Album.On(today.AddDays(-1)).Contains(Visitors.Squirrel),
             });
             Ui.SetText(status, state);
             startStop.Text = tracker.Running ? "I got up" : "Start";

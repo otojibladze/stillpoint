@@ -10,12 +10,12 @@ namespace Stillpoint
     enum Eyes { Open, Happy, Closed, Squeeze, Dizzy }
     enum Mouth { Dot, Smile, O, Flat, Wavy, Grin, Tongue }
     enum Brow { None, Worried, Sleepy, Curious }
-    enum Bit { Puff, Spark, Heart, Note, Dot, Leaf, Rain, Splash, Snow, Petal, Autumn, Ripple, Feather, Drip, Vapor }
+    enum Bit { Puff, Spark, Heart, Note, Dot, Leaf, Rain, Splash, Snow, Petal, Autumn, Ripple, Feather, Drip, Vapor, Pollen, Dirt, Hoot }
     enum MiniMood { Yawn, Look, Happy }
 
     sealed class SpiritPose
     {
-        public float Sx = 1, Sy = 1, Tilt, Dy, EyeOpen = 1, LookX, LookY, Yawn, Blush = 0.35f, Sprout = 1, Zzz, Night, Bloom, Snow, EyeScale = 1, Bud, Wilt, LightX = -1, Warm, Wet, Wind;
+        public float Sx = 1, Sy = 1, Tilt, Dy, EyeOpen = 1, LookX, LookY, Yawn, Blush = 0.35f, Sprout = 1, Zzz, Night, Bloom, Snow, EyeScale = 1, Bud, Wilt, LightX = -1, Warm, Wet, Wind, BrowK = 1;
         public Brow Brow;
         public int Petals;
         public Eyes Eyes = Eyes.Open;
@@ -56,6 +56,7 @@ namespace Stillpoint
         }
         public static float Clamp(float v, float a, float b) => v < a ? a : v > b ? b : v;
         public static float Smooth(float a, float b, float v) { float x = Clamp((v - a) / (b - a), 0, 1); return x * x * (3 - 2 * x); }
+        public static float Window(float a, float b, float v, float ramp) => Smooth(a, a + ramp, v) * (1 - Smooth(b - ramp, b, v));
         public static float Sin(float x) => (float)Math.Sin(x);
         public static float Cos(float x) => (float)Math.Cos(x);
         public const float Pi = (float)Math.PI;
@@ -403,7 +404,7 @@ namespace Stillpoint
                     default: FillEllipse(g, Ink, mx, my, R * 0.03f * es, R * 0.022f * es); break;
                 }
                 if (p.Brow != Brow.None)
-                    using (var brow = RoundPen(Alpha(Ink, 0.8f), R * 0.032f))
+                    using (var brow = RoundPen(Alpha(Ink, 0.8f * Clamp(p.BrowK, 0, 1)), R * 0.032f))
                         foreach (int s in new[] { -1, 1 })
                         {
                             float bx0 = s * ex + lx, by0 = ey + ly - R * 0.17f;
@@ -479,6 +480,7 @@ namespace Stillpoint
                     case Bit.Leaf:
                     case Bit.Autumn:
                     case Bit.Petal: a = k < 0.8f ? 1 : (1 - k) * 5; break;
+                    case Bit.Dirt: a = k < 0.6f ? 1 : (1 - k) / 0.4f; break;
                     case Bit.Rain:
                     case Bit.Snow: a = Math.Min(1, (1 - k) * 4); break;
                     default: a = 1 - k; break;
@@ -538,6 +540,18 @@ namespace Stillpoint
                     case Bit.Splash:
                         using (var pen = new Pen(Alpha(Mix(Hex(0x8C96A6), Hex(0xAEB8CC), q.Night), a * 0.7f), 0.9f))
                             Arc(g, pen, 0, 0, 1.5f + k * 3, Pi * 1.1f, Pi * 1.9f);
+                        break;
+                    case Bit.Pollen:
+                        FillEllipse(g, Alpha(Hex(0xF4D35E), a), 0, 0, q.Size, q.Size);
+                        break;
+                    case Bit.Dirt: FillEllipse(g, Alpha(Mix(Hex(0xB09A7C), Hex(0x3E4052), q.Night * 0.85f), a), 0, 0, q.Size, q.Size * 0.8f); break;
+                    case Bit.Hoot:
+                        using (var pen = new Pen(Alpha(Hex(0xEDE6D6), a * 0.7f), 0.8f))
+                        {
+                            float r = 3 + k * 9;
+                            Arc(g, pen, 0, 0, r, -0.55f, 0.55f);
+                            Arc(g, pen, 0, 0, r, Pi - 0.55f, Pi + 0.55f);
+                        }
                         break;
                     case Bit.Ripple:
                         using (var pen = new Pen(Alpha(Hex(0xE8EEF2), a * 0.8f), 0.8f))

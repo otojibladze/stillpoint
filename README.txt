@@ -69,8 +69,16 @@ THE GARDEN
 - The weather follows your sitting. Sit long without a break and clouds
   gather, then it starts to rain. A break clears the sky, sometimes
   with a rainbow, and a frog may come out after the rain.
-- Visitors: a butterfly or a bird while you are up, a snail that slowly
-  crosses the sand when you have sat a long time.
+- Visitors while you are up: a butterfly, a bird, a ladybug that climbs
+  the stone (move the mouse over it and it plays dead), a bee that visits
+  the flower once it blooms, and a squirrel that buries an acorn (a
+  little sprout grows there the next day; poke the stone and it runs).
+- At night: an owl lands on the stone or the lantern and turns its head
+  to follow your mouse, a moth circles the lantern or the moon, and a fox
+  sits for a while and leaves its paw prints.
+- A snail slowly crosses the sand when you have sat a long time, after
+  very long sits a turtle (poke the stone and it hides in its shell), and
+  after rain two snails may meet in the middle.
 - After I GOT UP the stone shows you a short stretch (neck rolls,
   shoulder shrugs, reaching up, side bends or looking far away).
 - Keepsakes stay in the garden for good: moss after 7 days in a row,

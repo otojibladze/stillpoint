@@ -24,17 +24,19 @@ namespace Stillpoint
         public SunTimes Sun;
         public bool Southern;
         public WeatherNow Weather;
+        public bool DugToday, DugYesterday;
     }
 
     sealed class Critter
     {
         public int State;
-        public float T0, X, Y, Side = 1, K;
+        public float T0, X, Y, Side = 1, K, A, B, C, D;
+        public readonly CritterPose P = new CritterPose();
         public PointF From, To;
         public bool Active => State != 0;
     }
 
-    sealed class SpiritRing : Control
+    sealed partial class SpiritRing : Control
     {
         const float SX = GardenArt.StoneX, Ground = GardenArt.StoneGround, R = GardenArt.StoneR, EyeY = 146;
         static readonly string[] ThoughtsFree = { "Do clouds ever sit down?", "I've sat here for 3000 years. You don't have to.", "Water. Have you had some today?", "I like this sand.", "Roll your shoulders. I'll wait.", "Nothing to do. Perfect." };
@@ -192,6 +194,7 @@ namespace Stillpoint
             pending.Clear();
             SendAway(butterfly, t);
             SendAway(bird, t);
+            SendAwayVisitors(t);
             if (frog.State == 1 || frog.State == 2) { frog.State = 3; frog.T0 = t; }
         }
 
@@ -210,6 +213,8 @@ namespace Stillpoint
                 Visit(Visitors.Rainbow);
             }
             if (maxRain > 0.25f) frogAt = demoT + DemoLength + 1;
+            if (maxRain > 0.15f && season != Season.Winter && rng.NextDouble() < 0.6) snailsAt = demoT + DemoLength + 4;
+            SendAwayVisitors(t);
             maxRain = 0;
             BlowAwayTraces();
             for (int i = 0; i < petalsOnHead; i++)
@@ -221,7 +226,7 @@ namespace Stillpoint
         {
             away = report;
             tracesT = Now;
-            traces.Feather = report.Saw(Visitors.Bird);
+            traces.Feather = report.Saw(Visitors.Bird) || report.Saw(Visitors.Owl);
             traces.Leaves = report.Leaves;
             StepTraces(tracesT);
             string line = report.Message();
@@ -430,7 +435,7 @@ namespace Stillpoint
             StepAtmosphere(t, dt, now);
             EmitWeather(dt);
 
-            bool calm = t - humT > 3.8f && !petting && !butterfly.Active && !bird.Active && !dragonfly.Active && t - stretchT > 3 && !DemoActive(t) && t - pokeT > 2 && t - dizzyT > 3;
+            bool calm = t - humT > 3.8f && !petting && !butterfly.Active && !bird.Active && !dragonfly.Active && !VisitorBusy && t - stretchT > 3 && !DemoActive(t) && t - pokeT > 2 && t - dizzyT > 3;
             Schedule(t, calm);
             StepButterfly(t);
             StepBird(t);
@@ -438,9 +443,11 @@ namespace Stillpoint
             StepFrog(t);
             StepCat(t, dt);
             StepDragonfly(t);
+            StepVisitors(t, dt);
             StepBits(dt, t);
             pose = Pose(t);
             SmoothLook(pose, dt);
+            SmoothBrow(pose, dt);
         }
 
         float LightSide()
@@ -501,6 +508,18 @@ namespace Stillpoint
             }
         }
 
+        Brow shownBrow;
+        float browK;
+
+        void SmoothBrow(SpiritPose p, float dt)
+        {
+            if (p.Brow != Brow.None && (browK < 0.05f || p.Brow == shownBrow)) shownBrow = p.Brow;
+            bool on = p.Brow != Brow.None && p.Brow == shownBrow;
+            browK += ((on ? 1 : 0) - browK) * Math.Min(1, dt * 6);
+            p.Brow = browK > 0.01f ? shownBrow : Brow.None;
+            p.BrowK = browK;
+        }
+
         void SmoothLook(SpiritPose p, float dt)
         {
             if (!lookReady)
@@ -546,12 +565,20 @@ namespace Stillpoint
             if (bfAt > 0 && t > bfAt && calm && !Running && rainK < 0.3f)
             {
                 bfAt = -1;
-                if (rng.NextDouble() < 0.5) StartFlyer(butterfly, t); else StartFlyer(bird, t);
+                StartDayVisitor(t);
                 nextAct = t + 14;
                 return;
             }
             if (frogAt > 0 && t > frogAt && !Running && frog.State == 0) { frogAt = -1; frog.State = 1; frog.T0 = t; }
-            if (!snail.Active && Running && state.SessionSeconds >= state.Interval * 0.9 && t > snailNext)
+            if (snailsAt > 0 && t > snailsAt && !Running) { snailsAt = -1; StartSnails(t); }
+            if (!turtle.Active && !snail.Active && !snails.Active && Running && state.SessionSeconds >= state.Interval * 1.25 && t > turtleNext) StartTurtle(t);
+            bool wetGround = season != Season.Winter && (rainK > 0.2f || wetReal > 0.4f);
+            if (!snail.Active && !snails.Active && !turtle.Active && Running && state.SessionSeconds >= state.Interval * 0.9 && t > snailNext && wetGround && rng.NextDouble() < 0.5)
+            {
+                snailNext = t + 180;
+                StartSnails(t);
+            }
+            if (!snail.Active && !snails.Active && !turtle.Active && Running && state.SessionSeconds >= state.Interval * 0.9 && t > snailNext)
             {
                 snail.State = 1;
                 snail.T0 = t;
@@ -562,7 +589,7 @@ namespace Stillpoint
             nextAct = t + (state.Chat == Chattiness.Chatty ? 7 + Rand * 5 : 11 + Rand * 8);
             if (Running && Drowsiness > 0.45f) return;
             double r = rng.NextDouble();
-            if (!Running && hasLast && r < 0.3 && rainK < 0.3f) { if (rng.NextDouble() < 0.5) StartFlyer(butterfly, t); else StartFlyer(bird, t); }
+            if (!Running && hasLast && r < 0.3 && rainK < 0.3f) StartDayVisitor(t);
             else if (season == Season.Summer && !Running && nightK < 0.3f && r < 0.5 && !dragonfly.Active) StartDragonfly(t);
             else if (!Running && r < 0.4 && t - boredT > 60) boredT = t;
             else if (r < (state.Chat == Chattiness.Chatty ? 0.5 : 0.62)) humT = t;
@@ -771,6 +798,14 @@ namespace Stillpoint
                         q.Vx *= 0.98f;
                         q.Vy *= 0.97f;
                         break;
+                    case Bit.Dirt:
+                        if (q.Vy != 0) q.Vy += 260 * dt;
+                        if (q.Y >= q.Target && q.Vy > 0) { q.Y = q.Target; q.Vx = q.Vy = 0; q.Life = Math.Min(q.Life, q.Age + 0.5f); }
+                        break;
+                    case Bit.Pollen:
+                        q.Vy = Math.Min(q.Vy + 14 * dt, 10);
+                        q.X += SpiritArt.Sin(q.Age * 4 + q.Size * 9) * 6 * dt;
+                        break;
                 }
                 float ox = q.X - 150, oy = q.Y - 150;
                 if (ox * ox + oy * oy > 137 * 137) bits.RemoveAt(i);
@@ -805,8 +840,10 @@ namespace Stillpoint
             bool target = false;
             float tx = 0, ty = 0;
             if (flyer != null) { tx = flyer.X; ty = flyer.Y; target = true; }
+            else if (NearFocus(out var near)) { tx = near.X; ty = near.Y; target = true; }
             else if (pointerIn && t - pointerT < 4) { tx = pointer.X; ty = pointer.Y; target = true; }
             else if (snail.Active) { tx = snail.X; ty = snail.Y; target = true; }
+            else if (FarFocus(out var far)) { tx = far.X; ty = far.Y; target = true; }
             if (target)
             {
                 p.LookX = SpiritArt.Clamp((tx - SX) / 70, -1, 1);
@@ -881,17 +918,41 @@ namespace Stillpoint
                 if (since < 8 && !DemoActive(t)) p.Dy = -Math.Abs(SpiritArt.Sin(t * 4.2f)) * 4 * (1 - since / 8);
             }
 
-            if (t - humT < 3.8f)
+            float hum = SpiritArt.Window(0, 3.8f, t - humT, 0.35f);
+            if (hum > 0.001f)
             {
-                p.Eyes = Eyes.Happy; p.Mouth = Mouth.O; p.Yawn = 0.08f + 0.06f * SpiritArt.Sin(t * 9); p.Tilt += SpiritArt.Sin(t * 3.2f) * 0.08f; p.LookX = 0; p.LookY = 0;
-                if (t > noteT)
+                Morph(p, hum, Eyes.Happy, Mouth.O);
+                if (hum >= 0.5f) p.Yawn = 0.08f + 0.06f * SpiritArt.Sin(t * 9);
+                p.Tilt += SpiritArt.Sin(t * 3.2f) * 0.08f * hum;
+                p.LookX *= 1 - hum;
+                p.LookY *= 1 - hum;
+                if (hum > 0.5f && t > noteT)
                 {
                     noteT = t + 0.55f;
                     Emit(new Particle { Kind = Bit.Note, X = SX + 34, Y = 112, Vx = 10 + Rand * 10, Vy = -26, Vr = 0.3f, Life = 1.8f, Size = 12 });
                 }
             }
-            if (butterfly.State == 2 || bird.State == 2) { p.Mouth = Mouth.O; p.Yawn = 0.15f; p.Blush = 0.55f; }
+            if (faceK > 0.001f)
+            {
+                Morph(p, faceK, p.Eyes, Mouth.O);
+                if (faceK >= 0.5f) p.Yawn = 0.15f;
+                p.Blush += (0.55f - p.Blush) * faceK;
+            }
+            ApplyVisitorFace(p);
             return p;
+        }
+
+        static void Morph(SpiritPose p, float k, Eyes eyes, Mouth mouth)
+        {
+            if (k <= 0.001f) return;
+            if (k < 0.5f)
+            {
+                if (p.Eyes == Eyes.Open) p.EyeOpen = Math.Min(p.EyeOpen, 1 - k * 1.8f);
+                return;
+            }
+            p.Eyes = eyes;
+            p.Mouth = mouth;
+            if (eyes == Eyes.Open) p.EyeOpen = Math.Min(p.EyeOpen, 0.1f + (k - 0.5f) * 1.8f);
         }
 
         SpiritPose Pose(float t)
@@ -937,6 +998,7 @@ namespace Stillpoint
                     }
                 }
             }
+            if (st >= 1.9f && st < 2.35f) Morph(p, 1 - SpiritArt.Smooth(1.9f, 2.35f, st), Eyes.Happy, Mouth.Smile);
             if (DemoActive(t) && !Sleeping && !Running) ApplyStretch(p, t - demoT);
             if (petK > 0.01f && !Sleeping)
             {
@@ -947,15 +1009,7 @@ namespace Stillpoint
                 p.Tilt += SpiritArt.Clamp((pointer.X - SX) / 300, -0.12f, 0.12f) * k;
                 p.LookX *= 1 - k;
                 p.LookY *= 1 - k;
-                if (k < 0.5f)
-                {
-                    if (p.Eyes == Eyes.Open) p.EyeOpen = Math.Min(p.EyeOpen, 1 - k * 1.8f);
-                }
-                else
-                {
-                    p.Eyes = Eyes.Happy;
-                    p.Mouth = k > 0.75f ? Mouth.Grin : Mouth.Smile;
-                }
+                Morph(p, k, Eyes.Happy, k > 0.75f ? Mouth.Grin : Mouth.Smile);
             }
             float pt = t - pokeT;
             if (pt >= 0 && pt < 1)
@@ -963,8 +1017,13 @@ namespace Stillpoint
                 float w = (float)Math.Exp(-pt * 4) * SpiritArt.Sin(pt * 26);
                 float jelly = (float)Math.Exp(-pt * 5) * SpiritArt.Sin(pt * 34 + 1);
                 p.Tilt += 0.18f * w; p.Sx += 0.06f * w + 0.07f * jelly; p.Sy -= 0.04f * w + 0.08f * jelly;
-                if (!Sleeping) { p.Eyes = Eyes.Happy; p.Mouth = Mouth.Smile; p.Blush = 0.6f; }
-                else if (pt < 0.5f) { p.Eyes = Eyes.Open; p.EyeOpen = 0.3f; }
+                float k = 1 - SpiritArt.Smooth(0.65f, 1, pt);
+                if (!Sleeping) { Morph(p, k, Eyes.Happy, Mouth.Smile); p.Blush += (0.6f - p.Blush) * k; }
+                else
+                {
+                    float peek = SpiritArt.Window(0, 0.9f, pt, 0.25f);
+                    if (peek > 0.08f) { p.Eyes = Eyes.Open; p.EyeOpen = 0.35f * peek; }
+                }
             }
             float lt = t - landT;
             if (lt >= 0 && lt < 0.7f)
@@ -973,12 +1032,13 @@ namespace Stillpoint
                 p.Sy -= 0.1f * settle;
                 p.Sx += 0.08f * settle;
             }
-            if (t - boredT < 2.6f && !Running && !Sleeping) { p.Mouth = Mouth.Tongue; p.Eyes = Eyes.Happy; }
+            if (!Running && !Sleeping) Morph(p, SpiritArt.Window(0, 2.6f, t - boredT, 0.3f), Eyes.Happy, Mouth.Tongue);
             float zt = t - dizzyT;
             if (zt >= 0 && zt < 2.8f)
             {
                 float f = 1 - zt / 2.8f;
-                p.Eyes = Eyes.Dizzy; p.Mouth = Mouth.Wavy; p.Tilt += 0.16f * SpiritArt.Sin(t * 7) * f; p.Sx += 0.03f * SpiritArt.Sin(t * 9) * f;
+                Morph(p, 1 - SpiritArt.Smooth(2.35f, 2.8f, zt), Eyes.Dizzy, Mouth.Wavy);
+                p.Tilt += 0.16f * SpiritArt.Sin(t * 7) * f; p.Sx += 0.03f * SpiritArt.Sin(t * 9) * f;
             }
             return p;
         }
@@ -987,6 +1047,9 @@ namespace Stillpoint
         {
             float fade = SpiritArt.Smooth(0, 0.5f, s) * (1 - SpiritArt.Smooth(DemoLength - 0.5f, DemoLength, s));
             float tilt = 0, dy = 0, sx = 1, sy = 1, lookX = p.LookX, lookY = p.LookY;
+            var eyes = p.Eyes;
+            var mouth = p.Mouth;
+            float eyeOpen = p.EyeOpen, yawn = p.Yawn;
             switch (demoIndex)
             {
                 case 0:
@@ -1027,6 +1090,15 @@ namespace Stillpoint
                     p.Mouth = Mouth.Smile;
                     break;
             }
+            var targetEyes = p.Eyes;
+            var targetMouth = p.Mouth;
+            float targetOpen = p.EyeOpen, targetYawn = p.Yawn;
+            p.Eyes = eyes;
+            p.Mouth = mouth;
+            p.EyeOpen = eyeOpen;
+            p.Yawn = yawn;
+            Morph(p, fade, targetEyes, targetMouth);
+            if (fade >= 0.5f) { p.EyeOpen = Math.Min(p.EyeOpen, targetOpen); p.Yawn = targetYawn; }
             p.Tilt += tilt * fade;
             p.Dy += dy * fade;
             p.Sx += (sx - 1) * fade;
@@ -1057,6 +1129,7 @@ namespace Stillpoint
                 float d = (float)Math.Sqrt((q.X - pointer.X) * (q.X - pointer.X) + (q.Y - pointer.Y) * (q.Y - pointer.Y));
                 if (d < 40) rub += d;
             }
+            HoverVisitors(q, Now);
             pointer = q;
             pointerIn = true;
             pointerT = Now;
@@ -1078,6 +1151,7 @@ namespace Stillpoint
 
         public void Poke(float t)
         {
+            PokeVisitors(t);
             if (Sleeping) { pokeT = t; Say("Mm... five more minutes."); return; }
             pokes.RemoveAll(p => t - p >= 2);
             pokes.Add(t);
@@ -1097,6 +1171,7 @@ namespace Stillpoint
         public void ShowVisitor(string visitor)
         {
             float t = Now;
+            if (StartVisitor(visitor, t)) return;
             if (visitor == Visitors.Butterfly) StartFlyer(butterfly, t);
             else if (visitor == Visitors.Bird) StartFlyer(bird, t);
             else if (visitor == Visitors.Snail) { snail.State = 1; snail.T0 = t - 30; }
@@ -1281,7 +1356,7 @@ namespace Stillpoint
             GardenArt.DrawHeatShimmer(g, t, shimmerK);
             float fireflies = Math.Max(night, season == Season.Summer && NightHour(19) ? 0.6f : 0);
             GardenArt.DrawFireflies(g, t, fireflies * (1 - cloudK * 0.6f));
-            bool clipped = bird.Active || butterfly.Active || dragonfly.Active || cat.K > 0.02f || frog.Active;
+            bool clipped = bird.Active || butterfly.Active || dragonfly.Active || cat.K > 0.02f || frog.Active || AnyVisitor;
             var clip = g.Save();
             if (clipped) using (var disc = Disc()) g.SetClip(disc, CombineMode.Intersect);
             if (traces.Any) GardenArt.DrawTraces(g, traces, night, snowGround);
@@ -1295,7 +1370,9 @@ namespace Stillpoint
                 SpiritArt.DrawSnail(g, snail.X, snail.Y, t, -1);
             }
             if (frog.Active) SpiritArt.DrawFrog(g, frog.X, frog.Y, t, frog.K);
+            DrawGroundVisitors(g, t, night);
             SpiritArt.DrawParticles(g, bits);
+            DrawAirVisitors(g, t, night);
             if (bird.Active) SpiritArt.DrawBird(g, bird.X, bird.Y, t, bird.State == 3 ? bird.To.X - bird.From.X : -bird.Side, bird.State != 2);
             if (butterfly.Active) SpiritArt.DrawButterfly(g, butterfly.X, butterfly.Y, t, butterfly.State == 2);
             if (dragonfly.Active) GardenArt.DrawDragonfly(g, dragonfly.X, dragonfly.Y, t, dragonfly.Side);
