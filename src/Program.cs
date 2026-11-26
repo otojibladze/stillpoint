@@ -61,10 +61,30 @@ namespace Stillpoint
                 AppDomain.CurrentDomain.UnhandledException += (s, e) => store.Log(e.ExceptionObject);
                 ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
 
-                Updater.CleanUp(Application.ExecutablePath);
-                AutoStart.Command = customDir == null ? $"\"{Application.ExecutablePath}\" --tray" : null;
+                string exe = Application.ExecutablePath;
+                bool updated = HasFlag(args, "--updated");
+                if (!updated && Updater.TryApplyPending(exe))
+                {
+                    Process.Start(exe, (trayOnly ? "--tray " : "") + "--updated --wait-pid " + Process.GetCurrentProcess().Id + extraArgs);
+                    return;
+                }
+                if (!updated) Updater.CleanUp(exe);
+                AutoStart.Command = customDir == null ? $"\"{exe}\" --tray" : null;
                 Native.RegisterRestart("--tray" + extraArgs);
-                Application.Run(new TrayApp(store, !trayOnly, showEvent, continueSession, extraArgs));
+                TrayApp app;
+                try
+                {
+                    app = new TrayApp(store, !trayOnly, showEvent, continueSession, extraArgs, updated);
+                }
+                catch (Exception ex) when (updated && Updater.CanRollBack(exe))
+                {
+                    store.Log("Update failed to start, rolling back: " + ex);
+                    Updater.RollBack(exe);
+                    running.ReleaseMutex();
+                    Process.Start(exe, (trayOnly ? "--tray " : "") + (continueSession ? "--continue-session " : "") + "--wait-pid " + Process.GetCurrentProcess().Id + extraArgs);
+                    return;
+                }
+                Application.Run(app);
             }
         }
 

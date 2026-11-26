@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
@@ -39,11 +40,17 @@ namespace Stillpoint
         int ticksUntilUpdateCheck = FirstUpdateCheckSeconds;
         bool updateBusy;
         Version updateNoticeShownFor;
-        const int FirstUpdateCheckSeconds = 20;
-        const int UpdateCheckEverySeconds = 6 * 3600;
+        const int FirstUpdateCheckSeconds = 60;
+        const int UpdateCheckEverySeconds = 3 * 3600;
+        Version readyVersion;
+        DateTime lastWindowUse = DateTime.MinValue, wokeAt = DateTime.MinValue;
+        readonly bool justUpdated;
+        bool updateNoteDue;
+        int secondsAlive;
 
-        public TrayApp(Store store, bool showWindow, WaitHandle showEvent, bool continueSession = false, string extraArgs = "")
+        public TrayApp(Store store, bool showWindow, WaitHandle showEvent, bool continueSession = false, string extraArgs = "", bool updated = false)
         {
+            justUpdated = updateNoteDue = updated;
             Store = store;
             this.extraArgs = extraArgs;
             Settings = store.LoadSettings();
@@ -99,6 +106,7 @@ namespace Stillpoint
             SyncBuddy();
             OnTick();
             if (showWindow) ShowWindow();
+            if (updated) tray.ShowBalloonTip(5000, "Pebble updated to " + AppVersion.Text, "Your sessions and garden are just as you left them.", ToolTipIcon.Info);
         }
 
         public Store Store { get; }
@@ -200,6 +208,11 @@ namespace Stillpoint
         void AfterShown()
         {
             if (shutDown || !form.Visible) return;
+            if (updateNoteDue)
+            {
+                updateNoteDue = false;
+                form.Announce("I learned something new. Pebble " + AppVersion.Text + ".");
+            }
             if (!Settings.StoneNameAsked)
             {
                 AskName(form, rename: false);
@@ -265,7 +278,11 @@ namespace Stillpoint
                 else
                 {
                     UpdateStatus = null;
-                    if (!manual && !Equals(updateNoticeShownFor, UpdateAvailable) && !shutDown)
+                    if (Settings.AutoUpdate && !manual)
+                    {
+                        if (!Equals(readyVersion, UpdateAvailable)) await DownloadUpdate(UpdateAvailable);
+                    }
+                    else if (!manual && !Equals(updateNoticeShownFor, UpdateAvailable) && !shutDown)
                     {
                         updateNoticeShownFor = UpdateAvailable;
                         tray.ShowBalloonTip(8000, $"Pebble {UpdateAvailable} is available",
@@ -276,12 +293,20 @@ namespace Stillpoint
             catch (Exception ex)
             {
                 if (manual) UpdateStatus = "Could not check for updates: " + ex.Message;
+                else Store.Log("Update check: " + ex.Message);
             }
             finally
             {
                 updateBusy = false;
                 Refresh();
             }
+        }
+
+        async Task DownloadUpdate(Version version)
+        {
+            readyVersion = null;
+            await Updater.DownloadAsync(Application.ExecutablePath, version);
+            readyVersion = version;
         }
 
         public async void InstallUpdate()
@@ -292,12 +317,8 @@ namespace Stillpoint
             Refresh();
             try
             {
-                string exe = Application.ExecutablePath;
-                await Updater.InstallAsync(exe, UpdateAvailable);
-                string args = (form.Visible ? "" : "--tray ") + "--continue-session --wait-pid "
-                    + Process.GetCurrentProcess().Id + extraArgs;
-                Process.Start(exe, args);
-                Exit();
+                if (!Equals(readyVersion, UpdateAvailable)) await DownloadUpdate(UpdateAvailable);
+                ApplyUpdate();
             }
             catch (Exception ex)
             {
@@ -305,6 +326,50 @@ namespace Stillpoint
                 updateBusy = false;
                 Refresh();
             }
+        }
+
+        void ApplyUpdate()
+        {
+            string exe = Application.ExecutablePath;
+            Updater.Apply(exe);
+            readyVersion = null;
+            string args = (form.Visible ? "" : "--tray ") + "--continue-session --updated --wait-pid "
+                + Process.GetCurrentProcess().Id + extraArgs;
+            Process.Start(exe, args);
+            Exit();
+        }
+
+        bool QuietForUpdate()
+        {
+            if (popup != null || awayPopup != null || askingName || Form.ActiveForm != null) return false;
+            if ((DateTime.Now - lastWindowUse).TotalSeconds < 60) return false;
+            return Tracker.IdleSeconds >= 300 || (DateTime.Now - wokeAt).TotalSeconds < 60;
+        }
+
+        void TryQuietUpdate()
+        {
+            if (readyVersion == null || updateBusy || shutDown || !Settings.AutoUpdate || !QuietForUpdate()) return;
+            updateBusy = true;
+            try
+            {
+                Tracker.Tick(DateTime.Now, TakeDelta());
+                SaveUsage();
+                SaveSettings();
+                ApplyUpdate();
+            }
+            catch (Exception ex)
+            {
+                Store.Log("Automatic update failed: " + ex);
+                readyVersion = null;
+                updateBusy = false;
+            }
+        }
+
+        public void SetAutoUpdate(bool on)
+        {
+            Settings.AutoUpdate = on;
+            SaveSettings();
+            Refresh();
         }
 
         public bool AutoStartEnabled
@@ -438,6 +503,9 @@ namespace Stillpoint
             awayPopup?.FollowCursor();
             if (++ticksSinceSave >= 60) SaveUsage();
             if (--ticksUntilUpdateCheck <= 0) CheckForUpdates(false);
+            if (Form.ActiveForm != null) lastWindowUse = DateTime.Now;
+            if (++secondsAlive == 120 && justUpdated) Updater.CleanUp(Application.ExecutablePath);
+            TryQuietUpdate();
             Refresh();
         }
 
@@ -553,6 +621,7 @@ namespace Stillpoint
             }
             else if (e.Reason == SessionSwitchReason.SessionUnlock)
             {
+                wokeAt = DateTime.Now;
                 Tracker.Resume(PauseReason.Locked);
                 Tracker.Tick(DateTime.Now, TakeDelta());
             }
@@ -568,6 +637,7 @@ namespace Stillpoint
             }
             else if (e.Mode == PowerModes.Resume)
             {
+                wokeAt = DateTime.Now;
                 Tracker.Resume(PauseReason.Asleep);
                 Tracker.Tick(DateTime.Now, TakeDelta());
             }

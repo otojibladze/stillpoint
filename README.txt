@@ -108,11 +108,18 @@ counting the next time you sign in (starting a new session).
 
 UPDATES
 -------
-Pebble checks for a new version a few times a day. When there is
-one, a message pops up and the window shows "Update to ...". Click it:
-the app downloads the new version and restarts by itself in a couple of
-seconds. Your sessions and settings stay, and a running session keeps
-counting. You can also click "Check for updates" in Settings any time.
+Pebble updates itself. It checks for a new version a minute after it
+starts and then every 3 hours, downloads it in the background and
+installs it at a quiet moment: when you have been away from the
+computer for 5 minutes, right after you unlock it or wake it up, or at
+the next start. It never restarts while a reminder is open or while you
+are using its window. The restart takes a couple of seconds in the
+tray; your sessions, garden and settings stay, and a running session
+keeps counting. If a new version ever fails to start, the previous one
+comes back by itself.
+Turn this off in Settings > "Install updates automatically". Then the
+window shows "Update to ..." and you click it yourself. "Check for
+updates" in Settings works either way.
 
 
 YOUR DATA

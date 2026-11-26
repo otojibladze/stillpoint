@@ -184,6 +184,8 @@ namespace Stillpoint
             Emit(new Particle { Kind = Bit.Leaf, X = points.Tip.X, Y = points.Tip.Y, Vx = 8, Vy = 4, Vr = 2, Life = 4, Size = 6, Target = Ground - 2 });
         }
 
+        public void Announce(string text) => Later(text, Now + 1.2f, 3.4f);
+
         public void ToggleBreathing()
         {
             float t = Now;

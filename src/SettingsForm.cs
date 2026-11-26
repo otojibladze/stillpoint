@@ -14,6 +14,7 @@ namespace Stillpoint
         readonly LinkLabel nameLink;
         readonly LinkLabel chatLink;
         readonly LinkLabel sizeLink;
+        readonly ToggleSwitch autoUpdate;
         readonly ToggleSwitch stoneSounds;
         readonly ToggleSwitch desktopBuddy;
         readonly ToggleSwitch startWithWindows;
@@ -63,6 +64,8 @@ namespace Stillpoint
             var general = new Card();
             general.AddRow(Ui.Text("Window size"), sizeLink);
             general.AddRow(autoLabel, startWithWindows);
+            autoUpdate = new ToggleSwitch { Margin = new Padding(0) };
+            general.AddRow(TwoLines("Install updates automatically", "When you are away for a few minutes", autoUpdate), autoUpdate);
             general.AddRow(Ui.Text("Your sessions"), dataLink);
 
             var version = new Label { Text = "Pebble " + AppVersion.Text + "  ·", AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9f), Margin = new Padding(0) };
@@ -99,6 +102,7 @@ namespace Stillpoint
             nameLink.LinkClicked += (s, e) => app.AskName(this, rename: true);
             chatLink.LinkClicked += (s, e) => ShowMenu(chatLink, ((Chattiness[])Enum.GetValues(typeof(Chattiness))).Select(c => (ChatLabel(c), c == app.Settings.Chattiness, (Action)(() => app.SetChattiness(c)))), separatorAfterFirst: false);
             sizeLink.LinkClicked += (s, e) => ShowMenu(sizeLink, ((WindowSize[])Enum.GetValues(typeof(WindowSize))).Select(w => (Settings.Label(w), w == app.Settings.WindowSize, (Action)(() => app.SetWindowSize(w)))), separatorAfterFirst: false);
+            autoUpdate.CheckedChanged += (s, e) => { if (!syncing) app.SetAutoUpdate(autoUpdate.Checked); };
             stoneSounds.CheckedChanged += (s, e) => { if (!syncing) app.SetStoneSounds(stoneSounds.Checked); };
             desktopBuddy.CheckedChanged += (s, e) => { if (!syncing) app.SetDesktopBuddy(desktopBuddy.Checked); };
             startWithWindows.CheckedChanged += (s, e) => { if (!syncing) { app.SetAutoStart(startWithWindows.Checked); SyncControls(); } };
@@ -125,6 +129,7 @@ namespace Stillpoint
             nameLink.Text = (string.IsNullOrEmpty(app.Settings.StoneName) ? "Give it a name" : app.Settings.StoneName) + "  ›";
             chatLink.Text = ChatLabel(app.Settings.Chattiness) + "  ›";
             sizeLink.Text = Settings.Label(app.Settings.WindowSize) + "  ›";
+            autoUpdate.Checked = app.Settings.AutoUpdate;
             syncing = false;
         }
 

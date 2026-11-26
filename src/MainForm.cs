@@ -90,6 +90,8 @@ namespace Stillpoint
 
         public void OnReminder() => ring.Reminder();
 
+        public void Announce(string text) => ring.Announce(text);
+
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);

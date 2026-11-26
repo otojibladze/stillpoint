@@ -22,30 +22,79 @@ namespace Stillpoint
             }
         }
 
-        public static async Task InstallAsync(string exePath, Version expected)
+        public static async Task DownloadAsync(string exePath, Version expected)
         {
+            string partial = exePath + ".download";
             string incoming = exePath + ".new";
-            string previous = exePath + ".old";
             try
             {
                 using (var web = Client())
-                    await web.DownloadFileTaskAsync(Source + "Stillpoint.exe?t=" + DateTime.UtcNow.Ticks, incoming);
-                Validate(incoming, expected);
-                if (File.Exists(previous)) File.Delete(previous);
-                File.Move(exePath, previous);
-                File.Move(incoming, exePath);
+                    await web.DownloadFileTaskAsync(Source + "Stillpoint.exe?t=" + DateTime.UtcNow.Ticks, partial);
+                Validate(partial, expected);
+                if (File.Exists(incoming)) File.Delete(incoming);
+                File.Move(partial, incoming);
             }
             finally
             {
-                if (File.Exists(incoming)) File.Delete(incoming);
+                if (File.Exists(partial)) File.Delete(partial);
             }
+        }
+
+        public static void Apply(string exePath)
+        {
+            string incoming = exePath + ".new", previous = exePath + ".old";
+            if (!File.Exists(incoming)) throw new FileNotFoundException("The update was not downloaded.");
+            if (File.Exists(previous)) File.Delete(previous);
+            File.Move(exePath, previous);
+            try
+            {
+                File.Move(incoming, exePath);
+            }
+            catch
+            {
+                File.Move(previous, exePath);
+                throw;
+            }
+        }
+
+        public static bool TryApplyPending(string exePath)
+        {
+            string incoming = exePath + ".new";
+            if (!File.Exists(incoming)) return false;
+            try
+            {
+                Validate(incoming, new Version(Current.Major, Current.Minor, Current.Build + 1));
+                Apply(exePath);
+                return true;
+            }
+            catch (Exception)
+            {
+                Quietly(() => File.Delete(incoming));
+                return false;
+            }
+        }
+
+        public static bool CanRollBack(string exePath) => File.Exists(exePath + ".old");
+
+        public static void RollBack(string exePath)
+        {
+            string bad = exePath + ".bad";
+            if (File.Exists(bad)) File.Delete(bad);
+            File.Move(exePath, bad);
+            File.Move(exePath + ".old", exePath);
         }
 
         public static void CleanUp(string exePath)
         {
+            foreach (var leftover in new[] { ".old", ".bad", ".download" })
+                Quietly(() => { if (File.Exists(exePath + leftover)) File.Delete(exePath + leftover); });
+        }
+
+        static void Quietly(Action action)
+        {
             try
             {
-                if (File.Exists(exePath + ".old")) File.Delete(exePath + ".old");
+                action();
             }
             catch (IOException)
             {
