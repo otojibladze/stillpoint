@@ -33,8 +33,8 @@ bottom corner of the screen. It doesn't take over your keyboard, so you
 can keep typing or playing. Click KEEP SITTING to close it and keep
 counting, or I GOT UP to stop counting.
 The gear button next to History opens Settings. There you can change
-"Remind me every 60 minutes", pick the reminder sound (or No sound),
-and click "Preview" to see and hear what it looks like.
+how often the reminder comes (- and +), pick its sound (or No sound,
+the round button plays it) and click "Preview reminder" to see it.
 
 Each Start begins a new session at 0:00:00. After you stop, Resume
 carries on the last session instead, so a short break does not split
@@ -70,7 +70,7 @@ GOOD TO KNOW
 ------------
 - In a few old games that take over the whole screen, the reminder can
   only be seen after you leave the game.
-- If you forget to press Stop, it keeps counting until you lock the
+- If you forget to press I GOT UP, it keeps counting until you lock the
   computer, put it to sleep or shut it down.
 
 

@@ -253,47 +253,6 @@ namespace Stillpoint
         }
     }
 
-    sealed class UnderlineBox : Panel
-    {
-        public UnderlineBox(float points, int width, HorizontalAlignment align)
-        {
-            Box = new TextBox
-            {
-                BorderStyle = BorderStyle.None,
-                Font = Theme.Regular(points),
-                TextAlign = align,
-                BackColor = Theme.Background,
-                ForeColor = Theme.Ink,
-                ShortcutsEnabled = false,
-            };
-            Width = width;
-            Height = Box.PreferredHeight + 8;
-            Box.Location = new Point(0, 2);
-            Box.Width = width;
-            Box.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
-            Controls.Add(Box);
-            Box.GotFocus += (s, e) => Invalidate();
-            Box.LostFocus += (s, e) => Invalidate();
-            SetStyle(ControlStyles.ResizeRedraw, true);
-        }
-
-        public TextBox Box { get; }
-
-        protected override void OnBackColorChanged(EventArgs e)
-        {
-            base.OnBackColorChanged(e);
-            Box.BackColor = BackColor;
-        }
-
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            base.OnPaint(e);
-            float width = Math.Max(1.5f, Height * 0.05f);
-            using (var pen = new Pen(Box.Focused ? Theme.Accent : Theme.Ink, width))
-                e.Graphics.DrawLine(pen, 0, Height - width / 2, Width, Height - width / 2);
-        }
-    }
-
     sealed class ListRow
     {
         public string Left = "";
@@ -418,3 +377,4 @@ namespace Stillpoint
         }
     }
 }
+

@@ -1,6 +1,5 @@
 using System;
 using System.Drawing;
-using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -9,7 +8,7 @@ namespace Stillpoint
     sealed class SettingsForm : Form
     {
         readonly TrayApp app;
-        readonly UnderlineBox reminderMinutes;
+        readonly Stepper reminderMinutes;
         readonly LinkLabel soundLink;
         readonly ToggleSwitch startWithWindows;
         readonly LinkLabel updateLink;
@@ -20,40 +19,49 @@ namespace Stillpoint
         {
             this.app = app;
             SuspendLayout();
-            Ui.SetupWindow(this, "Stillpoint settings", new Size(400, 430));
+            Ui.SetupWindow(this, "Stillpoint settings", new Size(400, 480));
             FormBorderStyle = FormBorderStyle.FixedSingle;
 
-            var root = Ui.Column(new Padding(26, 14, 26, 20));
+            var root = Ui.Column(new Padding(22, 8, 22, 18));
             root.SuspendLayout();
 
-            reminderMinutes = new UnderlineBox(10f, 44, HorizontalAlignment.Center) { Anchor = AnchorStyles.Left, Margin = new Padding(8, 0, 8, 0) };
-            var preview = Ui.Link("Preview");
-            var reminderRow = Ui.TwoSides(Ui.Row(Ui.Text("Remind me every"), reminderMinutes, Ui.Text("minutes")), preview);
-
+            reminderMinutes = new Stepper { Minimum = Settings.MinReminderMinutes, Maximum = Settings.MaxReminderMinutes, Margin = new Padding(0) };
             soundLink = Ui.Link("");
-            soundLink.Margin = new Padding(8, 0, 0, 0);
-            var playSound = Ui.Link("Play");
-            var soundRow = Ui.TwoSides(Ui.Row(Ui.Text("Sound"), soundLink), playSound);
-            soundRow.Margin = new Padding(0, 12, 0, 0);
+            soundLink.Margin = new Padding(0, 0, 10, 0);
+            var play = new PlayButton { Anchor = AnchorStyles.Right, Margin = new Padding(0), AccessibleName = "Play sound" };
+            soundLink.Anchor = AnchorStyles.Right;
+            var preview = Ui.Link("Preview reminder");
 
-            startWithWindows = new ToggleSwitch { Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 10, 0) };
+            var reminder = new Card();
+            reminder.AddRow(Ui.Text("Every"), reminderMinutes);
+            reminder.AddRow(Ui.Text("Sound"), Ui.Row(soundLink, play));
+            reminder.AddRow(Muted("See how it looks"), preview);
+
+            startWithWindows = new ToggleSwitch { Margin = new Padding(0) };
             var autoLabel = Ui.Text("Start with Windows");
             autoLabel.Cursor = Cursors.Hand;
-            var dataLink = Ui.Link("Open data folder");
-            var generalRow = Ui.TwoSides(Ui.Row(startWithWindows, autoLabel), dataLink);
+            var dataLink = Ui.Link("Open folder");
+            var general = new Card();
+            general.AddRow(autoLabel, startWithWindows);
+            general.AddRow(Ui.Text("Your sessions"), dataLink);
 
-            updateLink = Ui.Link("Check for updates");
-            var updateRow = Ui.TwoSides(Ui.Text("Version " + AppVersion.Text), updateLink);
+            var version = new Label { Text = "Stillpoint " + AppVersion.Text + "  ·", AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9f), Margin = new Padding(0) };
+            updateLink = Ui.Link("");
+            updateLink.Font = Theme.Regular(9f);
+            updateLink.Margin = new Padding(4, 0, 0, 0);
+            var footer = Ui.Row(version, updateLink);
+            footer.Anchor = AnchorStyles.None;
+            footer.Margin = new Padding(0, 16, 0, 0);
             updateStatus = Ui.Small(Theme.Muted);
+            updateStatus.TextAlign = ContentAlignment.MiddleCenter;
+            updateStatus.Anchor = AnchorStyles.None;
 
-            Ui.AddRow(root, new Label { Text = "Settings", AutoSize = true, Font = Theme.SemiBold(14f), Margin = new Padding(0, 0, 0, 4) });
-            Ui.AddRow(root, Section("Reminder"));
-            Ui.AddRow(root, reminderRow);
-            Ui.AddRow(root, soundRow);
-            Ui.AddRow(root, Section("General"));
-            Ui.AddRow(root, generalRow);
-            Ui.AddRow(root, Section("Updates"));
-            Ui.AddRow(root, updateRow);
+            Ui.AddRow(root, new Label { Text = "Settings", AutoSize = true, Font = Theme.Light(21f), Margin = new Padding(0, 0, 0, 12) });
+            Ui.AddRow(root, Caption("Reminder"));
+            Ui.AddRow(root, reminder);
+            Ui.AddRow(root, Caption("General"));
+            Ui.AddRow(root, general);
+            Ui.AddRow(root, footer);
             Ui.AddRow(root, updateStatus);
 
             Controls.Add(root);
@@ -62,12 +70,10 @@ namespace Stillpoint
             ResumeLayout(false);
             PerformLayout();
 
-            reminderMinutes.Box.KeyPress += (s, e) => { if (!char.IsDigit(e.KeyChar) && !char.IsControl(e.KeyChar)) e.Handled = true; };
-            reminderMinutes.Box.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; CommitReminder(); } };
-            reminderMinutes.Box.Leave += (s, e) => CommitReminder();
-            preview.LinkClicked += (s, e) => app.ShowReminder(app.Settings.ReminderMinutes * 60, preview: true);
+            reminderMinutes.ValueChanged += (s, e) => { if (!syncing) app.SetReminderMinutes(reminderMinutes.Value); };
             soundLink.LinkClicked += (s, e) => ShowSoundMenu();
-            playSound.LinkClicked += (s, e) => Sounds.Play(Sounds.Normalize(app.Settings.Sound));
+            play.Click += (s, e) => Sounds.Play(Sounds.Normalize(app.Settings.Sound));
+            preview.LinkClicked += (s, e) => app.ShowReminder(app.Settings.ReminderMinutes * 60, preview: true);
             startWithWindows.CheckedChanged += (s, e) => { if (!syncing) { app.SetAutoStart(startWithWindows.Checked); SyncControls(); } };
             autoLabel.Click += (s, e) => startWithWindows.Checked = !startWithWindows.Checked;
             dataLink.LinkClicked += (s, e) => app.OpenDataFolder();
@@ -82,41 +88,29 @@ namespace Stillpoint
             Shown += (s, e) => ActiveControl = null;
         }
 
-        void FitHeight()
-        {
-            var root = Controls[0];
-            int height = root.GetPreferredSize(new Size(ClientSize.Width, 0)).Height;
-            if (ClientSize.Height != height) ClientSize = new Size(ClientSize.Width, height);
-        }
-
         public void SyncControls()
         {
             syncing = true;
-            if (!reminderMinutes.Box.Focused) reminderMinutes.Box.Text = app.Settings.ReminderMinutes.ToString(CultureInfo.InvariantCulture);
+            reminderMinutes.Value = app.Settings.ReminderMinutes;
             startWithWindows.Checked = app.AutoStartEnabled;
-            soundLink.Text = Sounds.Label(Sounds.Normalize(app.Settings.Sound)) + " " + (char)0x25BE;
+            soundLink.Text = Sounds.Label(Sounds.Normalize(app.Settings.Sound)) + "  ›";
             syncing = false;
         }
 
         public void UpdateView()
         {
+            string link = app.UpdateAvailable != null ? $"Update to {app.UpdateAvailable}" : "Check for updates";
+            Ui.SetText(updateLink, link);
+            updateLink.Enabled = !app.UpdateBusy;
             bool shown = updateStatus.Visible;
             Ui.SetLine(updateStatus, app.UpdateStatus);
             if (updateStatus.Visible != shown || !IsHandleCreated) FitHeight();
-            string link = app.UpdateAvailable != null ? $"Update to {app.UpdateAvailable}" : "Check for updates";
-            if (updateLink.Text != link) updateLink.Text = link;
-            updateLink.Enabled = !app.UpdateBusy;
         }
 
-        void CommitReminder()
+        void FitHeight()
         {
-            if (syncing) return;
-            if (int.TryParse(reminderMinutes.Box.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minutes))
-            {
-                minutes = Math.Max(Settings.MinReminderMinutes, Math.Min(Settings.MaxReminderMinutes, minutes));
-                if (minutes != app.Settings.ReminderMinutes) app.SetReminderMinutes(minutes);
-            }
-            reminderMinutes.Box.Text = app.Settings.ReminderMinutes.ToString(CultureInfo.InvariantCulture);
+            int height = Controls[0].GetPreferredSize(new Size(ClientSize.Width, 0)).Height;
+            if (ClientSize.Height != height) ClientSize = new Size(ClientSize.Width, height);
         }
 
         void ShowSoundMenu()
@@ -135,13 +129,20 @@ namespace Stillpoint
             menu.Show(soundLink, new Point(0, soundLink.Height));
         }
 
-        static Label Section(string text) => new Label
+        static Label Muted(string text)
+        {
+            var label = Ui.Text(text);
+            label.ForeColor = Theme.Muted;
+            return label;
+        }
+
+        static Label Caption(string text) => new Label
         {
             Text = text.ToUpperInvariant(),
             AutoSize = true,
             ForeColor = Theme.Muted,
-            Font = Theme.SemiBold(8.5f),
-            Margin = new Padding(0, 22, 0, 10),
+            Font = Theme.SemiBold(8f),
+            Margin = new Padding(4, 14, 0, 7),
         };
 
         protected override void OnHandleCreated(EventArgs e)
