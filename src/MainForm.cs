@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
@@ -11,12 +12,12 @@ namespace Stillpoint
         readonly SpiritRing ring;
         readonly Label status;
         readonly ToggleSwitch stoneToggle;
-        const int BaseMain = 400, BaseRail = 58, BasePage = 430, BaseHeight = 640;
+        const int BaseMain = 400, BaseRail = 58, BaseHeight = 640;
+        static readonly string[] PageOrder = { "timer", "garden", "history", "settings" };
         readonly NavRail rail;
         readonly Panel main;
-        readonly Panel pages;
-        readonly Label pageTitle;
-        string openPage;
+        readonly PageStack stack;
+        readonly Dictionary<string, Control> pageViews = new Dictionary<string, Control>();
         readonly FlatButton startStop;
         readonly FlatButton resume;
         readonly TableLayoutPanel buttonRow;
@@ -72,16 +73,10 @@ namespace Stillpoint
             Ui.AddRow(root, updateStatus);
             Ui.AddRow(root, saveError);
 
-            main = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Background };
+            main = new Panel { BackColor = Theme.Background };
             main.Controls.Add(root);
-            pageTitle = new Label { AutoSize = true, Font = Theme.Light(15f), ForeColor = Theme.Ink, Anchor = AnchorStyles.Left, Margin = new Padding(0) };
-            var closePage = new FlatButton(ButtonKind.Ghost) { Size = new Size(30, 30), Margin = new Padding(0), Glyph = Draw.Cross, AccessibleName = "Close" };
-            var pageHead = Ui.TwoSides(pageTitle, closePage);
-            pageHead.Dock = DockStyle.Top;
-            pageHead.Padding = new Padding(22, 14, 18, 0);
-            pageHead.BackColor = Theme.Background;
-            pages = new Panel { Dock = DockStyle.Fill, Visible = false, BackColor = Theme.Track, Padding = new Padding(1, 0, 0, 0) };
-            pages.Controls.Add(pageHead);
+            stack = new PageStack { Dock = DockStyle.Fill, BackColor = Theme.Background };
+            stack.Show("timer", main, 0);
             rail = new NavRail { Dock = DockStyle.Left, Width = BaseRail };
             rail.Add("timer", "Timer", Draw.Stopwatch);
             rail.Add("garden", "Garden", Draw.Sprout);
@@ -89,8 +84,7 @@ namespace Stillpoint
             rail.Add("settings", "Settings", (g, b, c) => Draw.Gear(g, Rectangle.Inflate(b, b.Width / 2, b.Height / 2), c), bottom: true);
             rail.Active = "timer";
 
-            Controls.Add(pages);
-            Controls.Add(main);
+            Controls.Add(stack);
             Controls.Add(rail);
             root.ResumeLayout(false);
             root.PerformLayout();
@@ -101,12 +95,11 @@ namespace Stillpoint
             resume.Click += (s, e) => app.Resume();
             rail.Picked += key =>
             {
-                if (key == "timer" || key == openPage) ClosePage();
+                if (key == "timer") ShowTimer();
                 else if (key == "garden") ShowGarden(null);
                 else if (key == "history") ShowHistory(null);
                 else ShowSettings();
             };
-            closePage.Click += (s, e) => ClosePage();
             updateLink.LinkClicked += (s, e) => app.InstallUpdate();
             stoneToggle.CheckedChanged += (s, e) => { if (!syncing) app.SetStoneOn(stoneToggle.Checked); };
             stoneLabel.Click += (s, e) => stoneToggle.Checked = !stoneToggle.Checked;
@@ -123,7 +116,7 @@ namespace Stillpoint
             ring.Plain = !on;
             rail.SetHidden("garden", !on);
             if (history != null && !history.IsDisposed) history.GardenShown = on;
-            if (!on && openPage == "garden") ClosePage();
+            if (!on && stack.Current == "garden") ShowTimer();
         }
 
         public void OnReminder() => ring.Reminder();
@@ -142,21 +135,12 @@ namespace Stillpoint
         {
             float k = Settings.Scale(size) * DeviceDpi / 96f;
             rail.Width = (int)Math.Round(BaseRail * k);
-            int mainWidth = (int)Math.Round(BaseMain * k);
-            if (openPage != null) main.Width = mainWidth;
-            var target = new Size(rail.Width + mainWidth + (openPage != null ? (int)Math.Round(BasePage * k) : 0), (int)Math.Round(BaseHeight * k));
+            var target = new Size(rail.Width + (int)Math.Round(BaseMain * k), (int)Math.Round(BaseHeight * k));
             if (ClientSize != target) ClientSize = target;
-            KeepOnScreen();
-        }
-
-        void KeepOnScreen()
-        {
             var area = Screen.FromControl(this).WorkingArea;
             Left = Math.Max(area.Left, Math.Min(Left, area.Right - Width));
             Top = Math.Max(area.Top, Math.Min(Top, area.Bottom - Height));
         }
-
-        float PageScale => Settings.Scale(app.Settings.WindowSize) * DeviceDpi / 96f;
 
         void OpenPage<T>(string key, string title, ref T page, Func<T> make) where T : Form
         {
@@ -167,52 +151,33 @@ namespace Stillpoint
                 page.FormBorderStyle = FormBorderStyle.None;
                 page.MinimumSize = Size.Empty;
                 page.Dock = DockStyle.Fill;
-                pages.Controls.Add(page);
-                page.BringToFront();
+                var head = new Label { Text = title, AutoSize = false, Dock = DockStyle.Top, Height = (int)Math.Round(Font.Height * 2.6f), Font = Theme.Light(15f), ForeColor = Theme.Ink, BackColor = Theme.Background, Padding = new Padding(20, 10, 0, 0), TextAlign = ContentAlignment.MiddleLeft };
+                var view = new Panel { BackColor = Theme.Background };
+                view.Controls.Add(page);
+                view.Controls.Add(head);
+                page.Show();
+                pageViews[key] = view;
             }
-            foreach (Control child in pages.Controls)
-                if (child is Form other && other != page) other.Hide();
-            page.Show();
-            Ui.SetText(pageTitle, title);
+            stack.Show(key, pageViews[key], Array.IndexOf(PageOrder, key));
             rail.Active = key;
-            if (openPage == null)
-            {
-                SuspendLayout();
-                int mainWidth = main.Width;
-                main.Dock = DockStyle.Left;
-                main.Width = mainWidth;
-                pages.Visible = true;
-                ClientSize = new Size(ClientSize.Width + (int)Math.Round(BasePage * PageScale), ClientSize.Height);
-                ResumeLayout(true);
-                KeepOnScreen();
-            }
-            openPage = key;
         }
 
-        void ClosePage()
+        void ShowTimer()
         {
+            stack.Show("timer", main, 0);
             rail.Active = "timer";
-            if (openPage == null) return;
-            openPage = null;
-            SuspendLayout();
-            int pageWidth = pages.Width;
-            pages.Visible = false;
-            main.Dock = DockStyle.Fill;
-            ClientSize = new Size(Math.Max(rail.Width + 1, ClientSize.Width - pageWidth), ClientSize.Height);
-            ResumeLayout(true);
             ring.Focus();
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
-            if (e.KeyCode == Keys.Escape && openPage != null)
+            if (e.KeyCode == Keys.Escape && stack.Current != "timer")
             {
-                ClosePage();
+                ShowTimer();
                 e.Handled = true;
             }
         }
-
         public void SyncControls()
         {
             if (settings != null && !settings.IsDisposed) settings.SyncControls();

@@ -36,9 +36,9 @@ bottom corner of the screen. It doesn't take over your keyboard, so you
 can keep typing or playing. Click KEEP SITTING to close it and keep
 counting, or I GOT UP to stop counting.
 The bar on the left switches between the timer, the garden, your history
-and settings (the gear at the bottom). The garden, history and settings
-open next to the timer in the same window, which grows to the right;
-click the same icon again, the X or press Esc to close it. In Settings
+and settings (the gear at the bottom). Pages sit on top of
+each other and slide up or down to the one you pick; the stopwatch or
+Esc takes you back to the timer. In Settings
 you can change how often the reminder comes (- and +), pick its sound
 (or No sound, the round button plays it) and click "Preview reminder"
 to see it. Under Stone you can rename it, make it quieter or chattier
