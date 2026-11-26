@@ -36,6 +36,22 @@ The gear button next to History opens Settings. There you can change
 how often the reminder comes (- and +), pick its sound (or No sound,
 the round button plays it) and click "Preview reminder" to see it.
 
+THE STONE
+---------
+A small stone lives in the sand garden inside the ring.
+- While you sit it slowly gets sleepy: its eyes droop, its sprout wilts
+  and near the reminder it nods off.
+- When you press I GOT UP it stretches and hops. Butterflies only visit
+  while you are up.
+- Every break today rakes a new line in the sand and grows the sprout.
+  After four breaks it flowers. The garden starts fresh each morning.
+- Its eyes follow your mouse. Move the mouse slowly over it to pet it,
+  click to poke it (five quick pokes make it dizzy).
+- "Breathe with me" under the ring starts one minute of slow breathing:
+  breathe in while the stone grows, out while it shrinks.
+- At night (after 10 pm) and while the computer is locked it sleeps
+  under the stars, unless you are counting.
+
 Each Start begins a new session at 0:00:00. After you stop, Resume
 carries on the last session instead, so a short break does not split
 it in two (the break itself is not counted).

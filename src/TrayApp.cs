@@ -249,10 +249,11 @@ namespace Stillpoint
             if (shutDown) return;
             popup?.Close();
             string body = Messages.For(sessionMark, messageRandom);
-            var next = new ReminderPopup(Fmt.Words(sessionMark) + " at the computer", Fmt.Badge(sessionMark), body, preview ? null : (Action)(() => SetRunning(false)));
+            var next = new ReminderPopup(Fmt.Words(sessionMark) + " at the computer", body, preview ? null : (Action)(() => SetRunning(false)));
             next.FormClosed += (s, e) => { if (popup == s) popup = null; };
             popup = next;
             next.ShowNearTray();
+            if (!preview) form.OnReminder();
             Sounds.Play(Sounds.Normalize(Settings.Sound));
         }
 

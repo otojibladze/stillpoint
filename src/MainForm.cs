@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace Stillpoint
@@ -7,8 +8,9 @@ namespace Stillpoint
     sealed class MainForm : Form
     {
         readonly TrayApp app;
-        readonly SessionRing ring;
+        readonly SpiritRing ring;
         readonly Label status;
+        readonly LinkLabel breathe;
         readonly FlatButton startStop;
         readonly FlatButton resume;
         readonly TableLayoutPanel buttonRow;
@@ -22,15 +24,18 @@ namespace Stillpoint
         {
             this.app = app;
             SuspendLayout();
-            Ui.SetupWindow(this, "Stillpoint", new Size(400, 560));
-            MinimumSize = new Size(380, 520);
+            Ui.SetupWindow(this, "Stillpoint", new Size(400, 590));
+            MinimumSize = new Size(380, 550);
             StartPosition = FormStartPosition.CenterScreen;
 
             var root = Ui.Column(new Padding(26, 12, 26, 18));
             root.SuspendLayout();
 
-            ring = new SessionRing { Size = new Size(300, 300), Anchor = AnchorStyles.None, Margin = new Padding(0, 6, 0, 6) };
-            status = new Label { AutoSize = true, Anchor = AnchorStyles.None, ForeColor = Theme.Muted, Margin = new Padding(0, 0, 0, 14) };
+            ring = new SpiritRing { Size = new Size(300, 300), Anchor = AnchorStyles.None, Margin = new Padding(0, 6, 0, 6) };
+            status = new Label { AutoSize = true, Anchor = AnchorStyles.None, ForeColor = Theme.Muted, Margin = new Padding(0, 0, 0, 6) };
+            breathe = Ui.Link("Breathe with me");
+            breathe.Anchor = AnchorStyles.None;
+            breathe.Margin = new Padding(0, 0, 0, 14);
             startStop = new FlatButton(ButtonKind.Primary) { Text = "Start", Uppercase = true, Height = 44, Dock = DockStyle.Fill, Margin = new Padding(0), Font = Theme.SemiBold(10.5f) };
             resume = new FlatButton(ButtonKind.Ghost) { Text = "Resume", Uppercase = true, Height = 44, Dock = DockStyle.Fill, Margin = new Padding(10, 0, 0, 0), Font = Theme.SemiBold(10.5f), Visible = false };
             buttonRow = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, Height = 44, Dock = DockStyle.Fill, Margin = new Padding(0) };
@@ -59,6 +64,7 @@ namespace Stillpoint
 
             Ui.AddRow(root, ring, fill: true);
             Ui.AddRow(root, status);
+            Ui.AddRow(root, breathe);
             Ui.AddRow(root, buttonRow);
             Ui.AddRow(root, bottomRow);
             Ui.AddRow(root, updateLink);
@@ -76,7 +82,11 @@ namespace Stillpoint
             historyButton.Click += (s, e) => ShowHistory();
             settingsButton.Click += (s, e) => ShowSettings();
             updateLink.LinkClicked += (s, e) => app.InstallUpdate();
+            breathe.LinkClicked += (s, e) => ring.ToggleBreathing();
+            ring.BreathingChanged += (s, e) => Ui.SetText(breathe, ring.Breathing ? "Stop breathing" : "Breathe with me");
         }
+
+        public void OnReminder() => ring.Reminder();
 
         public void SyncControls()
         {
@@ -86,26 +96,30 @@ namespace Stillpoint
         public void UpdateView()
         {
             var tracker = app.Tracker;
-            string note;
-            float progress = 0;
+            double interval = tracker.ReminderIntervalSeconds;
+            double into = tracker.Running && interval > 0 ? tracker.SessionSeconds % interval : 0;
+            float progress = interval > 0 ? (float)(into / interval) : 0;
+            string state = app.DescribeState();
+            string caption;
             switch (tracker.State)
             {
                 case TrackState.Counting:
-                    double interval = tracker.ReminderIntervalSeconds;
-                    double into = interval > 0 ? tracker.SessionSeconds % interval : 0;
-                    progress = interval > 0 ? (float)(into / interval) : 0;
                     int minutes = (int)Math.Ceiling((interval - into) / 60);
-                    note = minutes <= 1 ? "Reminder in a moment" : $"{minutes} min to next reminder";
+                    state += minutes <= 1 ? "  ·  reminder in a moment" : $"  ·  reminder in {minutes} min";
+                    caption = "THIS SESSION";
                     break;
                 case TrackState.Paused:
-                    note = "Paused";
+                    caption = "PAUSED";
                     break;
                 default:
-                    note = "Not counting";
+                    caption = tracker.CanResume ? "LAST SESSION" : "READY";
                     break;
             }
-            ring.Set(progress, "THIS SESSION", Fmt.Clock(tracker.SessionSeconds), note);
-            Ui.SetText(status, app.DescribeState());
+            var today = DateTime.Today;
+            int breaks = tracker.Sessions.Count(s => s != tracker.Current && s.Start.Date == today);
+            var lastEnd = tracker.Sessions.Count > 0 ? tracker.Sessions.Max(s => s.End) : default(DateTime);
+            ring.SetSession(tracker.Running, tracker.State == TrackState.Paused, progress, progress, Fmt.Clock(tracker.SessionSeconds), caption, breaks, lastEnd);
+            Ui.SetText(status, state);
             startStop.Text = tracker.Running ? "I got up" : "Start";
             bool canResume = tracker.CanResume;
             if (resume.Visible != canResume)

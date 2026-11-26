@@ -10,7 +10,7 @@ namespace Stillpoint
         const int WsExToolWindow = 0x80;
         const int WsExNoActivate = 0x08000000;
 
-        public ReminderPopup(string title, string badge, string body, Action stop)
+        public ReminderPopup(string title, string body, Action stop)
         {
             SuspendLayout();
             AutoScaleDimensions = new SizeF(96F, 96F);
@@ -39,7 +39,7 @@ namespace Stillpoint
             table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            var ring = new MiniRing { Text = badge, Size = new Size(44, 44), Margin = new Padding(0, 0, 16, 0), BackColor = Theme.Surface };
+            var ring = new MiniSpirit { Size = new Size(56, 56), Margin = new Padding(0, 0, 14, 0), BackColor = Theme.Surface };
             var titleLabel = new Label { Text = title, AutoSize = true, Font = Theme.SemiBold(13.5f), Margin = new Padding(0, 2, 0, 0) };
             var bodyLabel = new Label { Text = body, AutoSize = true, MaximumSize = new Size(440, 0), ForeColor = Theme.Muted, Font = Theme.Regular(9.5f), Margin = new Padding(0, 4, 0, 0) };
             var buttons = new FlowLayoutPanel
