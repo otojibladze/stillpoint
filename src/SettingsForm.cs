@@ -19,7 +19,6 @@ namespace Stillpoint
         readonly ToggleSwitch seasonal;
         readonly LinkLabel townLink;
         readonly ToggleSwitch realWeather;
-        readonly ToggleSwitch stoneSounds;
         readonly ToggleSwitch desktopBuddy;
         readonly ToggleSwitch startWithWindows;
         readonly LinkLabel updateLink;
@@ -49,14 +48,11 @@ namespace Stillpoint
 
             nameLink = MenuLink();
             chatLink = MenuLink();
-            stoneSounds = new ToggleSwitch { Margin = new Padding(0) };
             desktopBuddy = new ToggleSwitch { Margin = new Padding(0) };
-            var soundsLabel = TwoLines("Sounds", "Chime, purr, crickets at night", stoneSounds);
             var buddyLabel = TwoLines("Desktop buddy", "A tiny stone on the taskbar", desktopBuddy);
             var stone = new Card();
             stone.AddRow(Ui.Text("Name"), nameLink);
             stone.AddRow(Ui.Text("Chattiness"), chatLink);
-            stone.AddRow(soundsLabel, stoneSounds);
             stone.AddRow(buddyLabel, desktopBuddy);
 
             townLink = MenuLink();
@@ -123,7 +119,6 @@ namespace Stillpoint
             autoUpdate.CheckedChanged += (s, e) => { if (!syncing) app.SetAutoUpdate(autoUpdate.Checked); };
             townLink.LinkClicked += (s, e) => app.AskTown(this);
             realWeather.CheckedChanged += (s, e) => { if (!syncing) app.SetRealWeather(this, realWeather.Checked); };
-            stoneSounds.CheckedChanged += (s, e) => { if (!syncing) app.SetStoneSounds(stoneSounds.Checked); };
             desktopBuddy.CheckedChanged += (s, e) => { if (!syncing) app.SetDesktopBuddy(desktopBuddy.Checked); };
             startWithWindows.CheckedChanged += (s, e) => { if (!syncing) { app.SetAutoStart(startWithWindows.Checked); SyncControls(); } };
             dataLink.LinkClicked += (s, e) => app.OpenDataFolder();
@@ -143,7 +138,6 @@ namespace Stillpoint
             syncing = true;
             reminderMinutes.Value = app.Settings.ReminderMinutes;
             startWithWindows.Checked = app.AutoStartEnabled;
-            stoneSounds.Checked = app.Settings.StoneSounds;
             desktopBuddy.Checked = app.Settings.DesktopBuddy;
             soundLink.Text = Sounds.Label(Sounds.Normalize(app.Settings.Sound)) + "  ›";
             nameLink.Text = (string.IsNullOrEmpty(app.Settings.StoneName) ? "Give it a name" : app.Settings.StoneName) + "  ›";

@@ -140,10 +140,6 @@ namespace Stillpoint
             }
         }
 
-        public void PlayStoneSound(StoneSound sound)
-        {
-            if (Settings.StoneOn && Settings.StoneSounds) Sounds.PlayStone(sound);
-        }
 
         public void AskName(IWin32Window owner, bool rename)
         {
@@ -313,13 +309,6 @@ namespace Stillpoint
             Refresh();
         }
 
-        public void SetStoneSounds(bool on)
-        {
-            Settings.StoneSounds = on;
-            SaveSettings();
-            if (on) Sounds.PlayStone(StoneSound.Chime);
-            Refresh();
-        }
 
         public void SetDesktopBuddy(bool on)
         {

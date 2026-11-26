@@ -96,7 +96,6 @@ namespace Stillpoint
             stoneToggle.CheckedChanged += (s, e) => { if (!syncing) app.SetStoneOn(stoneToggle.Checked); };
             stoneLabel.Click += (s, e) => stoneToggle.Checked = !stoneToggle.Checked;
             ring.Visited += app.AddVisitor;
-            ring.SoundRequested += app.PlayStoneSound;
             ApplyStoneMode();
         }
 

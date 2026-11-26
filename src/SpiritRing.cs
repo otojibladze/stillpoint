@@ -65,7 +65,7 @@ namespace Stillpoint
         Season season = Season.Autumn;
 
         float stretchT = -99, pokeT = -99, dizzyT = -99, wakeT = -99, yawnT = -99, rakeT = -99, bloomT = -99, snowmanT = -99;
-        float nextAct = 8, bfAt = -1, frogAt = -1, snailNext = 20, petSaidT = -99, heartT, noteT, humT = -99, demoT = -99, rainbowT = -99, purrT = -99, cricketNext = 15;
+        float nextAct = 8, bfAt = -1, frogAt = -1, snailNext = 20, petSaidT = -99, heartT, noteT, humT = -99, demoT = -99, rainbowT = -99;
         float rainAcc, ambientAcc;
         float fogK, wetReal, flashT = -99, lightningNext = 20, tracesT = -99;
         float petK, wind, windDrift, gustT = -99, gustNext = 15, starT = -99, starNext = 30, starX, starY, starDx, starDy, shimmerK, shownProgress;
@@ -121,7 +121,6 @@ namespace Stillpoint
 
         public Func<DateTime> Clock { get; set; } = () => DateTime.Now;
         public event Action<string> Visited;
-        public event Action<StoneSound> SoundRequested;
         public float Now => (float)watch.Elapsed.TotalSeconds;
 
         bool Running => state.Running;
@@ -420,18 +419,12 @@ namespace Stillpoint
             if (petting && !Sleeping)
             {
                 if (!was && t - petSaidT > 6) { petSaidT = t; Chat(Pick(new[] { "Mmm. That's nice.", "Purr... wait, I'm a rock." }), 2.2f); }
-                if (t - purrT > 2.4f) { purrT = t; SoundRequested?.Invoke(StoneSound.Purr); }
                 if (Running) wakeT = t;
                 if (t > heartT)
                 {
                     heartT = t + 0.38f;
                     Emit(new Particle { Kind = Bit.Heart, X = SX + (Rand - 0.5f) * 50, Y = 108, Vx = (Rand - 0.5f) * 12, Vy = -32, Vr = (Rand - 0.5f) * 0.6f, Life = 1.4f, Size = 5 + Rand * 2 });
                 }
-            }
-            if (nightK > 0.8f && !Running && t > cricketNext)
-            {
-                cricketNext = t + 30 + Rand * 25;
-                SoundRequested?.Invoke(StoneSound.Crickets);
             }
 
             StepAtmosphere(t, dt, now);
@@ -930,7 +923,6 @@ namespace Stillpoint
                     {
                         landed = true;
                         landT = t;
-                        SoundRequested?.Invoke(StoneSound.Chime);
                         if (season == Season.Autumn)
                             for (int i = 0; i < 4; i++)
                             {

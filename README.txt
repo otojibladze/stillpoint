@@ -38,9 +38,7 @@ counting, or I GOT UP to stop counting.
 The gear button next to History opens Settings. There you can change
 how often the reminder comes (- and +), pick its sound (or No sound,
 the round button plays it) and click "Preview reminder" to see it.
-Under Stone you can rename it, make it quieter or chattier, turn on
-its sounds (a chime when it hops, a purr when you pet it, crickets at
-night) and turn on the desktop buddy: a tiny stone that sits on top of
+Under Stone you can rename it, make it quieter or chattier and turn on the desktop buddy: a tiny stone that sits on top of
 the taskbar. Click the buddy to open Pebble, right-click it to hide
 it. It hides by itself while a full-screen game or video is running.
 

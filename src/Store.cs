@@ -34,7 +34,6 @@ namespace Stillpoint
         public string StoneName = "";
         public bool StoneNameAsked;
         public Chattiness Chattiness = Chattiness.Normal;
-        public bool StoneSounds;
         public bool DesktopBuddy;
         public string EveningCardDate = "";
         public WindowSize WindowSize = WindowSize.Medium;
@@ -130,7 +129,6 @@ namespace Stillpoint
                     case "chattiness":
                         if (Enum.TryParse(value, true, out Chattiness chat) && Enum.IsDefined(typeof(Chattiness), chat)) settings.Chattiness = chat;
                         break;
-                    case "stoneSounds": settings.StoneSounds = on; break;
                     case "desktopBuddy": settings.DesktopBuddy = on; break;
                     case "eveningCard": settings.EveningCardDate = value; break;
                     case "autoUpdate": settings.AutoUpdate = on; break;
@@ -180,7 +178,6 @@ namespace Stillpoint
                 "stoneName=" + Settings.CleanName(s.StoneName),
                 "stoneNameAsked=" + Flag(s.StoneNameAsked),
                 "chattiness=" + s.Chattiness.ToString().ToLowerInvariant(),
-                "stoneSounds=" + Flag(s.StoneSounds),
                 "desktopBuddy=" + Flag(s.DesktopBuddy),
                 "eveningCard=" + s.EveningCardDate,
                 "windowSize=" + s.WindowSize.ToString().ToLowerInvariant(),
