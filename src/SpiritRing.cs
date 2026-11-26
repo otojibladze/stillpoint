@@ -65,7 +65,7 @@ namespace Stillpoint
         float last;
 
         RingState state = new RingState();
-        bool known, hasLast, catSeen;
+        bool known, hasLast;
         int breaks = -1, demoIndex;
         DateTime breaksDate, lastEnd;
         Season season = Season.Autumn;
@@ -739,10 +739,49 @@ namespace Stillpoint
 
         void StepCat(float t, float dt)
         {
-            float target = nightK > 0.7f && Sleeping ? 1 : 0;
-            cat.K += (target - cat.K) * (1 - (float)Math.Exp(-dt * 0.45));
-            if (cat.K > 0.9f && !catSeen) { catSeen = true; Visit(Visitors.Cat); }
-            if (cat.K < 0.05f) catSeen = false;
+            bool want = nightK > 0.7f && Sleeping;
+            var p = cat.P;
+            float s = t - cat.T0, home = GardenArt.CatAt.X, away = home + 95;
+            switch (cat.State)
+            {
+                case 0:
+                    if (!want) return;
+                    cat.State = 1; cat.T0 = t; cat.Side = 1; cat.X = away; p.Curl = 0; p.Blink = 0;
+                    break;
+                case 1:
+                    if (!want) { cat.State = 5; cat.T0 = t; cat.Side = -1; cat.From = new PointF(cat.X, 0); break; }
+                    float u = SpiritArt.Clamp(s / 5.5f, 0, 1);
+                    float x = away + (home - away) * (1 - (1 - u) * (1 - u));
+                    p.Gait += Math.Abs(x - cat.X) * 0.45f;
+                    cat.X = x;
+                    p.Run = 1 - SpiritArt.Smooth(0.8f, 1, u);
+                    if (u >= 1) { cat.State = 2; cat.T0 = t; }
+                    break;
+                case 2:
+                    if (!want) { cat.State = 4; cat.T0 = t - (1 - p.Curl) * 1.6f; break; }
+                    p.Run = 0;
+                    p.Blink = SpiritArt.Window(0.4f, 1.1f, s, 0.25f);
+                    p.Curl = SpiritArt.Smooth(0.9f, 2.8f, s);
+                    if (s > 2.8f) { cat.State = 3; Visit(Visitors.Cat); }
+                    break;
+                case 3:
+                    p.Curl = 1;
+                    if (!want) { cat.State = 4; cat.T0 = t; }
+                    break;
+                case 4:
+                    p.Curl = 1 - SpiritArt.Smooth(0, 1.6f, s);
+                    p.Blink = s < 1.6f ? 0 : SpiritArt.Window(1.9f, 2.4f, s, 0.15f);
+                    if (s > 2.6f) { cat.State = 5; cat.T0 = t; cat.Side = -1; cat.From = new PointF(cat.X, 0); }
+                    break;
+                case 5:
+                    float v = SpiritArt.Clamp(s / 4.5f, 0, 1);
+                    float nx = cat.From.X + (away - cat.From.X) * v * v;
+                    p.Gait += Math.Abs(nx - cat.X) * 0.45f;
+                    cat.X = nx;
+                    p.Run = SpiritArt.Smooth(0, 0.15f, v);
+                    if (v >= 1) cat.State = 0;
+                    break;
+            }
         }
 
         void StepBits(float dt, float t)
@@ -1382,7 +1421,7 @@ namespace Stillpoint
             if ((state.Keepsakes & Keepsake.Lantern) != 0) GardenArt.DrawLanternFlicker(g, t, night);
             GardenArt.DrawHeatShimmer(g, t, shimmerK);
             float fireflies = season == Season.Summer ? Math.Max(night, NightHour(19) ? 0.6f : 0) * (1 - cloudK * 0.6f) : 0;
-            bool clipped = bird.Active || butterfly.Active || dragonfly.Active || cat.K > 0.02f || frog.Active || AnyVisitor;
+            bool clipped = bird.Active || butterfly.Active || dragonfly.Active || cat.Active || frog.Active || AnyVisitor;
             var clip = g.Save();
             if (clipped) using (var disc = Disc()) g.SetClip(disc, CombineMode.Intersect);
             if (traces.Any) GardenArt.DrawTraces(g, traces, night, snowGround);
@@ -1393,7 +1432,7 @@ namespace Stillpoint
             DrawLife(g, t, night);
             if ((state.Keepsakes & Keepsake.Baby) != 0)
                 SpiritArt.DrawSpirit(g, GardenArt.BabyAt.X, GardenArt.BabyAt.Y, GardenArt.BabyR, GardenArt.BabyPose(pose, t), t);
-            if (cat.K > 0.02f) SpiritArt.DrawCat(g, GardenArt.CatAt.X + (1 - cat.K) * 80, GardenArt.CatAt.Y, t);
+            if (cat.Active) SpiritArt.DrawCat(g, cat.X, GardenArt.CatAt.Y - Math.Abs(SpiritArt.Cos(cat.P.Gait)) * 0.6f * cat.P.Run, t, cat.Side, cat.P);
             if (snail.Active)
             {
                 using (var trail = new Pen(Color.FromArgb(50, 255, 255, 255), 1.2f)) g.DrawLine(trail, snail.X + 8, snail.Y - 0.5f, 262, snail.Y - 0.5f);

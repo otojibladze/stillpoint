@@ -42,7 +42,7 @@ namespace Stillpoint
             root.SuspendLayout();
 
             stoneToggle = new ToggleSwitch { Margin = new Padding(8, 2, 0, 0) };
-            var stoneLabel = new Label { Text = "Stone and garden", AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9f), Margin = new Padding(0), Cursor = Cursors.Hand };
+            var stoneLabel = new Label { Text = app.Settings.StoneOn ? "Garden mode" : "Simple mode", AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9f), Margin = new Padding(0), Cursor = Cursors.Hand };
             var stoneRow = Ui.Row(stoneLabel, stoneToggle);
             stoneRow.Anchor = AnchorStyles.Right;
             stoneRow.Margin = new Padding(0);
@@ -101,7 +101,7 @@ namespace Stillpoint
                 else ShowSettings();
             };
             updateLink.LinkClicked += (s, e) => app.InstallUpdate();
-            stoneToggle.CheckedChanged += (s, e) => { if (!syncing) app.SetStoneOn(stoneToggle.Checked); };
+            stoneToggle.CheckedChanged += (s, e) => { stoneLabel.Text = stoneToggle.Checked ? "Garden mode" : "Simple mode"; if (!syncing) app.SetStoneOn(stoneToggle.Checked); };
             stoneLabel.Click += (s, e) => stoneToggle.Checked = !stoneToggle.Checked;
             ring.Visited += app.AddVisitor;
             ApplyStoneMode();

@@ -71,7 +71,6 @@ namespace Stillpoint
             var autoLabel = Ui.Text("Start with Windows");
             autoLabel.Cursor = Cursors.Hand;
             autoLabel.Click += (s, e) => startWithWindows.Checked = !startWithWindows.Checked;
-            var dataLink = Ui.Link("Open folder");
             sizeLink = MenuLink();
             var general = new Card();
             general.AddRow(Ui.Text("Window size"), sizeLink);
@@ -82,7 +81,6 @@ namespace Stillpoint
             general.AddRow(autoLabel, startWithWindows);
             autoUpdate = new ToggleSwitch { Margin = new Padding(0) };
             general.AddRow(TwoLines("Install updates automatically", "When you are away for a few minutes", autoUpdate), autoUpdate);
-            general.AddRow(Ui.Text("Your sessions"), dataLink);
 
             var version = new Label { Text = "Pebble " + AppVersion.Text + "  ·", AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9f), Margin = new Padding(0) };
             updateLink = Ui.Link("");
@@ -126,7 +124,6 @@ namespace Stillpoint
             realWeather.CheckedChanged += (s, e) => { if (!syncing) app.SetRealWeather(this, realWeather.Checked); };
             desktopBuddy.CheckedChanged += (s, e) => { if (!syncing) app.SetDesktopBuddy(desktopBuddy.Checked); };
             startWithWindows.CheckedChanged += (s, e) => { if (!syncing) { app.SetAutoStart(startWithWindows.Checked); SyncControls(); } };
-            dataLink.LinkClicked += (s, e) => app.OpenDataFolder();
             updateLink.LinkClicked += (s, e) =>
             {
                 if (app.UpdateAvailable != null) app.InstallUpdate();
