@@ -111,8 +111,7 @@ LOOK AND FEEL
   color with the season (blue in winter, rose in spring, green in
   summer, terracotta in autumn).
 - The garden has depth: far hills, light shafts in the morning, the
-  Milky Way and the odd shooting star at night, and a slight 3D shift
-  when you move the mouse over it. The wind moves the sprout, grass and
+  Milky Way and the odd shooting star at night. The wind moves the sprout, grass and
   falling leaves together.
 - The stone is lit by the sun (from the left in the morning, the right
   in the evening), gets wet and shiny in rain, collects snow, breathes

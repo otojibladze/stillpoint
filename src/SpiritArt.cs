@@ -142,8 +142,6 @@ namespace Stillpoint
                 if (contact > 0.02f && !p.Cushion)
                 {
                     FillEllipse(g, Color.FromArgb((int)(95 * contact), 50, 38, 30), cx, ground + 0.5f, rx * 0.62f * p.Sx, R * 0.045f);
-                    using (var ridge = new Pen(Color.FromArgb((int)(70 * contact), 255, 250, 240), R * 0.03f))
-                        Arc(g, ridge, cx, ground - R * 0.02f, rx * 1.04f * p.Sx, Pi * 0.12f, Pi * 0.88f);
                 }
             }
 
@@ -241,34 +239,44 @@ namespace Stillpoint
                         g.FillPath(fill, body);
                     }
                 }
+                Grain.ResetTransform();
+                Grain.TranslateTransform(-rx * 1.1f, -ry * 1.1f);
+                Grain.ScaleTransform(rx * 2.2f / GrainSize, rx * 2.2f / GrainSize);
+                g.FillPath(Grain, body);
+                using (var aoPath = new GraphicsPath())
+                {
+                    aoPath.AddEllipse(-rx * 1.15f, ry * 1.15f - rx * 1.15f, rx * 2.3f, rx * 2.3f);
+                    using (var ao = new PathGradientBrush(aoPath) { CenterColor = Color.FromArgb(107, 45, 35, 28), SurroundColors = new[] { Color.FromArgb(0, 45, 35, 28) }, CenterPoint = new PointF(0, ry * 1.15f) })
+                        g.FillPath(ao, body);
+                }
+                var rimColor = Mix(Mix(Hex(0xFFECD6), Hex(0xFFA86E), p.Warm), Hex(0xAFC2FF), p.Night * 0.8f);
+                float rimAlpha = 0.35f + 0.25f * p.Warm + 0.1f * p.Night;
+                bool rimRight = p.LightX <= 0;
+                var rimRect = rimRight ? new RectangleF(rx * 0.55f, -ry * 1.1f, rx * 0.7f, ry * 2.3f) : new RectangleF(-rx * 1.25f, -ry * 1.1f, rx * 0.7f, ry * 2.3f);
+                var rimClip = g.Save();
+                g.SetClip(rimRect, CombineMode.Intersect);
+                using (var rim = new LinearGradientBrush(RectangleF.Inflate(rimRect, 1, 0), Alpha(rimColor, rimRight ? 0 : rimAlpha), Alpha(rimColor, rimRight ? rimAlpha : 0), LinearGradientMode.Horizontal))
+                    g.FillPath(rim, body);
+                g.Restore(rimClip);
+                if (p.Wet > 0.02f)
+                    using (var damp = new SolidBrush(Color.FromArgb((int)(55 * p.Wet), 40, 34, 30))) g.FillPath(damp, body);
+
                 var clip = g.Save();
                 g.SetClip(body, CombineMode.Intersect);
                 using (var band = new GraphicsPath())
                 using (var pen = new Pen(Color.FromArgb(77, 246, 240, 230), R * 0.05f))
                 {
-                    Quad(band, new PointF(rx * 0.35f, -ry * 1.1f), new PointF(rx * 0.75f, ry * 0.1f), new PointF(rx * 0.55f, ry * 1.1f));
+                    Quad(band, new PointF(rx * 0.35f, -ry * 0.98f), new PointF(rx * 0.75f, ry * 0.1f), new PointF(rx * 0.55f, ry * 0.86f));
                     g.DrawPath(pen, band);
                 }
                 using (var band = new GraphicsPath())
                 using (var pen = new Pen(Color.FromArgb(46, 246, 240, 230), R * 0.018f))
                 {
-                    Quad(band, new PointF(rx * 0.5f, -ry * 1.1f), new PointF(rx * 0.9f, ry * 0.1f), new PointF(rx * 0.72f, ry * 1.1f));
+                    Quad(band, new PointF(rx * 0.5f, -ry * 0.92f), new PointF(rx * 0.9f, ry * 0.1f), new PointF(rx * 0.72f, ry * 0.8f));
                     g.DrawPath(pen, band);
                 }
-                Grain.ResetTransform();
-                Grain.TranslateTransform(-rx * 1.1f, -ry * 1.1f);
-                Grain.ScaleTransform(rx * 2.2f / GrainSize, rx * 2.2f / GrainSize);
-                g.FillRectangle(Grain, -rx * 1.2f, -ry * 1.2f, rx * 2.4f, ry * 2.4f);
                 foreach (var s in Specks)
                     FillEllipse(g, s.Light ? Color.FromArgb((int)(255 * Clamp(s.O + 0.15f, 0, 1)), 250, 245, 236) : Color.FromArgb((int)(255 * s.O), 60, 50, 44), s.X * rx, s.Y * ry - ry * 0.1f, s.S * R, s.S * R);
-                var all = new RectangleF(-rx * 1.2f, -ry * 1.2f, rx * 2.4f, ry * 2.4f);
-                FillRadial(g, 0, ry * 1.15f, rx * 1.15f, rx * 1.15f, Color.FromArgb(107, 45, 35, 28), Color.FromArgb(0, 45, 35, 28), all);
-                var rimColor = Mix(Mix(Hex(0xFFECD6), Hex(0xFFA86E), p.Warm), Hex(0xAFC2FF), p.Night * 0.8f);
-                float rimAlpha = 0.35f + 0.25f * p.Warm + 0.1f * p.Night;
-                bool rimRight = p.LightX <= 0;
-                var rimRect = rimRight ? new RectangleF(rx * 0.55f, -ry, rx * 0.6f, ry * 1.6f) : new RectangleF(-rx * 1.15f, -ry, rx * 0.6f, ry * 1.6f);
-                using (var rim = new LinearGradientBrush(RectangleF.Inflate(rimRect, 1, 1), Alpha(rimColor, rimRight ? 0 : rimAlpha), Alpha(rimColor, rimRight ? rimAlpha : 0), LinearGradientMode.Horizontal))
-                    g.FillRectangle(rim, rimRect);
                 var hl = g.Save();
                 g.TranslateTransform(rx * 0.4f * p.LightX, -ry * 0.55f);
                 g.RotateTransform(0.55f * p.LightX * Deg);
@@ -276,7 +284,6 @@ namespace Stillpoint
                 g.Restore(hl);
                 if (p.Wet > 0.02f)
                 {
-                    using (var damp = new SolidBrush(Color.FromArgb((int)(55 * p.Wet), 40, 34, 30))) g.FillRectangle(damp, all);
                     var gloss = g.Save();
                     g.TranslateTransform(rx * 0.3f * p.LightX, -ry * 0.62f);
                     g.RotateTransform(0.4f * p.LightX * Deg);
@@ -304,9 +311,11 @@ namespace Stillpoint
                     FillEllipse(g, Hex(0xEFB3B8), 0, 0, R * 0.05f, R * 0.032f);
                     g.Restore(pst);
                 }
-                if (p.Night > 0)
-                    using (var tint = new SolidBrush(Color.FromArgb((int)(255 * 0.38f * p.Night), 24, 28, 50))) g.FillRectangle(tint, all);
                 g.Restore(clip);
+                if (p.Night > 0)
+                    using (var tint = new SolidBrush(Color.FromArgb((int)(255 * 0.38f * p.Night), 24, 28, 50))) g.FillPath(tint, body);
+                using (var edge = new Pen(Color.FromArgb(70, Mix(Hex(0x7A7067), Hex(0x2C2F40), p.Night * 0.7f)), Math.Max(0.6f, R * 0.012f)))
+                    g.DrawPath(edge, body);
             }
 
             float es = p.EyeScale;

@@ -455,19 +455,6 @@ namespace Stillpoint
             FillEllipse(g, Alpha(Color.White, a), x, y, 1.3f, 1.3f);
         }
 
-        public static void DrawDiscShadow(Graphics g)
-        {
-            using (var path = new GraphicsPath())
-            {
-                path.AddEllipse(150 - 162, 154 - 162, 324, 324);
-                using (var b = new PathGradientBrush(path) { CenterColor = Color.FromArgb(70, 40, 30, 20), SurroundColors = new[] { Color.FromArgb(0, 40, 30, 20) }, CenterPoint = new PointF(150, 154) })
-                {
-                    b.Blend = new Blend { Factors = new[] { 0f, 1f, 1f }, Positions = new[] { 0f, 0.1f, 1f } };
-                    g.FillPath(b, path);
-                }
-            }
-        }
-
         public static void DrawKeepsakeIcon(Graphics g, RectangleF dest, Keepsake keepsake, bool earned)
         {
             var state = g.Save();

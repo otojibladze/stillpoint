@@ -68,7 +68,7 @@ namespace Stillpoint
         float nextAct = 8, bfAt = -1, frogAt = -1, snailNext = 20, petSaidT = -99, heartT, noteT, humT = -99, demoT = -99, rainbowT = -99, purrT = -99, cricketNext = 15;
         float rainAcc, ambientAcc;
         float fogK, wetReal, flashT = -99, lightningNext = 20, tracesT = -99;
-        float parX, parY, wind, windDrift, gustT = -99, gustNext = 15, starT = -99, starNext = 30, starX, starY, starDx, starDy, shimmerK, shownProgress;
+        float wind, windDrift, gustT = -99, gustNext = 15, starT = -99, starNext = 30, starX, starY, starDx, starDy, shimmerK, shownProgress;
         float zoomT = -99, landT = -99, snowPile, vaporNext, splashAcc, dripAcc, boredT = -99;
         int petalsOnHead;
         readonly Critter dragonfly = new Critter();
@@ -466,11 +466,6 @@ namespace Stillpoint
             float gust = SpiritArt.Sin(SpiritArt.Clamp((t - gustT) / 3.5f, 0, 1) * SpiritArt.Pi);
             wind = 0.35f * SpiritArt.Sin(t * 0.37f) + 0.2f * SpiritArt.Sin(t * 0.91f + 1) + 0.9f * gust;
             windDrift += dt * wind * 6;
-            float tx = 0, ty = 0;
-            if (pointerIn && t - pointerT < 4) { tx = SpiritArt.Clamp((pointer.X - 150) / 150, -1, 1); ty = SpiritArt.Clamp((pointer.Y - 150) / 150, -1, 1); }
-            float pa = 1 - (float)Math.Exp(-dt * 3);
-            parX += (tx - parX) * pa;
-            parY += (ty - parY) * pa;
             float target = Running ? state.Progress : 0;
             if (target < shownProgress - 0.3f) shownProgress = target;
             else shownProgress += (target - shownProgress) * (1 - (float)Math.Exp(-dt * 4));
@@ -1134,9 +1129,8 @@ namespace Stillpoint
             CenteredText(g, state.Note, bubbleFont, Theme.AccentText, cx, cy + size * 0.14f);
         }
 
-        Bitmap backCache, groundCache, frameCache, fadeShot;
+        Bitmap backCache, groundCache, fadeShot;
         long backKey = -1, groundKey = -1;
-        int frameKey = -1;
         float fadeT = -99;
 
         Bitmap Layer(ref Bitmap cache, ref long cacheKey, long key, int px, float s, Action<Graphics> draw)
@@ -1158,22 +1152,6 @@ namespace Stillpoint
                 draw(g);
             }
             return cache;
-        }
-
-        Bitmap FrameImage(int px, float s)
-        {
-            if (frameCache != null && frameKey == px) return frameCache;
-            frameCache?.Dispose();
-            frameCache = new Bitmap(px, px, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
-            frameKey = px;
-            using (var g = Graphics.FromImage(frameCache))
-            {
-                g.Clear(Color.Transparent);
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.ScaleTransform(s, s);
-                GardenArt.DrawDiscShadow(g);
-            }
-            return frameCache;
         }
 
         static GraphicsPath Disc(float r = 140)
@@ -1229,7 +1207,6 @@ namespace Stillpoint
             if (size < 20) return;
             var o = Origin;
             int px = (int)Math.Ceiling(size) + 1;
-            g.DrawImage(FrameImage(px, s), new Rectangle((int)o.X, (int)o.Y, px, px));
             var state0 = g.Save();
             float night = Math.Max(0, nightK);
             float z = ZoomLevel(t);
@@ -1270,7 +1247,7 @@ namespace Stillpoint
                 Shafts = MorningLight(now),
                 Halo = Math.Max(fogK, cloudK > 0.15f && cloudK < 0.8f ? 0.6f : 0),
             };
-            float bx = -parX * 3, by = -parY * 2, gx = -parX * 1.4f, gy = -parY * 0.8f;
+            const float bx = 0, by = 0, gx = 0, gy = 0;
             var back = Layer(ref backCache, ref backKey, look.BackKey(px), px, s, bg => GardenArt.DrawBackground(bg, look, new RectangleF(-10, -10, 320, 320)));
             g.DrawImage(back, new Rectangle((int)Math.Round(o.X + bx * s), (int)Math.Round(o.Y + by * s), px, px));
 
@@ -1465,7 +1442,6 @@ namespace Stillpoint
                 frameTimer = IntPtr.Zero;
                 backCache?.Dispose();
                 groundCache?.Dispose();
-                frameCache?.Dispose();
                 fadeShot?.Dispose();
                 timeFont?.Dispose();
                 captionFont?.Dispose();
