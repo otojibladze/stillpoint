@@ -111,6 +111,8 @@ namespace Stillpoint
         {
             Puzzle = Puzzles.Next(random, ref lastKind);
             var next = Puzzle.Build();
+            float dpi = CurrentAutoScaleDimensions.Width / 96f;
+            if (dpi > 1.01f) next.Scale(new SizeF(dpi, dpi));
             next.Anchor = AnchorStyles.None;
             host.SuspendLayout();
             if (content != null)

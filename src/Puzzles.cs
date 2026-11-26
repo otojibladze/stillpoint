@@ -132,6 +132,16 @@ namespace Stillpoint
             r => new BiggestCirclePuzzle(r),
             r => MissingLetters(r),
             r => UpsideDown(r),
+            r => CanvasPuzzle.Breath(r),
+            r => CanvasPuzzle.Enso(),
+            r => CanvasPuzzle.Cairn(r),
+            r => CanvasPuzzle.Lotus(r),
+            r => CanvasPuzzle.Tea(r),
+            r => new ShadowPuzzle(r),
+            r => new DifferencePuzzle(r),
+            r => new OrderPuzzle(r),
+            r => new MemoryPuzzle(r),
+            r => new UprightPuzzle(r),
         };
 
         public static int WordCount => Words.Length;
@@ -614,26 +624,27 @@ namespace Stillpoint
     {
         int nextOrder = 1;
 
-        public TileGrid(PickMode mode, float scale)
+        public TileGrid(PickMode mode, float scale, int count = Puzzles.TileCount, int columns = 3)
         {
-            ColumnCount = 3;
-            RowCount = 3;
+            ColumnCount = columns;
+            RowCount = (count + columns - 1) / columns;
             AutoSize = true;
             Anchor = AnchorStyles.None;
             Margin = new Padding(0);
             int size = (int)(84 * scale);
-            Tiles = new Tile[Puzzles.TileCount];
+            int gap = Math.Max(3, (int)(4 * scale));
+            Tiles = new Tile[count];
             for (int i = 0; i < Tiles.Length; i++)
             {
-                var tile = new Tile(mode != PickMode.None) { Size = new Size(size, size), Margin = new Padding(4) };
+                var tile = new Tile(mode != PickMode.None) { Size = new Size(size, size), Margin = new Padding(gap) };
                 tile.Click += (s, e) => Pick(mode, tile);
                 Tiles[i] = tile;
-                Controls.Add(tile, i % 3, i / 3);
+                Controls.Add(tile, i % columns, i / columns);
             }
         }
 
         public Tile[] Tiles { get; }
-        public bool OrderDone => nextOrder > Puzzles.TileCount;
+        public bool OrderDone => nextOrder > Tiles.Length;
 
         void Pick(PickMode mode, Tile tile)
         {
@@ -674,6 +685,8 @@ namespace Stillpoint
         }
 
         public Picture Picture { get; set; }
+        public Action<Graphics, RectangleF> Art { get; set; }
+        public Color? Background { get; set; }
         public string Label { get; set; }
         public Color LabelColor { get; set; } = Theme.Ink;
         public int Order { get; set; }
@@ -700,11 +713,11 @@ namespace Stillpoint
             var r = new RectangleF(border / 2, border / 2, bounds.Width - border - 1, bounds.Height - border - 1);
             using (var path = Draw.Rounded(r, bounds.Width * 0.08f))
             {
-                using (var brush = new SolidBrush(Selected ? Theme.TileSelected : Theme.Tile)) g.FillPath(brush, path);
+                using (var brush = new SolidBrush(Background ?? (Selected ? Theme.TileSelected : Theme.Tile))) g.FillPath(brush, path);
                 if (Selected) using (var pen = new Pen(Accent, border)) g.DrawPath(pen, path);
             }
 
-            if (Picture != null) DrawPicture(g, bounds);
+            if (Picture != null || Art != null) DrawPicture(g, bounds);
             if (Label != null)
             {
                 float points = (Label.Length <= 2 ? bounds.Height * 0.3f : bounds.Height * 0.15f) * 72f / g.DpiY;
@@ -724,6 +737,12 @@ namespace Stillpoint
                 g.TranslateTransform(bounds.Width / 2f, bounds.Height / 2f);
                 g.RotateTransform(Rotation);
                 g.TranslateTransform(-bounds.Width / 2f, -bounds.Height / 2f);
+            }
+            if (Art != null)
+            {
+                Art(g, box);
+                g.Restore(state);
+                return;
             }
             using (var brush = new SolidBrush(Puzzles.Colors[Picture.Color]))
             {

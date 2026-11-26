@@ -29,8 +29,10 @@ Press Start when you sit down and Stop when you leave. You can also
 right-click the tray icon > Start counting / Stop counting.
 
 Stopping takes a little effort on purpose: you solve a small random
-puzzle. It can be picking shapes, typing CONFIRM, typing a code, simple
-math, holding a button, moving a slider and more. A wrong answer gives
+puzzle. It can be picking shapes, typing CONFIRM, breathing with a
+circle, drawing a circle, stacking a stone, waiting for a lotus to open,
+pouring tea, finding a shadow, spotting a difference and more. When you
+have done it, press the button (Stop, Close reminder...). A wrong answer gives
 you a new random puzzle. Exiting the app while it counts asks for a
 puzzle too.
 
