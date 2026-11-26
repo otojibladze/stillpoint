@@ -560,22 +560,30 @@ namespace Stillpoint
 
     static class StoneFaces
     {
+        public static Bitmap Face(StoneMood mood, int size)
+        {
+            var bitmap = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(bitmap))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                var pose = new SpiritPose { Bare = true, Blush = 0.3f, EyeScale = size <= 20 ? 2.1f : size <= 32 ? 1.7f : size <= 64 ? 1.4f : 1.2f };
+                if (mood == StoneMood.Sleepy) { pose.EyeOpen = 0.4f; pose.Mouth = Mouth.Flat; }
+                else if (mood == StoneMood.Asleep) { pose.Eyes = Eyes.Closed; pose.Night = 0.35f; pose.Blush = 0.15f; }
+                else if (size > 32) pose.Mouth = Mouth.Smile;
+                SpiritArt.DrawSpirit(g, size / 2f, size * 0.93f, size * 0.47f, pose, 0, shadow: false);
+            }
+            return bitmap;
+        }
+
         public static Icon Icon(StoneMood mood, int size)
         {
-            using (var bitmap = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
-            {
-                using (var g = Graphics.FromImage(bitmap))
-                {
-                    g.SmoothingMode = SmoothingMode.AntiAlias;
-                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                    var pose = new SpiritPose { Bare = true, Blush = 0.3f, EyeScale = size <= 20 ? 2.1f : size <= 32 ? 1.7f : 1.3f };
-                    if (mood == StoneMood.Sleepy) { pose.EyeOpen = 0.4f; pose.Mouth = Mouth.Flat; }
-                    else if (mood == StoneMood.Asleep) { pose.Eyes = Eyes.Closed; pose.Night = 0.35f; pose.Blush = 0.15f; }
-                    SpiritArt.DrawSpirit(g, size / 2f, size * 0.93f, size * 0.47f, pose, 0, shadow: false);
-                }
-                return Icons.FromBitmap(bitmap);
-            }
+            using (var bitmap = Face(mood, size)) return Icons.FromBitmap(bitmap);
         }
+
+        public static byte[] AppIco() => Icons.BuildIco(size => Face(StoneMood.Awake, size));
+
+        public static Icon AppIcon() => new Icon(new System.IO.MemoryStream(AppIco()));
     }
 
     sealed class MiniSpirit : Control

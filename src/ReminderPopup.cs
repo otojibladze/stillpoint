@@ -17,7 +17,7 @@ namespace Stillpoint
             AutoScaleMode = AutoScaleMode.Dpi;
             Font = Theme.Regular(10f);
             ForeColor = Theme.Ink;
-            Text = "Stillpoint";
+            Text = "Pebble";
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.Manual;

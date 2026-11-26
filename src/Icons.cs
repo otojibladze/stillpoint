@@ -1,6 +1,5 @@
 using System;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
@@ -10,20 +9,18 @@ namespace Stillpoint
 {
     static class Icons
     {
-        public static readonly Color On = Color.FromArgb(0xC4, 0x60, 0x40);
-        public static readonly Color Off = Color.FromArgb(0x8E, 0x8A, 0x86);
         static readonly int[] Sizes = { 16, 20, 24, 32, 40, 48, 64, 256 };
 
-        public static Icon Load(Color fill) => new Icon(new MemoryStream(BuildIco(fill)));
+        public static byte[] BuildIco(Func<int, Bitmap> draw) =>
+            Ico(Sizes, Sizes.Select(size =>
+            {
+                using (var bitmap = draw(size)) return size >= 256 ? Png(bitmap) : Dib(bitmap);
+            }).ToArray());
 
-        public static Icon Load(Color fill, Size size) => new Icon(new MemoryStream(BuildIco(fill)), size);
-
-        public static byte[] BuildIco(Color fill) =>
-            Ico(Sizes, Sizes.Select(size => size >= 256 ? Png(size, fill) : DibOf(size, fill)).ToArray());
-
-        static byte[] DibOf(int size, Color fill)
+        public static Icon FromBitmap(Bitmap bitmap)
         {
-            using (var bitmap = Draw(size, fill)) return Dib(bitmap);
+            using (var stream = new MemoryStream(Ico(new[] { bitmap.Width }, new[] { Dib(bitmap) })))
+                return new Icon(stream);
         }
 
         static byte[] Ico(int[] sizes, byte[][] images)
@@ -52,31 +49,6 @@ namespace Stillpoint
                 writer.Flush();
                 return stream.ToArray();
             }
-        }
-
-        public static Bitmap Draw(int size, Color fill)
-        {
-            var bitmap = new Bitmap(size, size, PixelFormat.Format32bppArgb);
-            using (var g = Graphics.FromImage(bitmap))
-            {
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                float s = size, inset = s * 0.03f, c = s / 2f;
-                using (var brush = new SolidBrush(fill))
-                    g.FillEllipse(brush, inset, inset, s - 2 * inset, s - 2 * inset);
-                using (var pen = new Pen(Color.White, Math.Max(1.5f, s * 0.1f)) { StartCap = LineCap.Round, EndCap = LineCap.Round })
-                {
-                    g.DrawLine(pen, c, c, c, s * 0.2f);
-                    g.DrawLine(pen, c, c, s * 0.7f, s * 0.64f);
-                }
-            }
-            return bitmap;
-        }
-
-        public static Icon FromBitmap(Bitmap bitmap)
-        {
-            using (var stream = new MemoryStream(Ico(new[] { bitmap.Width }, new[] { Dib(bitmap) })))
-                return new Icon(stream);
         }
 
         static byte[] Dib(Bitmap bitmap)
@@ -117,9 +89,8 @@ namespace Stillpoint
             }
         }
 
-        static byte[] Png(int size, Color fill)
+        static byte[] Png(Bitmap bitmap)
         {
-            using (var bitmap = Draw(size, fill))
             using (var stream = new MemoryStream())
             {
                 bitmap.Save(stream, ImageFormat.Png);

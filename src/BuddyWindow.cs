@@ -26,8 +26,8 @@ namespace Stillpoint
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.Manual;
-            Text = "Stillpoint buddy";
-            menu.Items.Add("Open Stillpoint", null, (s, e) => OpenRequested?.Invoke(this, EventArgs.Empty));
+            Text = "Pebble buddy";
+            menu.Items.Add("Open Pebble", null, (s, e) => OpenRequested?.Invoke(this, EventArgs.Empty));
             menu.Items.Add("Hide desktop buddy", null, (s, e) => HideRequested?.Invoke(this, EventArgs.Empty));
             anim.Tick += (s, e) => { if (Visible) Present(); };
             MouseClick += (s, e) =>

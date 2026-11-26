@@ -1,18 +1,20 @@
-STILLPOINT
-==========
+PEBBLE
+======
 
 Counts how long you sit at your computer and reminds you every hour.
+Pebble used to be called Stillpoint. Older copies may still be named
+Stillpoint.exe: that is fine, it updates itself either way.
 
 
 SETUP (one time)
 ----------------
-1. Make a folder that will stay put, for example Documents\Stillpoint,
-   and put Stillpoint.exe in it. Don't leave it in Downloads if you clean
+1. Make a folder that will stay put, for example Documents\Pebble,
+   and put Pebble.exe in it. Don't leave it in Downloads if you clean
    that folder: Windows starts the app from wherever the exe is.
-2. Double-click Stillpoint.exe.
+2. Double-click Pebble.exe.
    If Windows says "Windows protected your PC", click "More info", then
    "Run anyway". It says that because the app is not signed.
-3. The Stillpoint window opens and a clock icon appears in the tray, next
+3. The Pebble window opens and a little stone appears in the tray, next
    to the Windows clock. If you don't see it, click the ^ arrow there.
    Drag the icon from there onto the taskbar to always see it.
    From now on it starts by itself when you sign in to Windows.
@@ -39,7 +41,7 @@ the round button plays it) and click "Preview reminder" to see it.
 Under Stone you can rename it, make it quieter or chattier, turn on
 its sounds (a chime when it hops, a purr when you pet it, crickets at
 night) and turn on the desktop buddy: a tiny stone that sits on top of
-the taskbar. Click the buddy to open Stillpoint, right-click it to hide
+the taskbar. Click the buddy to open Pebble, right-click it to hide
 it. It hides by itself while a full-screen game or video is running.
 
 THE STONE
@@ -79,7 +81,7 @@ THE GARDEN
 - History > Garden shows each day's garden, a week at a time, and your
   keepsakes. In History > Calendar, click the little garden next to a
   day to open it.
-- The first time you open Stillpoint after 8 pm you get a short card
+- The first time you open Pebble after 8 pm you get a short card
   about the day: how long you sat, how often you got up, the longest
   stretch and who visited.
 
@@ -106,7 +108,7 @@ counting the next time you sign in (starting a new session).
 
 UPDATES
 -------
-Stillpoint checks for a new version a few times a day. When there is
+Pebble checks for a new version a few times a day. When there is
 one, a message pops up and the window shows "Update to ...". Click it:
 the app downloads the new version and restarts by itself in a couple of
 seconds. Your sessions and settings stay, and a running session keeps
@@ -131,6 +133,6 @@ GOOD TO KNOW
 UNINSTALL
 ---------
 Untick "Start with Windows" in Settings, right-click the tray icon > Exit, then delete
-Stillpoint.exe. Your data is in %LOCALAPPDATA%\Stillpoint if you want to
+Pebble.exe. Your data is in %LOCALAPPDATA%\Stillpoint if you want to
 delete that too.
 

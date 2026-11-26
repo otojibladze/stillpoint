@@ -11,7 +11,7 @@ namespace Stillpoint
         public EveningCard(GardenDay day, string name, double interval)
         {
             SuspendLayout();
-            Ui.SetupWindow(this, "Stillpoint", new Size(400, 600));
+            Ui.SetupWindow(this, "Pebble", new Size(400, 600));
             FormBorderStyle = FormBorderStyle.FixedSingle;
             StartPosition = FormStartPosition.CenterParent;
             ShowIcon = false;

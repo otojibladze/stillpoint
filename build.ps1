@@ -23,7 +23,8 @@ $common = @(
     '-r:System.dll', '-r:System.Core.dll', '-r:System.Drawing.dll', '-r:System.Windows.Forms.dll'
 )
 
-& $csc @common -target:exe "-out:$obj\IconGen.exe" "$root\src\Icons.cs" "$root\tools\IconGen.cs"
+$iconSources = Get-ChildItem "$root\src\*.cs" | Where-Object Name -ne 'Program.cs' | ForEach-Object { $_.FullName }
+& $csc @common -target:exe "-out:$obj\IconGen.exe" @iconSources "$root\tools\IconGen.cs"
 if ($LASTEXITCODE -ne 0) { throw 'IconGen build failed' }
 & "$obj\IconGen.exe" "$obj\app.ico"
 if ($LASTEXITCODE -ne 0) { throw 'Icon generation failed' }

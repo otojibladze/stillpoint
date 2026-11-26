@@ -12,7 +12,7 @@ namespace Stillpoint
         public NameForm(string current, bool rename)
         {
             SuspendLayout();
-            Ui.SetupWindow(this, "Stillpoint", new Size(380, 260));
+            Ui.SetupWindow(this, "Pebble", new Size(380, 260));
             FormBorderStyle = FormBorderStyle.FixedSingle;
             StartPosition = FormStartPosition.CenterParent;
             ShowIcon = false;
@@ -34,7 +34,7 @@ namespace Stillpoint
             head.Controls.Add(words, 1, 0);
 
             var ask = new Label { Text = "What should we call it?", AutoSize = true, Font = Theme.Regular(9.5f), Margin = new Padding(0, 0, 0, 6) };
-            box = new TextBox { BorderStyle = BorderStyle.None, BackColor = Theme.Surface, ForeColor = Theme.Ink, Font = Theme.Regular(11.5f), MaxLength = Settings.MaxNameLength, Text = string.IsNullOrEmpty(current) ? "Pebble" : current, Dock = DockStyle.Fill };
+            box = new TextBox { BorderStyle = BorderStyle.None, BackColor = Theme.Surface, ForeColor = Theme.Ink, Font = Theme.Regular(11.5f), MaxLength = Settings.MaxNameLength, Text = string.IsNullOrEmpty(current) ? "Mochi" : current, Dock = DockStyle.Fill };
             var field = new InputFrame(box) { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 16) };
 
             var skip = new FlatButton(ButtonKind.Ghost) { Text = rename ? "Cancel" : "Skip", Uppercase = true, Height = 42, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 10, 0), Font = Theme.SemiBold(10f) };
@@ -71,7 +71,7 @@ namespace Stillpoint
         {
             if (StoneName.Length == 0)
             {
-                box.Text = "Pebble";
+                box.Text = "Mochi";
                 box.SelectAll();
                 return;
             }

@@ -71,7 +71,7 @@ namespace Stillpoint
         static WebClient Client()
         {
             var web = new WebClient();
-            web.Headers[HttpRequestHeader.UserAgent] = "Stillpoint/" + AppVersion.Text;
+            web.Headers[HttpRequestHeader.UserAgent] = "Pebble/" + AppVersion.Text;
             web.Headers[HttpRequestHeader.CacheControl] = "no-cache";
             return web;
         }

@@ -13,6 +13,7 @@ namespace Stillpoint
         readonly LinkLabel soundLink;
         readonly LinkLabel nameLink;
         readonly LinkLabel chatLink;
+        readonly LinkLabel sizeLink;
         readonly ToggleSwitch stoneSounds;
         readonly ToggleSwitch desktopBuddy;
         readonly ToggleSwitch startWithWindows;
@@ -24,7 +25,7 @@ namespace Stillpoint
         {
             this.app = app;
             SuspendLayout();
-            Ui.SetupWindow(this, "Stillpoint settings", new Size(400, 640));
+            Ui.SetupWindow(this, "Pebble settings", new Size(400, 640));
             FormBorderStyle = FormBorderStyle.FixedSingle;
 
             var root = Ui.Column(new Padding(22, 8, 22, 18));
@@ -58,11 +59,13 @@ namespace Stillpoint
             autoLabel.Cursor = Cursors.Hand;
             autoLabel.Click += (s, e) => startWithWindows.Checked = !startWithWindows.Checked;
             var dataLink = Ui.Link("Open folder");
+            sizeLink = MenuLink();
             var general = new Card();
+            general.AddRow(Ui.Text("Window size"), sizeLink);
             general.AddRow(autoLabel, startWithWindows);
             general.AddRow(Ui.Text("Your sessions"), dataLink);
 
-            var version = new Label { Text = "Stillpoint " + AppVersion.Text + "  ·", AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9f), Margin = new Padding(0) };
+            var version = new Label { Text = "Pebble " + AppVersion.Text + "  ·", AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9f), Margin = new Padding(0) };
             updateLink = Ui.Link("");
             updateLink.Font = Theme.Regular(9f);
             updateLink.Margin = new Padding(4, 0, 0, 0);
@@ -95,6 +98,7 @@ namespace Stillpoint
             preview.LinkClicked += (s, e) => app.ShowReminder(app.Settings.ReminderMinutes * 60, preview: true);
             nameLink.LinkClicked += (s, e) => app.AskName(this, rename: true);
             chatLink.LinkClicked += (s, e) => ShowMenu(chatLink, ((Chattiness[])Enum.GetValues(typeof(Chattiness))).Select(c => (ChatLabel(c), c == app.Settings.Chattiness, (Action)(() => app.SetChattiness(c)))), separatorAfterFirst: false);
+            sizeLink.LinkClicked += (s, e) => ShowMenu(sizeLink, ((WindowSize[])Enum.GetValues(typeof(WindowSize))).Select(w => (Settings.Label(w), w == app.Settings.WindowSize, (Action)(() => app.SetWindowSize(w)))), separatorAfterFirst: false);
             stoneSounds.CheckedChanged += (s, e) => { if (!syncing) app.SetStoneSounds(stoneSounds.Checked); };
             desktopBuddy.CheckedChanged += (s, e) => { if (!syncing) app.SetDesktopBuddy(desktopBuddy.Checked); };
             startWithWindows.CheckedChanged += (s, e) => { if (!syncing) { app.SetAutoStart(startWithWindows.Checked); SyncControls(); } };
@@ -120,6 +124,7 @@ namespace Stillpoint
             soundLink.Text = Sounds.Label(Sounds.Normalize(app.Settings.Sound)) + "  ›";
             nameLink.Text = (string.IsNullOrEmpty(app.Settings.StoneName) ? "Give it a name" : app.Settings.StoneName) + "  ›";
             chatLink.Text = ChatLabel(app.Settings.Chattiness) + "  ›";
+            sizeLink.Text = Settings.Label(app.Settings.WindowSize) + "  ›";
             syncing = false;
         }
 

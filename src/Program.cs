@@ -9,9 +9,9 @@ using System.Threading;
 using System.Windows.Forms;
 using Stillpoint;
 
-[assembly: AssemblyTitle("Stillpoint")]
-[assembly: AssemblyProduct("Stillpoint")]
-[assembly: AssemblyDescription("Reminds you how long you have been sitting at the computer")]
+[assembly: AssemblyTitle("Pebble")]
+[assembly: AssemblyProduct("Pebble")]
+[assembly: AssemblyDescription("Pebble: a little stone that reminds you to get up")]
 [assembly: AssemblyVersion(AppVersion.Text + ".0")]
 [assembly: AssemblyFileVersion(AppVersion.Text + ".0")]
 [assembly: TargetFramework(".NETFramework,Version=v4.8", FrameworkDisplayName = ".NET Framework 4.8")]

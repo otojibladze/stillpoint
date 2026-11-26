@@ -24,14 +24,14 @@ namespace Stillpoint
         {
             this.app = app;
             SuspendLayout();
-            Ui.SetupWindow(this, "Stillpoint", new Size(400, 590));
-            MinimumSize = new Size(380, 550);
+            Ui.SetupWindow(this, "Pebble", new Size(400, 590));
+            MinimumSize = new Size(300, 440);
             StartPosition = FormStartPosition.CenterScreen;
 
             var root = Ui.Column(new Padding(26, 12, 26, 18));
             root.SuspendLayout();
 
-            ring = new SpiritRing { Size = new Size(300, 300), Anchor = AnchorStyles.None, Margin = new Padding(0, 6, 0, 6) };
+            ring = new SpiritRing { Size = new Size(300, 300), Dock = DockStyle.Fill, Margin = new Padding(0, 6, 0, 6) };
             status = new Label { AutoSize = true, Anchor = AnchorStyles.None, ForeColor = Theme.Muted, Margin = new Padding(0, 0, 0, 6) };
             breathe = Ui.Link("Breathe with me");
             breathe.Anchor = AnchorStyles.None;
@@ -89,6 +89,23 @@ namespace Stillpoint
         }
 
         public void OnReminder() => ring.Reminder();
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            ApplyWindowSize(app.Settings.WindowSize);
+        }
+
+        public void ApplyWindowSize(WindowSize size)
+        {
+            float k = Settings.Scale(size) * DeviceDpi / 96f;
+            var target = new Size((int)Math.Round(400 * k), (int)Math.Round(590 * k));
+            if (ClientSize == target) return;
+            ClientSize = target;
+            var area = Screen.FromControl(this).WorkingArea;
+            Left = Math.Max(area.Left, Math.Min(Left, area.Right - Width));
+            Top = Math.Max(area.Top, Math.Min(Top, area.Bottom - Height));
+        }
 
         public void SyncControls()
         {

@@ -9,6 +9,8 @@ namespace Stillpoint
 {
     public enum Chattiness { Quiet, Normal, Chatty }
 
+    public enum WindowSize { Small, Medium, Large, ExtraLarge }
+
     public sealed class Settings
     {
         public const int MinReminderMinutes = 5;
@@ -26,6 +28,13 @@ namespace Stillpoint
         public bool StoneSounds;
         public bool DesktopBuddy;
         public string EveningCardDate = "";
+        public WindowSize WindowSize = WindowSize.Medium;
+
+        public static float Scale(WindowSize size) =>
+            size == WindowSize.Small ? 0.85f : size == WindowSize.Large ? 1.2f : size == WindowSize.ExtraLarge ? 1.4f : 1f;
+
+        public static string Label(WindowSize size) =>
+            size == WindowSize.ExtraLarge ? "Extra large" : size.ToString();
 
         public static string CleanName(string name)
         {
@@ -105,6 +114,9 @@ namespace Stillpoint
                     case "stoneSounds": settings.StoneSounds = on; break;
                     case "desktopBuddy": settings.DesktopBuddy = on; break;
                     case "eveningCard": settings.EveningCardDate = value; break;
+                    case "windowSize":
+                        if (Enum.TryParse(value, true, out WindowSize size) && Enum.IsDefined(typeof(WindowSize), size)) settings.WindowSize = size;
+                        break;
                 }
             }
             return settings;
@@ -126,6 +138,7 @@ namespace Stillpoint
                 "stoneSounds=" + Flag(s.StoneSounds),
                 "desktopBuddy=" + Flag(s.DesktopBuddy),
                 "eveningCard=" + s.EveningCardDate,
+                "windowSize=" + s.WindowSize.ToString().ToLowerInvariant(),
             };
             WriteAtomic(SettingsPath, string.Join("\r\n", lines) + "\r\n");
         }

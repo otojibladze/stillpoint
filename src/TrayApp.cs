@@ -56,17 +56,17 @@ namespace Stillpoint
 
             foreach (StoneMood mood in Enum.GetValues(typeof(StoneMood)))
                 faces[mood] = StoneFaces.Icon(mood, SystemInformation.SmallIconSize.Width);
-            form = new MainForm(this) { Icon = Icons.Load(Icons.On) };
+            form = new MainForm(this) { Icon = StoneFaces.AppIcon() };
             _ = form.Handle;
 
             var menu = new ContextMenuStrip();
-            var open = new ToolStripMenuItem("Open Stillpoint", null, (s, e) => ShowWindow());
+            var open = new ToolStripMenuItem("Open Pebble", null, (s, e) => ShowWindow());
             open.Font = new Font(open.Font, FontStyle.Bold);
             startStopItem = new ToolStripMenuItem("Start counting", null, (s, e) => ToggleRunning());
             resumeItem = new ToolStripMenuItem("Resume counting", null, (s, e) => Resume());
             var folder = new ToolStripMenuItem("Open data folder", null, (s, e) => OpenDataFolder());
             menu.Items.AddRange(new ToolStripItem[] { open, startStopItem, resumeItem, folder, new ToolStripSeparator(), new ToolStripMenuItem("Exit", null, (s, e) => ExitFromMenu()) });
-            tray = new NotifyIcon { Icon = faces[StoneMood.Asleep], Text = "Stillpoint", ContextMenuStrip = menu, Visible = true };
+            tray = new NotifyIcon { Icon = faces[StoneMood.Asleep], Text = "Pebble", ContextMenuStrip = menu, Visible = true };
             tray.MouseClick += (s, e) => { if (e.Button == MouseButtons.Left) ShowWindow(); };
 
             SystemEvents.SessionSwitch += OnSessionSwitch;
@@ -147,6 +147,13 @@ namespace Stillpoint
             }
             form.SyncControls();
             Refresh();
+        }
+
+        public void SetWindowSize(WindowSize size)
+        {
+            Settings.WindowSize = size;
+            SaveSettings();
+            form.ApplyWindowSize(size);
         }
 
         public void SetChattiness(Chattiness chattiness)
@@ -261,8 +268,8 @@ namespace Stillpoint
                     if (!manual && !Equals(updateNoticeShownFor, UpdateAvailable) && !shutDown)
                     {
                         updateNoticeShownFor = UpdateAvailable;
-                        tray.ShowBalloonTip(8000, $"Stillpoint {UpdateAvailable} is available",
-                            "Open Stillpoint and click Update.", ToolTipIcon.Info);
+                        tray.ShowBalloonTip(8000, $"Pebble {UpdateAvailable} is available",
+                            "Open Pebble and click Update.", ToolTipIcon.Info);
                     }
                 }
             }
@@ -336,7 +343,7 @@ namespace Stillpoint
             if (Settings.TrayTipShown) return;
             Settings.TrayTipShown = true;
             SaveSettings();
-            tray.ShowBalloonTip(6000, "Stillpoint is still running",
+            tray.ShowBalloonTip(6000, "Pebble is still running",
                 "It stays in the tray next to the clock. Click the clock icon to open it, right-click it to exit.",
                 ToolTipIcon.Info);
         }
@@ -464,15 +471,15 @@ namespace Stillpoint
             }
             string who = string.IsNullOrEmpty(Settings.StoneName) ? "" : Settings.StoneName + " · ";
             string text = Tracker.State == TrackState.Counting
-                ? $"Stillpoint: {who}{Fmt.Hm(Tracker.SessionSeconds)} this session"
-                : $"Stillpoint: {who}{(Tracker.State == TrackState.Stopped ? "not counting" : "paused")}";
+                ? $"Pebble: {who}{Fmt.Hm(Tracker.SessionSeconds)} this session"
+                : $"Pebble: {who}{(Tracker.State == TrackState.Stopped ? "not counting" : "paused")}";
             if (text.Length > 63) text = text.Substring(0, 63);
             if (buddy != null)
             {
                 double interval = Tracker.ReminderIntervalSeconds;
                 float drowsy = Tracker.Running && interval > 0 ? (float)(Tracker.SessionSeconds % interval / interval) : 0;
                 int hour = DateTime.Now.Hour;
-                string tip = (string.IsNullOrEmpty(Settings.StoneName) ? "Stillpoint" : Settings.StoneName) + "\n"
+                string tip = (string.IsNullOrEmpty(Settings.StoneName) ? "Pebble" : Settings.StoneName) + "\n"
                     + (counting ? "Sitting " + Fmt.Hm(Tracker.SessionSeconds) : "Not counting") + ". Click to open.";
                 buddy.SetState(Tracker.Running, Tracker.State == TrackState.Paused, drowsy, hour >= 22 || hour < 6, tip);
             }

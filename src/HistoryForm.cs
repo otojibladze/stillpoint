@@ -40,7 +40,7 @@ namespace Stillpoint
             Font = Theme.Regular(10f);
             ForeColor = Theme.Ink;
             BackColor = Theme.Background;
-            Text = "Stillpoint history";
+            Text = "Pebble history";
             ClientSize = new Size(440, 700);
             MinimumSize = new Size(400, 620);
             StartPosition = FormStartPosition.Manual;
