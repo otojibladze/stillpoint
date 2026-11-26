@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Media;
 using System.Threading;
 using System.Windows.Forms;
@@ -19,6 +20,7 @@ namespace Stillpoint
         readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer { Interval = 1000 };
         readonly Stopwatch clock = Stopwatch.StartNew();
         readonly RegisteredWaitHandle showWait;
+        readonly HotKey quitKey;
         ReminderPopup popup;
         readonly Random messageRandom = new Random();
         bool challengeOpen;
@@ -64,6 +66,8 @@ namespace Stillpoint
             SystemEvents.PowerModeChanged += OnPowerModeChanged;
             SystemEvents.SessionEnding += OnSessionEnding;
             showWait = ThreadPool.RegisterWaitForSingleObject(showEvent, (state, timedOut) => OnShowSignal(), null, Timeout.Infinite, false);
+            quitKey = new HotKey(HotKey.Control | HotKey.Alt | HotKey.Shift, Keys.Q, QuitNow);
+            if (!quitKey.Registered) store.Log("Quit shortcut Ctrl+Alt+Shift+Q is taken by another app");
 
             if (!Settings.FirstRunDone)
             {
@@ -236,6 +240,18 @@ namespace Stillpoint
         void ExitFromMenu()
         {
             if (RequestStop()) Exit();
+        }
+
+        void QuitNow()
+        {
+            if (exited) return;
+            foreach (var dialog in Application.OpenForms.OfType<ChallengeDialog>().ToList()) dialog.DialogResult = DialogResult.Cancel;
+            form.BeginInvoke((Action)(() =>
+            {
+                if (exited) return;
+                if (Tracker.Running) SetRunning(false);
+                Exit();
+            }));
         }
 
         void SetRunning(bool running) => Apply(() =>
@@ -428,6 +444,7 @@ namespace Stillpoint
             if (shutDown) return;
             timer.Stop();
             showWait.Unregister(null);
+            quitKey.Dispose();
             SystemEvents.SessionSwitch -= OnSessionSwitch;
             SystemEvents.PowerModeChanged -= OnPowerModeChanged;
             SystemEvents.SessionEnding -= OnSessionEnding;
