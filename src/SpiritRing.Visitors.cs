@@ -13,7 +13,9 @@ namespace Stillpoint
 
         bool Blooming => breaks >= Garden.FlowerBreaks && season != Season.Winter;
         bool Lantern => (state.Keepsakes & Keepsake.Lantern) != 0;
-        bool Green => season != Season.Winter && !snowGround && nightK < 0.4f;
+        bool Daylight => nightK < 0.35f;
+        bool Green => season != Season.Winter && !snowGround && Daylight;
+        bool Warm => Green && Clock().Month >= 4 && Clock().Month <= 10;
         bool VisitorBusy => ladybug.Active || bee.Active || squirrel.Active;
         bool AnyVisitor => VisitorBusy || owl.Active || moth.Active || fox.Active || snails.Active || turtle.Active;
         bool LadybugOnStone => ladybug.State >= 2 && ladybug.State != 4;
@@ -24,6 +26,14 @@ namespace Stillpoint
         void StepVisitors(float t, float dt)
         {
             ScheduleNight(t);
+            if (nightK > 0.5f)
+            {
+                SendAway(butterfly, t);
+                SendAway(bird, t);
+                if (ladybug.State >= 1 && ladybug.State <= 3) TakeOff(ladybug, t);
+                if (bee.State == 1 || bee.State == 2) BeeLeave(bee, t);
+                if (squirrel.State == 1) SquirrelRun(squirrel, t);
+            }
             bool faced = !Sleeping && (butterfly.State == 2 || bird.State == 2 || LadybugOnStone || beeDip > 0.3f);
             faceK += ((faced ? 1 : 0) - faceK) * Math.Min(1, dt * 5);
             StepLadybug(t);
@@ -40,10 +50,16 @@ namespace Stillpoint
 
         void StartDayVisitor(float t)
         {
-            var picks = new List<(float Weight, Action<float> Go)> { (2f, x => StartFlyer(butterfly, x)), (2f, x => StartFlyer(bird, x)) };
-            if (Green) picks.Add((1.6f, StartLadybug));
+            if (!Daylight)
+            {
+                nightNext = Math.Min(nightNext, t + 2);
+                return;
+            }
+            var picks = new List<(float Weight, Action<float> Go)> { (2f, x => StartFlyer(bird, x)) };
+            if (Warm) picks.Add((2f, x => StartFlyer(butterfly, x)));
+            if (Warm) picks.Add((1.6f, StartLadybug));
             if (Green && !squirrel.Active) picks.Add((season == Season.Autumn ? 2.2f : 1.2f, StartSquirrel));
-            if (Green && Blooming) picks.Add((2.4f, StartBee));
+            if (Warm && Blooming) picks.Add((2.4f, StartBee));
             float total = 0;
             foreach (var p in picks) total += p.Weight;
             float r = Rand * total;

@@ -571,7 +571,7 @@ namespace Stillpoint
             }
             if (frogAt > 0 && t > frogAt && !Running && frog.State == 0) { frogAt = -1; frog.State = 1; frog.T0 = t; }
             if (snailsAt > 0 && t > snailsAt && !Running) { snailsAt = -1; StartSnails(t); }
-            if (!turtle.Active && !snail.Active && !snails.Active && Running && state.SessionSeconds >= state.Interval * 1.25 && t > turtleNext) StartTurtle(t);
+            if (!turtle.Active && !snail.Active && !snails.Active && Warm && Running && state.SessionSeconds >= state.Interval * 1.25 && t > turtleNext) StartTurtle(t);
             bool wetGround = season != Season.Winter && (rainK > 0.2f || wetReal > 0.4f);
             if (!snail.Active && !snails.Active && !turtle.Active && Running && state.SessionSeconds >= state.Interval * 0.9 && t > snailNext && wetGround && rng.NextDouble() < 0.5)
             {

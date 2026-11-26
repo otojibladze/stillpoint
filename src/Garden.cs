@@ -119,7 +119,7 @@ namespace Stillpoint
             if (report.Rained && season != Season.Winter && rnd.NextDouble() < 0.7) report.Visits.Add((Visitors.Frog, anyTime()));
             if (report.Rained && season != Season.Winter && rnd.NextDouble() < 0.35) report.Visits.Add((Visitors.Snails, anyTime()));
             if (season != Season.Winter && day && rnd.NextDouble() < Math.Min(0.45, 0.15 + hours * 0.06)) report.Visits.Add((Visitors.Squirrel, anyTime()));
-            if ((season == Season.Spring || season == Season.Summer) && day && rnd.NextDouble() < 0.25) report.Visits.Add((Visitors.Ladybug, anyTime()));
+            if (from.Month >= 4 && from.Month <= 10 && day && rnd.NextDouble() < 0.25) report.Visits.Add((Visitors.Ladybug, anyTime()));
             if (nightHours.Count > 0 && rnd.NextDouble() < 0.35) report.Visits.Add((Visitors.Owl, nightHours[rnd.Next(nightHours.Count)]));
             if (nightHours.Count > 0 && rnd.NextDouble() < 0.3) report.Visits.Add((Visitors.Fox, nightHours[rnd.Next(nightHours.Count)]));
             if (season == Season.Autumn) report.Leaves = (int)Math.Min(8, 1 + hours);
