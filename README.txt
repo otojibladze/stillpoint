@@ -104,6 +104,21 @@ THE GARDEN LIVES WHILE YOU ARE AWAY
   gets a little moment. Weather comes from Open-Meteo.com (free, no
   account). Only the town is sent to look it up.
 
+LOOK AND FEEL
+-------------
+- Settings > General > Dark mode: Off, On, At night (follows the
+  garden's sky) or Like Windows. Seasonal colors changes the accent
+  color with the season (blue in winter, rose in spring, green in
+  summer, terracotta in autumn).
+- The garden has depth: far hills, light shafts in the morning, the
+  Milky Way and the odd shooting star at night, and a slight 3D shift
+  when you move the mouse over it. The wind moves the sprout, grass and
+  falling leaves together.
+- The stone is lit by the sun (from the left in the morning, the right
+  in the evening), gets wet and shiny in rain, collects snow, breathes
+  little clouds in the cold and wears petals in spring.
+- The tray face blinks now and then and yawns just before a reminder.
+
 IF YOU WALK AWAY
 ----------------
 If nothing moves for 10 minutes while it counts, a small window asks

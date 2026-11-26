@@ -11,6 +11,8 @@ namespace Stillpoint
 
     public enum WindowSize { Small, Medium, Large, ExtraLarge }
 
+    public enum DarkMode { Off, On, Night, Windows }
+
     public sealed class Settings
     {
         public const int MinReminderMinutes = 5;
@@ -20,6 +22,11 @@ namespace Stillpoint
         public bool Running;
         public int ReminderMinutes = 30;
         public bool StoneOn = true;
+        public DarkMode DarkMode = DarkMode.Off;
+        public bool SeasonalColors = true;
+
+        public static string Label(DarkMode mode) =>
+            mode == DarkMode.On ? "On" : mode == DarkMode.Night ? "At night" : mode == DarkMode.Windows ? "Like Windows" : "Off";
         public int Defaults = 2;
         public string Sound = Sounds.Default;
         public bool FirstRunDone;
@@ -128,6 +135,10 @@ namespace Stillpoint
                     case "eveningCard": settings.EveningCardDate = value; break;
                     case "autoUpdate": settings.AutoUpdate = on; break;
                     case "stone": settings.StoneOn = on; break;
+                    case "seasonalColors": settings.SeasonalColors = on; break;
+                    case "darkMode":
+                        if (Enum.TryParse(value, true, out DarkMode dark) && Enum.IsDefined(typeof(DarkMode), dark)) settings.DarkMode = dark;
+                        break;
                     case "defaults":
                         if (int.TryParse(value, NumberStyles.Integer, Inv, out int defaults)) settings.Defaults = defaults;
                         break;
@@ -175,6 +186,8 @@ namespace Stillpoint
                 "windowSize=" + s.WindowSize.ToString().ToLowerInvariant(),
                 "autoUpdate=" + Flag(s.AutoUpdate),
                 "stone=" + Flag(s.StoneOn),
+                "darkMode=" + s.DarkMode.ToString().ToLowerInvariant(),
+                "seasonalColors=" + Flag(s.SeasonalColors),
                 "defaults=" + s.Defaults.ToString(Inv),
                 "realWeather=" + Flag(s.RealWeather),
                 "town=" + (s.TownName ?? "").Replace("\r", "").Replace("\n", ""),

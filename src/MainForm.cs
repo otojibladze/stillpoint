@@ -52,8 +52,8 @@ namespace Stillpoint
             buttonRow.Controls.Add(startStop, 0, 0);
             buttonRow.Controls.Add(resume, 1, 0);
 
-            var historyButton = new FlatButton(ButtonKind.Ghost) { Text = "History", Height = 40, Dock = DockStyle.Fill, Margin = new Padding(0), Font = Theme.SemiBold(10f) };
-            gardenButton = new FlatButton(ButtonKind.Ghost) { Text = "Garden", Height = 40, Dock = DockStyle.Fill, Margin = new Padding(10, 0, 0, 0), Font = Theme.SemiBold(10f) };
+            var historyButton = new FlatButton(ButtonKind.Ghost) { Text = "History", Icon = Draw.Clock, Height = 40, Dock = DockStyle.Fill, Margin = new Padding(0), Font = Theme.SemiBold(10f) };
+            gardenButton = new FlatButton(ButtonKind.Ghost) { Text = "Garden", Icon = Draw.Sprout, Height = 40, Dock = DockStyle.Fill, Margin = new Padding(10, 0, 0, 0), Font = Theme.SemiBold(10f) };
             var settingsButton = new FlatButton(ButtonKind.Ghost) { Size = new Size(40, 40), Margin = new Padding(10, 0, 0, 0), Glyph = Draw.Gear, AccessibleName = "Settings" };
             new ToolTip().SetToolTip(settingsButton, "Settings");
             bottomRow = new TableLayoutPanel { ColumnCount = 3, RowCount = 1, Height = 40, Dock = DockStyle.Fill, Margin = new Padding(0, 12, 0, 0) };
@@ -115,7 +115,7 @@ namespace Stillpoint
 
         public void OnReminder() => ring.Reminder();
 
-        public void Announce(string text) => ring.Announce(text);
+        public void Announce(string text, bool special = false) => ring.Announce(text, special);
 
         public void ShowAway(AwayReport report) => ring.ShowAway(report);
 

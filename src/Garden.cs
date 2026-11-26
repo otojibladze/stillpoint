@@ -12,8 +12,8 @@ namespace Stillpoint
 
     static class Visitors
     {
-        public const string Butterfly = "butterfly", Bird = "bird", Snail = "snail", Frog = "frog", Cat = "cat", Rainbow = "rainbow";
-        public static readonly string[] Order = { Butterfly, Bird, Snail, Frog, Cat, Rainbow };
+        public const string Butterfly = "butterfly", Bird = "bird", Snail = "snail", Frog = "frog", Cat = "cat", Dragonfly = "dragonfly", Rainbow = "rainbow";
+        public static readonly string[] Order = { Butterfly, Bird, Dragonfly, Snail, Frog, Cat, Rainbow };
 
         public static string Label(string id) => id == Rainbow ? "Rain, then a rainbow" : char.ToUpperInvariant(id[0]) + id.Substring(1);
 

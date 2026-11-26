@@ -69,6 +69,7 @@ namespace Stillpoint
             Tracker.SetRunning(Settings.Running, DateTime.Now, continueSession);
             Album = store.LoadAlbum();
 
+            ApplyTheme();
             foreach (StoneMood mood in Enum.GetValues(typeof(StoneMood)))
                 faces[mood] = StoneFaces.Icon(mood, SystemInformation.SmallIconSize.Width);
             form = new MainForm(this) { Icon = StoneFaces.AppIcon() };
@@ -109,6 +110,7 @@ namespace Stillpoint
                 }
             }
 
+            faceTimer.Tick += (s, e) => { faceTimer.Stop(); trayMood = null; Refresh(); };
             timer.Tick += (s, e) => OnTick();
             timer.Start();
             SyncBuddy();
@@ -234,7 +236,7 @@ namespace Stillpoint
             if (Settings.FirstSnow == key) return;
             Settings.FirstSnow = key;
             SaveSettings();
-            form.Announce("Look! The first snow of the winter.");
+            form.Announce("Look! The first snow of the winter.", special: true);
         }
 
         void TrackSeen()
@@ -257,6 +259,29 @@ namespace Stillpoint
                 Settings.LastSeen = now;
                 SaveSettings();
             }
+        }
+
+        public void ApplyTheme()
+        {
+            var now = DateTime.Now;
+            bool dark = Settings.DarkMode == DarkMode.On
+                || (Settings.DarkMode == DarkMode.Night && Sky.Darkness(now, SunToday) > 0.5f)
+                || (Settings.DarkMode == DarkMode.Windows && Theme.WindowsDark());
+            Theme.Apply(dark, Settings.SeasonalColors ? Garden.SeasonOf(now) : Season.Autumn);
+        }
+
+        public void SetDarkMode(DarkMode mode)
+        {
+            Settings.DarkMode = mode;
+            SaveSettings();
+            ApplyTheme();
+        }
+
+        public void SetSeasonalColors(bool on)
+        {
+            Settings.SeasonalColors = on;
+            SaveSettings();
+            ApplyTheme();
         }
 
         public void SetStoneOn(bool on)
@@ -624,9 +649,30 @@ namespace Stillpoint
             if (Form.ActiveForm != null) lastWindowUse = DateTime.Now;
             if (--ticksUntilWeather <= 0) RefreshWeather();
             TrackSeen();
+            if (secondsAlive % 10 == 0) ApplyTheme();
             if (++secondsAlive == 120 && justUpdated) Updater.CleanUp(Application.ExecutablePath);
             TryQuietUpdate();
             Refresh();
+            AnimateFace();
+        }
+
+        readonly System.Windows.Forms.Timer faceTimer = new System.Windows.Forms.Timer();
+        readonly Random faceRandom = new Random();
+
+        void AnimateFace()
+        {
+            if (shutDown || faceTimer.Enabled || !Settings.StoneOn) return;
+            double interval = Tracker.ReminderIntervalSeconds;
+            bool near = Tracker.IsCounting && interval > 0 && interval - Tracker.SessionSeconds % interval < 120;
+            StoneMood? frame = null;
+            int ms = 170;
+            if (near && secondsAlive % 15 == 0) { frame = StoneMood.Yawn; ms = 1600; }
+            else if (trayMood == StoneMood.Awake && faceRandom.Next(5) == 0) frame = StoneMood.Blink;
+            if (frame == null) return;
+            tray.Icon = faces[frame.Value];
+            trayMood = frame;
+            faceTimer.Interval = ms;
+            faceTimer.Start();
         }
 
         void Apply(Action change)

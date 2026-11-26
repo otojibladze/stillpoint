@@ -15,6 +15,8 @@ namespace Stillpoint
         readonly LinkLabel chatLink;
         readonly LinkLabel sizeLink;
         readonly ToggleSwitch autoUpdate;
+        readonly LinkLabel darkLink;
+        readonly ToggleSwitch seasonal;
         readonly LinkLabel townLink;
         readonly ToggleSwitch realWeather;
         readonly ToggleSwitch stoneSounds;
@@ -71,6 +73,10 @@ namespace Stillpoint
             sizeLink = MenuLink();
             var general = new Card();
             general.AddRow(Ui.Text("Window size"), sizeLink);
+            darkLink = MenuLink();
+            seasonal = new ToggleSwitch { Margin = new Padding(0) };
+            general.AddRow(Ui.Text("Dark mode"), darkLink);
+            general.AddRow(TwoLines("Seasonal colors", "Accent color follows the season", seasonal), seasonal);
             general.AddRow(autoLabel, startWithWindows);
             autoUpdate = new ToggleSwitch { Margin = new Padding(0) };
             general.AddRow(TwoLines("Install updates automatically", "When you are away for a few minutes", autoUpdate), autoUpdate);
@@ -112,6 +118,8 @@ namespace Stillpoint
             nameLink.LinkClicked += (s, e) => app.AskName(this, rename: true);
             chatLink.LinkClicked += (s, e) => ShowMenu(chatLink, ((Chattiness[])Enum.GetValues(typeof(Chattiness))).Select(c => (ChatLabel(c), c == app.Settings.Chattiness, (Action)(() => app.SetChattiness(c)))), separatorAfterFirst: false);
             sizeLink.LinkClicked += (s, e) => ShowMenu(sizeLink, ((WindowSize[])Enum.GetValues(typeof(WindowSize))).Select(w => (Settings.Label(w), w == app.Settings.WindowSize, (Action)(() => app.SetWindowSize(w)))), separatorAfterFirst: false);
+            darkLink.LinkClicked += (s, e) => ShowMenu(darkLink, ((DarkMode[])Enum.GetValues(typeof(DarkMode))).Select(m => (Settings.Label(m), m == app.Settings.DarkMode, (Action)(() => app.SetDarkMode(m)))), separatorAfterFirst: false);
+            seasonal.CheckedChanged += (s, e) => { if (!syncing) app.SetSeasonalColors(seasonal.Checked); };
             autoUpdate.CheckedChanged += (s, e) => { if (!syncing) app.SetAutoUpdate(autoUpdate.Checked); };
             townLink.LinkClicked += (s, e) => app.AskTown(this);
             realWeather.CheckedChanged += (s, e) => { if (!syncing) app.SetRealWeather(this, realWeather.Checked); };
@@ -142,6 +150,8 @@ namespace Stillpoint
             chatLink.Text = ChatLabel(app.Settings.Chattiness) + "  ›";
             sizeLink.Text = Settings.Label(app.Settings.WindowSize) + "  ›";
             autoUpdate.Checked = app.Settings.AutoUpdate;
+            darkLink.Text = Settings.Label(app.Settings.DarkMode) + "  \u203A";
+            seasonal.Checked = app.Settings.SeasonalColors;
             realWeather.Checked = app.Settings.RealWeather && app.Settings.HasTown;
             townLink.Text = (app.Settings.HasTown ? app.Settings.TownName : "Set your town") + "  ›";
             syncing = false;

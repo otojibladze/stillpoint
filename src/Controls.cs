@@ -48,6 +48,32 @@ namespace Stillpoint
                 g.DrawEllipse(body, cx - r * 0.66f, cy - r * 0.66f, r * 1.32f, r * 1.32f);
         }
 
+        public static void Clock(Graphics g, Rectangle b, Color color)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            float w = Math.Max(1.4f, b.Width * 0.1f), r = b.Width * 0.42f, cx = b.Left + b.Width / 2f, cy = b.Top + b.Height / 2f;
+            using (var pen = new Pen(color, w) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+            {
+                g.DrawEllipse(pen, cx - r, cy - r, r * 2, r * 2);
+                g.DrawLine(pen, cx, cy, cx, cy - r * 0.55f);
+                g.DrawLine(pen, cx, cy, cx + r * 0.42f, cy + r * 0.2f);
+            }
+        }
+
+        public static void Sprout(Graphics g, Rectangle b, Color color)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            float w = Math.Max(1.4f, b.Width * 0.1f), s = b.Width, x = b.Left, y = b.Top;
+            using (var pen = new Pen(color, w) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round })
+            {
+                g.DrawBezier(pen, x + s * 0.5f, y + s * 0.95f, x + s * 0.5f, y + s * 0.7f, x + s * 0.48f, y + s * 0.5f, x + s * 0.52f, y + s * 0.3f);
+                g.DrawBezier(pen, x + s * 0.5f, y + s * 0.55f, x + s * 0.3f, y + s * 0.62f, x + s * 0.1f, y + s * 0.45f, x + s * 0.12f, y + s * 0.3f);
+                g.DrawBezier(pen, x + s * 0.12f, y + s * 0.3f, x + s * 0.32f, y + s * 0.28f, x + s * 0.46f, y + s * 0.42f, x + s * 0.5f, y + s * 0.55f);
+                g.DrawBezier(pen, x + s * 0.52f, y + s * 0.3f, x + s * 0.62f, y + s * 0.12f, x + s * 0.82f, y + s * 0.05f, x + s * 0.92f, y + s * 0.12f);
+                g.DrawBezier(pen, x + s * 0.92f, y + s * 0.12f, x + s * 0.88f, y + s * 0.3f, x + s * 0.7f, y + s * 0.38f, x + s * 0.52f, y + s * 0.3f);
+            }
+        }
+
         public static void Ring(Graphics g, RectangleF bounds, float width, Color track, Color fill, float progress)
         {
             var r = RectangleF.Inflate(bounds, -width / 2, -width / 2);
@@ -104,7 +130,7 @@ namespace Stillpoint
             {
                 if (Kind == ButtonKind.Primary)
                 {
-                    var fill = !Enabled ? Theme.Track : down ? Color.Black : hover ? Theme.InkHover : Theme.Ink;
+                    var fill = !Enabled ? Theme.Track : down ? Theme.Muted : hover ? Theme.InkHover : Theme.Ink;
                     using (var brush = new SolidBrush(fill)) g.FillPath(brush, path);
                     text = Enabled ? Theme.OnInk : Theme.Muted;
                 }
@@ -121,10 +147,20 @@ namespace Stillpoint
                 return;
             }
             string label = Uppercase ? Text.ToUpperInvariant() : Text;
+            if (Icon != null)
+            {
+                int textWidth = TextRenderer.MeasureText(g, label, Font, Size.Empty, TextFormatFlags.NoPadding | TextFormatFlags.SingleLine).Width;
+                int icon = (int)Math.Round(Font.Height * 0.95f), gap = (int)Math.Round(Font.Height * 0.4f);
+                int left = (Width - (icon + gap + textWidth)) / 2;
+                Icon(g, new Rectangle(left, (Height - icon) / 2, icon, icon), text);
+                Draw.Text(g, label, Font, text, new Rectangle(left + icon + gap, 0, textWidth + 2, Height), TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                return;
+            }
             Draw.Text(g, label, Font, text, ClientRectangle, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
 
         public Action<Graphics, Rectangle, Color> Glyph { get; set; }
+        public Action<Graphics, Rectangle, Color> Icon { get; set; }
     }
 
     sealed class ToggleSwitch : Control

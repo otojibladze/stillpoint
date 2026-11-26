@@ -10,18 +10,103 @@ namespace Stillpoint
 {
     static class Theme
     {
-        public static readonly Color Background = Color.FromArgb(0xEC, 0xEA, 0xE7);
-        public static readonly Color Surface = Color.FromArgb(0xF6, 0xF5, 0xF3);
-        public static readonly Color Ink = Color.FromArgb(0x1C, 0x1A, 0x19);
-        public static readonly Color InkHover = Color.FromArgb(0x3A, 0x37, 0x35);
-        public static readonly Color Muted = Color.FromArgb(0x5F, 0x5C, 0x5A);
-        public static readonly Color Track = Color.FromArgb(0xD5, 0xD2, 0xCF);
-        public static readonly Color Line = Color.FromArgb(0xD9, 0xD6, 0xD3);
-        public static readonly Color Border = Color.FromArgb(0xBD, 0xB9, 0xB6);
-        public static readonly Color Accent = Color.FromArgb(0xC4, 0x60, 0x40);
-        public static readonly Color AccentText = Color.FromArgb(0x9A, 0x3F, 0x22);
-        public static readonly Color Tile = Color.FromArgb(0xE2, 0xDF, 0xDB);
-        public static readonly Color OnInk = Color.FromArgb(0xF7, 0xF6, 0xF4);
+        sealed class Palette
+        {
+            public Color[] Colors;
+            public Palette(params int[] rgb) { Colors = Array.ConvertAll(rgb, c => Color.FromArgb((c >> 16) & 255, (c >> 8) & 255, c & 255)); }
+        }
+
+        static readonly int[] LightBase = { 0xECEAE7, 0xF6F5F3, 0x1C1A19, 0x3A3735, 0x5F5C5A, 0xD5D2CF, 0xD9D6D3, 0xBDB9B6, 0, 0, 0xE2DFDB, 0xF7F6F4 };
+        static readonly int[] DarkBase = { 0x1D1C1B, 0x272624, 0xECE8E3, 0xD4CFC9, 0xA6A19B, 0x3B3936, 0x353330, 0x4C4946, 0, 0, 0x302E2C, 0x1A1918 };
+        static readonly Dictionary<Season, int[]> Accents = new Dictionary<Season, int[]>
+        {
+            [Season.Autumn] = new[] { 0xC46040, 0x9A3F22, 0xE0896A },
+            [Season.Winter] = new[] { 0x4E7BA6, 0x335C85, 0x8DB3DA },
+            [Season.Spring] = new[] { 0xC1607A, 0x974460, 0xE08FA6 },
+            [Season.Summer] = new[] { 0x7F9A3A, 0x5A7124, 0xA9C268 },
+        };
+
+        static Palette current = Build(false, Season.Autumn);
+
+        static Palette Build(bool dark, Season season)
+        {
+            var colors = (int[])(dark ? DarkBase : LightBase).Clone();
+            var accent = Accents[season];
+            colors[8] = accent[0];
+            colors[9] = dark ? accent[2] : accent[1];
+            return new Palette(colors);
+        }
+
+        public static Color Background => current.Colors[0];
+        public static Color Surface => current.Colors[1];
+        public static Color Ink => current.Colors[2];
+        public static Color InkHover => current.Colors[3];
+        public static Color Muted => current.Colors[4];
+        public static Color Track => current.Colors[5];
+        public static Color Line => current.Colors[6];
+        public static Color Border => current.Colors[7];
+        public static Color Accent => current.Colors[8];
+        public static Color AccentText => current.Colors[9];
+        public static Color Tile => current.Colors[10];
+        public static Color OnInk => current.Colors[11];
+        public static bool Dark { get; private set; }
+        public static event EventHandler Changed;
+
+        public static void Apply(bool dark, Season season)
+        {
+            var next = Build(dark, season);
+            if (dark == Dark && SameColors(next, current)) return;
+            var old = current;
+            current = next;
+            Dark = dark;
+            foreach (Form form in Application.OpenForms)
+            {
+                Recolor(form, old, next);
+                if (form.IsHandleCreated) StyleTitleBar(form, Background, Muted);
+                form.Invalidate(true);
+            }
+            Changed?.Invoke(null, EventArgs.Empty);
+        }
+
+        public static bool WindowsDark()
+        {
+            try
+            {
+                using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"))
+                    return key?.GetValue("AppsUseLightTheme") is int light && light == 0;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        static bool SameColors(Palette a, Palette b)
+        {
+            for (int i = 0; i < a.Colors.Length; i++)
+                if (a.Colors[i].ToArgb() != b.Colors[i].ToArgb()) return false;
+            return true;
+        }
+
+        static Color Map(Color color, Palette from, Palette to)
+        {
+            for (int i = 0; i < from.Colors.Length; i++)
+                if (from.Colors[i].ToArgb() == color.ToArgb()) return to.Colors[i];
+            return color;
+        }
+
+        static void Recolor(Control control, Palette from, Palette to)
+        {
+            control.BackColor = Map(control.BackColor, from, to);
+            control.ForeColor = Map(control.ForeColor, from, to);
+            if (control is LinkLabel link)
+            {
+                link.LinkColor = Map(link.LinkColor, from, to);
+                link.ActiveLinkColor = Map(link.ActiveLinkColor, from, to);
+                link.VisitedLinkColor = Map(link.VisitedLinkColor, from, to);
+            }
+            foreach (Control child in control.Controls) Recolor(child, from, to);
+        }
 
         static readonly Dictionary<string, FontFamily> families = new Dictionary<string, FontFamily>();
         static readonly PrivateFontCollection collection = new PrivateFontCollection();
@@ -57,7 +142,8 @@ namespace Stillpoint
         {
             try
             {
-                int c = ColorRef(caption), t = ColorRef(text);
+                int c = ColorRef(caption), t = ColorRef(text), dark = Dark ? 1 : 0;
+                DwmSetWindowAttribute(form.Handle, 20, ref dark, 4);
                 DwmSetWindowAttribute(form.Handle, 35, ref c, 4);
                 DwmSetWindowAttribute(form.Handle, 36, ref t, 4);
             }

@@ -8,7 +8,24 @@ namespace Stillpoint
 {
     sealed class SceneLook
     {
-        public float Night, Clouds, Rainbow, Snowman, NewestRake = 1, Dusk, MoonPhase = 0.25f, Wet, FadeAlpha;
+        public float Night, Clouds, Rainbow, Snowman, NewestRake = 1, Dusk, MoonPhase = 0.25f, Wet, FadeAlpha, Shafts, Halo;
+
+        public long BackKey(int px)
+        {
+            long k = px;
+            k = k * 49 + Q(Night, 48);
+            k = k * 4 + (int)Season;
+            k = k * 25 + Q(Clouds, 24);
+            k = k * 31 + Q(Dusk, 30);
+            k = k * 57 + Q(MoonPhase, 56);
+            k = k * 25 + Q(Rainbow, 24);
+            k = k * 21 + Q(Shafts, 20);
+            k = k * 21 + Q(Halo, 20);
+            k = k * 4 + (Southern ? 1 : 0) + (SnowGround ? 2 : 0);
+            return k;
+        }
+
+        public long GroundKey(int px) => Key(px) ^ (long)Q(Night, 48) << 50;
         public Season Season = Season.Autumn;
         public int RakeLines = 2, FadedRakes;
         public Keepsake Keepsakes;
@@ -89,13 +106,32 @@ namespace Stillpoint
 
         public static void DrawScene(Graphics g, SceneLook look, RectangleF area)
         {
+            DrawBackground(g, look, area);
+            DrawGround(g, look);
+            DrawTufts(g, look.Season, look.Night, 0);
+        }
+
+        static readonly Color[] HillTints = { Hex(0xA9B79A), Hex(0x9DAE84), Hex(0xB9A88E), Hex(0xDCE2E9) };
+
+        public static void DrawBackground(Graphics g, SceneLook look, RectangleF area)
+        {
             float n = look.Night;
             var season = look.Season;
-            var ground = look.SnowGround ? Season.Winter : season;
-            using (var floor = new SolidBrush(SkyAt(season, n, look.Clouds, false))) g.FillRectangle(floor, area);
+            var top = SkyAt(season, n, look.Clouds, true);
+            var bottom = SkyAt(season, n, look.Clouds, false);
+            var mid = Mix(top, bottom, 0.55f);
+            float d = look.Dusk * (1 - look.Clouds * 0.6f);
+            top = Mix(top, Hex(0x34406A), d * 0.55f);
+            mid = Mix(mid, Hex(0xC98B8F), d * 0.45f);
+            bottom = Mix(bottom, Hex(0xF2B27E), d * 0.7f);
+            using (var floor = new SolidBrush(bottom)) g.FillRectangle(floor, area);
             var skyRect = new RectangleF(area.X, area.Y, area.Width, Horizon + 7 - area.Y);
-            using (var sky = new LinearGradientBrush(RectangleF.Inflate(skyRect, 0, 1), SkyAt(season, n, look.Clouds, true), SkyAt(season, n, look.Clouds, false), LinearGradientMode.Vertical))
+            using (var sky = new LinearGradientBrush(RectangleF.Inflate(skyRect, 0, 1), top, bottom, LinearGradientMode.Vertical))
+            {
+                sky.InterpolationColors = new ColorBlend { Colors = new[] { top, mid, bottom }, Positions = new[] { 0f, 0.55f, 1f } };
                 g.FillRectangle(sky, skyRect);
+            }
+            if (n > 0.3f && look.Clouds < 0.7f) DrawMilkyWay(g, (n - 0.3f) / 0.7f * (1 - look.Clouds));
             float dusk = look.Dusk * (1 - look.Clouds * 0.6f);
             if (dusk > 0.01f)
             {
@@ -110,7 +146,18 @@ namespace Stillpoint
                 int alpha = season == Season.Summer ? 170 : season == Season.Winter ? 110 : 140;
                 FillRadial(g, 92, 64, 90, 90, Color.FromArgb((int)(alpha * sun), glow), Color.FromArgb(0, glow));
             }
-            if (n > 0.01f) DrawMoon(g, 206, 66, 13, look.MoonPhase, look.Southern, n * (1 - look.Clouds * 0.7f), SkyAt(season, n, look.Clouds, true));
+            if (look.Shafts > 0.01f && sun > 0.01f)
+                using (var shaft = new SolidBrush(Color.FromArgb((int)(42 * look.Shafts * sun), 255, 246, 226)))
+                    foreach (var angle in new[] { 48f, 60f, 73f })
+                    {
+                        float a0 = (angle - 4) * Pi / 180, a1 = (angle + 4) * Pi / 180;
+                        g.FillPolygon(shaft, new[] { new PointF(92, 40), new PointF(92 + Cos(a0) * 240, 40 + Sin(a0) * 240), new PointF(92 + Cos(a1) * 240, 40 + Sin(a1) * 240) });
+                    }
+            if (n > 0.01f)
+            {
+                if (look.Halo > 0.01f) FillRadial(g, 206, 66, 34, 34, Color.FromArgb((int)(80 * look.Halo * n), 240, 236, 220), Color.FromArgb(0, 240, 236, 220));
+                DrawMoon(g, 206, 66, 13, look.MoonPhase, look.Southern, n * (1 - look.Clouds * 0.7f), top);
+            }
             float bow = look.Rainbow * (1 - n);
             if (bow > 0.01f)
             {
@@ -122,7 +169,64 @@ namespace Stillpoint
                         g.DrawArc(pen, 150 - r, 205 - r, r * 2, r * 2, 180, 180);
                     }
             }
+            DrawHills(g, look, area, bottom);
+        }
 
+        static void DrawHills(Graphics g, SceneLook look, RectangleF area, Color horizon)
+        {
+            float n = look.Night;
+            var tint = HillTints[(int)(look.SnowGround ? Season.Winter : look.Season)];
+            var far = Mix(Mix(horizon, tint, 0.45f), Hex(0x2B3044), n * 0.85f);
+            var near = Mix(Mix(horizon, Mix(tint, Hex(0x6E6A60), 0.25f), 0.6f), Hex(0x252938), n * 0.85f);
+            Func<float, float> farY = x => 158 - 9 * Sin(x * 0.021f + 0.8f) - 5 * Sin(x * 0.047f + 2);
+            Func<float, float> nearY = x => 167 - 5 * Sin(x * 0.03f + 2.4f) - 3 * Sin(x * 0.071f);
+            foreach (var (shape, color) in new[] { (farY, far), (nearY, near) })
+            {
+                var pts = new List<PointF> { new PointF(area.Left - 10, Horizon + 10) };
+                for (float x = area.Left - 10; x <= area.Right + 10; x += 8) pts.Add(new PointF(x, shape(x)));
+                pts.Add(new PointF(area.Right + 10, Horizon + 10));
+                FillPolygon(g, color, pts.ToArray());
+            }
+            var haze = new RectangleF(area.Left, 146, area.Width, Horizon + 6 - 146);
+            using (var b = new LinearGradientBrush(RectangleF.Inflate(haze, 0, 1), Alpha(horizon, 0), Alpha(horizon, 0.55f), LinearGradientMode.Vertical))
+                g.FillRectangle(b, haze);
+        }
+
+        static readonly PointF[] MilkyDots = BuildMilky();
+
+        static PointF[] BuildMilky()
+        {
+            var rnd = new Random(23);
+            var dots = new PointF[140];
+            for (int i = 0; i < dots.Length; i++)
+            {
+                float u = (float)rnd.NextDouble(), off = (float)((rnd.NextDouble() + rnd.NextDouble() + rnd.NextDouble() - 1.5) * 14);
+                dots[i] = new PointF(20 + u * 260 + off * 0.4f, 120 - u * 100 + off);
+            }
+            return dots;
+        }
+
+        static void DrawMilkyWay(Graphics g, float k)
+        {
+            var st = g.Save();
+            g.TranslateTransform(150, 70);
+            g.RotateTransform(-21);
+            FillRadial(g, 0, 0, 150, 20, Color.FromArgb((int)(34 * k), 200, 204, 230), Color.FromArgb(0, 200, 204, 230));
+            FillRadial(g, 10, 2, 90, 8, Color.FromArgb((int)(30 * k), 225, 226, 240), Color.FromArgb(0, 225, 226, 240));
+            g.Restore(st);
+            using (var b = new SolidBrush(Color.FromArgb((int)(110 * k), 235, 236, 248)))
+                for (int i = 0; i < MilkyDots.Length; i++)
+                {
+                    float s = 0.35f + (i % 5) * 0.12f;
+                    g.FillEllipse(b, MilkyDots[i].X - s, MilkyDots[i].Y - s, s * 2, s * 2);
+                }
+        }
+
+        public static void DrawGround(Graphics g, SceneLook look)
+        {
+            float n = look.Night;
+            var season = look.Season;
+            var ground = look.SnowGround ? Season.Winter : season;
             using (var groundPath = new GraphicsPath())
             {
                 groundPath.AddEllipse(150 - 260, Horizon, 520, 300);
@@ -273,16 +377,94 @@ namespace Stillpoint
                     g.Restore(st);
                 }
             }
-            else if (season == Season.Spring || season == Season.Summer)
+        }
+
+        public static void DrawTufts(Graphics g, Season season, float n, float wind)
+        {
+            if (season != Season.Spring && season != Season.Summer) return;
+            var blade = Mix(season == Season.Summer ? Hex(0x7C9E5A) : Hex(0x8DAE6C), Hex(0x3D4B48), n * 0.8f);
+            using (var pen = RoundPen(blade, 1.2f))
+                foreach (var tuft in Tufts)
+                    for (int i = -2; i <= 2; i++)
+                        g.DrawLine(pen, tuft[0] + i * 1.6f, tuft[1], tuft[0] + i * 2.6f + wind * 2.4f, tuft[1] - 5 - (2 - Math.Abs(i)) * 1.6f);
+            if (season == Season.Spring)
+                foreach (var tuft in Tufts)
+                    FillEllipse(g, Mix(Hex(0xEFB3B8), Hex(0x585467), n * 0.8f), tuft[0] + 4 + wind * 2, tuft[1] - 6, 1.3f, 1.3f);
+        }
+
+        public static void DrawPondGlints(Graphics g, float t, float n)
+        {
+            for (int i = 0; i < 2; i++)
             {
-                var blade = Mix(season == Season.Summer ? Hex(0x7C9E5A) : Hex(0x8DAE6C), Hex(0x3D4B48), n * 0.8f);
-                using (var pen = RoundPen(blade, 1.2f))
-                    foreach (var tuft in Tufts)
-                        for (int i = -2; i <= 2; i++)
-                            g.DrawLine(pen, tuft[0] + i * 1.6f, tuft[1], tuft[0] + i * 2.6f, tuft[1] - 5 - (2 - Math.Abs(i)) * 1.6f);
-                if (season == Season.Spring)
-                    foreach (var tuft in Tufts)
-                        FillEllipse(g, Mix(Hex(0xEFB3B8), Hex(0x585467), n * 0.8f), tuft[0] + 4, tuft[1] - 6, 1.3f, 1.3f);
+                float x = PondAt.X - 12 + ((t * (3 + i * 2) + i * 11) % 24), a = 0.55f * Sin(((t * 0.7f + i * 0.5f) % 1) * Pi) * (1 - n * 0.4f);
+                FillEllipse(g, Alpha(Color.White, a), x, PondAt.Y - 1 + i * 2, 2.2f, 0.5f);
+            }
+        }
+
+        public static void DrawLanternFlicker(Graphics g, float t, float n)
+        {
+            if (n < 0.05f) return;
+            float flicker = 0.85f + 0.1f * Sin(t * 9.3f) + 0.05f * Sin(t * 23.1f);
+            FillRadial(g, LanternAt.X, LanternAt.Y - 24, 28 * flicker, 22 * flicker, Color.FromArgb((int)(55 * n * flicker), 255, 190, 100), Color.FromArgb(0, 255, 190, 100));
+        }
+
+        public static void DrawHeatShimmer(Graphics g, float t, float k)
+        {
+            if (k < 0.02f) return;
+            using (var pen = new Pen(Alpha(Color.White, 0.13f * k), 1.2f))
+                for (int line = 0; line < 4; line++)
+                {
+                    var pts = new PointF[30];
+                    float y = 158 + line * 4.5f;
+                    for (int i = 0; i < pts.Length; i++)
+                    {
+                        float x = 20 + i * 9;
+                        pts[i] = new PointF(x, y + Sin(x * 0.12f + t * (2.2f + line * 0.4f)) * 1.4f);
+                    }
+                    g.DrawCurve(pen, pts);
+                }
+        }
+
+        public static void DrawDragonfly(Graphics g, float x, float y, float t, float facing)
+        {
+            var st = g.Save();
+            g.TranslateTransform(x, y);
+            g.ScaleTransform(facing < 0 ? -1 : 1, 1);
+            float flap = 0.5f + 0.5f * Math.Abs(Sin(t * 40));
+            var wing = Color.FromArgb(110, 214, 232, 240);
+            foreach (var (wx, angle) in new[] { (-1f, -0.35f), (-1f, 0.35f), (1.5f, -0.25f), (1.5f, 0.25f) })
+            {
+                var w = g.Save();
+                g.TranslateTransform(wx, -1);
+                g.RotateTransform((angle * flap + (angle < 0 ? -1.2f : 1.2f)) * Deg);
+                FillEllipse(g, wing, 0, -4.5f, 1.6f, 4.5f);
+                g.Restore(w);
+            }
+            using (var body = RoundPen(Hex(0x3E8A86), 1.6f)) g.DrawLine(body, -9, 0, 3, 0);
+            FillEllipse(g, Hex(0x2F6E6B), 4, 0, 1.9f, 1.7f);
+            FillEllipse(g, Alpha(Color.White, 0.7f), 4.6f, -0.6f, 0.5f, 0.5f);
+            g.Restore(st);
+        }
+
+        public static void DrawShootingStar(Graphics g, float x, float y, float dx, float dy, float k)
+        {
+            float a = Sin(k * Pi);
+            for (int i = 0; i < 8; i++)
+                using (var pen = new Pen(Alpha(Hex(0xF4F0FF), a * (1 - i / 8f) * 0.9f), 1.4f - i * 0.12f))
+                    g.DrawLine(pen, x - dx * i * 4, y - dy * i * 4, x - dx * (i + 1) * 4, y - dy * (i + 1) * 4);
+            FillEllipse(g, Alpha(Color.White, a), x, y, 1.3f, 1.3f);
+        }
+
+        public static void DrawDiscShadow(Graphics g)
+        {
+            using (var path = new GraphicsPath())
+            {
+                path.AddEllipse(150 - 162, 154 - 162, 324, 324);
+                using (var b = new PathGradientBrush(path) { CenterColor = Color.FromArgb(70, 40, 30, 20), SurroundColors = new[] { Color.FromArgb(0, 40, 30, 20) }, CenterPoint = new PointF(150, 154) })
+                {
+                    b.Blend = new Blend { Factors = new[] { 0f, 1f, 1f }, Positions = new[] { 0f, 0.1f, 1f } };
+                    g.FillPath(b, path);
+                }
             }
         }
 
@@ -404,8 +586,8 @@ namespace Stillpoint
                 g.DrawLine(scarf, -4.6f, -15, 4.6f, -15);
                 g.DrawLine(scarf, 3, -15, 4.4f, -10.5f);
             }
-            FillEllipse(g, Theme.Ink, -1.9f, -21.5f, 0.8f, 0.8f);
-            FillEllipse(g, Theme.Ink, 1.9f, -21.5f, 0.8f, 0.8f);
+            FillEllipse(g, Ink, -1.9f, -21.5f, 0.8f, 0.8f);
+            FillEllipse(g, Ink, 1.9f, -21.5f, 0.8f, 0.8f);
             FillPolygon(g, Hex(0xE38A3C), new PointF(0, -20.2f), new PointF(5, -19.3f), new PointF(0, -18.6f));
             using (var twig = RoundPen(Mix(Hex(0x6E5444), Hex(0x3C3A44), n), 1f))
             {
@@ -538,6 +720,7 @@ namespace Stillpoint
             if (v.Contains(Visitors.Cat)) DrawCat(g, CatAt.X, CatAt.Y, 0);
             if (v.Contains(Visitors.Bird)) DrawBird(g, points.Head.X, points.Head.Y, 0, 1, false);
             if (v.Contains(Visitors.Butterfly)) DrawButterfly(g, points.Tip.X, points.Tip.Y - 5, 0.6f, true);
+            if (v.Contains(Visitors.Dragonfly)) DrawDragonfly(g, 96, 118, 0.3f, 1);
             g.Restore(state);
         }
     }

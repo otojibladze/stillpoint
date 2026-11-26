@@ -23,7 +23,20 @@ namespace Stillpoint
             {
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 var rect = new RectangleF(0, 0, size.Width, size.Height);
-                GardenArt.RenderDay(g, rect, day, night);
+                if (size.Width < 160)
+                    using (var big = new Bitmap(size.Width * 2, size.Height * 2, PixelFormat.Format32bppPArgb))
+                    {
+                        using (var bg = Graphics.FromImage(big))
+                        {
+                            bg.SmoothingMode = SmoothingMode.AntiAlias;
+                            GardenArt.RenderDay(bg, new RectangleF(0, 0, big.Width, big.Height), day, night);
+                        }
+                        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                        g.DrawImage(big, rect);
+                        g.PixelOffsetMode = PixelOffsetMode.Default;
+                    }
+                else GardenArt.RenderDay(g, rect, day, night);
                 if (radius > 0)
                     using (var corners = new GraphicsPath { FillMode = FillMode.Alternate })
                     using (var round = Draw.Rounded(new RectangleF(0, 0, size.Width - 0.5f, size.Height - 0.5f), radius))
@@ -54,8 +67,26 @@ namespace Stillpoint
         public string Eyebrow { get; set; }
         public string Title { get; set; }
 
+        Bitmap slideFrom;
+        int slideDir;
+        readonly System.Diagnostics.Stopwatch slideClock = new System.Diagnostics.Stopwatch();
+        System.Windows.Forms.Timer slideTimer;
+
         public void Set(GardenDay next, float nightLevel)
         {
+            if (cache != null && day != null && next != null && next.Date != day.Date && Visible && IsHandleCreated)
+            {
+                slideFrom?.Dispose();
+                slideFrom = (Bitmap)cache.Clone();
+                slideDir = next.Date > day.Date ? 1 : -1;
+                slideClock.Restart();
+                if (slideTimer == null)
+                {
+                    slideTimer = new System.Windows.Forms.Timer { Interval = 15 };
+                    slideTimer.Tick += (s, e) => { Invalidate(); if (slideClock.ElapsedMilliseconds > 360) { slideTimer.Stop(); slideFrom?.Dispose(); slideFrom = null; Invalidate(); } };
+                }
+                slideTimer.Start();
+            }
             day = next;
             night = nightLevel;
             Invalidate();
@@ -75,7 +106,14 @@ namespace Stillpoint
                 cache = GardenPicture.Render(day, night, Size, radius, around);
                 cacheKey = key;
             }
-            g.DrawImage(cache, new Rectangle(0, 0, cache.Width, cache.Height));
+            if (slideFrom != null)
+            {
+                float k = SpiritArt.Smooth(0, 1, slideClock.ElapsedMilliseconds / 340f);
+                int shift = (int)(k * Width) * slideDir;
+                g.DrawImage(slideFrom, new Rectangle(-shift, 0, slideFrom.Width, slideFrom.Height));
+                g.DrawImage(cache, new Rectangle(slideDir * Width - shift, 0, cache.Width, cache.Height));
+            }
+            else g.DrawImage(cache, new Rectangle(0, 0, cache.Width, cache.Height));
             if (string.IsNullOrEmpty(Title)) return;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
@@ -107,7 +145,12 @@ namespace Stillpoint
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing) cache?.Dispose();
+            if (disposing)
+            {
+                cache?.Dispose();
+                slideFrom?.Dispose();
+                slideTimer?.Dispose();
+            }
             base.Dispose(disposing);
         }
     }
@@ -164,7 +207,7 @@ namespace Stillpoint
                     else
                     {
                         var size = new Size((int)thumb, (int)thumb);
-                        string key = GardenPicture.Signature(day, 0, size);
+                        string key = GardenPicture.Signature(day, 0, size) + "|" + back.ToArgb();
                         if (!thumbs.TryGetValue(day.Date, out var bmp) || keys[day.Date] != key)
                         {
                             bmp?.Dispose();

@@ -8,13 +8,16 @@ using System.Windows.Forms;
 namespace Stillpoint
 {
     enum Eyes { Open, Happy, Closed, Squeeze, Dizzy }
-    enum Mouth { Dot, Smile, O, Flat, Wavy }
-    enum Bit { Puff, Spark, Heart, Note, Dot, Leaf, Rain, Splash, Snow, Petal, Autumn, Ripple, Feather }
+    enum Mouth { Dot, Smile, O, Flat, Wavy, Grin, Tongue }
+    enum Brow { None, Worried, Sleepy, Curious }
+    enum Bit { Puff, Spark, Heart, Note, Dot, Leaf, Rain, Splash, Snow, Petal, Autumn, Ripple, Feather, Drip, Vapor }
     enum MiniMood { Yawn, Look, Happy }
 
     sealed class SpiritPose
     {
-        public float Sx = 1, Sy = 1, Tilt, Dy, EyeOpen = 1, LookX, LookY, Yawn, Blush = 0.35f, Sprout = 1, Zzz, Night, Bloom, Snow, EyeScale = 1, Bud, Wilt;
+        public float Sx = 1, Sy = 1, Tilt, Dy, EyeOpen = 1, LookX, LookY, Yawn, Blush = 0.35f, Sprout = 1, Zzz, Night, Bloom, Snow, EyeScale = 1, Bud, Wilt, LightX = -1, Warm, Wet, Wind;
+        public Brow Brow;
+        public int Petals;
         public Eyes Eyes = Eyes.Open;
         public Mouth Mouth = Mouth.Dot;
         public bool Cushion, Bare;
@@ -38,6 +41,7 @@ namespace Stillpoint
     static class SpiritArt
     {
         public static readonly Color Moss = Hex(0x6F8F58);
+        public static readonly Color Ink = Hex(0x1C1A19);
         static readonly Color StoneLight = Hex(0xDCD4CA), StoneMid = Hex(0xADA398), StoneDark = Hex(0x776D63);
         static readonly Color Stem = Hex(0x56763F), LeafTop = Hex(0x86A96B), LeafTop2 = Hex(0x7A9E60), LeafLow = Hex(0x76985C), LeafLow2 = Hex(0x6A8C52);
         static readonly Color Petal = Hex(0xE58A72), PetalCenter = Hex(0xF0C35A), MouthInside = Hex(0x4A3530);
@@ -132,8 +136,15 @@ namespace Stillpoint
             var outer = g.Save();
             if (shadow)
             {
-                float shadowW = rx * 1.05f * p.Sx * (1 - Clamp(lift / 60, 0, 0.45f));
-                FillRadial(g, cx, ground + 2, shadowW, R * 0.14f, Color.FromArgb((int)(255 * (0.32f - Clamp(lift / 200, 0, 0.15f))), 60, 45, 35), Color.FromArgb(0, 60, 45, 35));
+                float shadowW = rx * 1.05f * p.Sx * (1 + Clamp(lift / 60, 0, 0.45f) * 0.4f);
+                FillRadial(g, cx, ground + 2, shadowW, R * 0.14f * (1 + Clamp(lift / 40, 0, 0.6f)), Color.FromArgb((int)(255 * (0.3f - Clamp(lift / 160, 0, 0.18f))), 60, 45, 35), Color.FromArgb(0, 60, 45, 35));
+                float contact = 1 - Clamp(lift / 18, 0, 1);
+                if (contact > 0.02f && !p.Cushion)
+                {
+                    FillEllipse(g, Color.FromArgb((int)(95 * contact), 50, 38, 30), cx, ground + 0.5f, rx * 0.62f * p.Sx, R * 0.045f);
+                    using (var ridge = new Pen(Color.FromArgb((int)(70 * contact), 255, 250, 240), R * 0.03f))
+                        Arc(g, ridge, cx, ground - R * 0.02f, rx * 1.04f * p.Sx, Pi * 0.12f, Pi * 0.88f);
+                }
             }
 
             if (p.Cushion)
@@ -152,7 +163,7 @@ namespace Stillpoint
             var points = new[] { new PointF(0, -ry * 1.2f), new PointF(-rx * 0.32f, -ry * 0.93f) };
             if (!p.Bare)
             {
-                float sway = Sin(t * 2.1f) * 0.06f;
+                float sway = Sin(t * 2.1f) * 0.06f + p.Wind * 0.14f;
                 float lean = 0.15f + (1 - p.Sprout) * 1.15f + sway;
                 float bx = rx * 0.08f, by = -ry * 0.97f, len = R * (0.4f + 0.07f * p.Stem);
                 var P0 = new PointF(bx, by);
@@ -224,7 +235,7 @@ namespace Stillpoint
                 {
                     float gr = R * 1.45f, gx = -rx * 0.05f, gy = -ry * 0.05f;
                     shape.AddEllipse(gx - gr, gy - gr, gr * 2, gr * 2);
-                    using (var fill = new PathGradientBrush(shape) { CenterPoint = new PointF(-rx * 0.35f, -ry * 0.55f) })
+                    using (var fill = new PathGradientBrush(shape) { CenterPoint = new PointF(rx * 0.35f * p.LightX, -ry * 0.55f) })
                     {
                         fill.InterpolationColors = new ColorBlend { Colors = new[] { StoneDark, StoneMid, StoneLight }, Positions = new[] { 0f, 0.5f, 1f } };
                         g.FillPath(fill, body);
@@ -244,28 +255,54 @@ namespace Stillpoint
                     Quad(band, new PointF(rx * 0.5f, -ry * 1.1f), new PointF(rx * 0.9f, ry * 0.1f), new PointF(rx * 0.72f, ry * 1.1f));
                     g.DrawPath(pen, band);
                 }
+                Grain.ResetTransform();
+                Grain.TranslateTransform(-rx * 1.1f, -ry * 1.1f);
+                Grain.ScaleTransform(rx * 2.2f / GrainSize, rx * 2.2f / GrainSize);
+                g.FillRectangle(Grain, -rx * 1.2f, -ry * 1.2f, rx * 2.4f, ry * 2.4f);
                 foreach (var s in Specks)
                     FillEllipse(g, s.Light ? Color.FromArgb((int)(255 * Clamp(s.O + 0.15f, 0, 1)), 250, 245, 236) : Color.FromArgb((int)(255 * s.O), 60, 50, 44), s.X * rx, s.Y * ry - ry * 0.1f, s.S * R, s.S * R);
                 var all = new RectangleF(-rx * 1.2f, -ry * 1.2f, rx * 2.4f, ry * 2.4f);
                 FillRadial(g, 0, ry * 1.15f, rx * 1.15f, rx * 1.15f, Color.FromArgb(107, 45, 35, 28), Color.FromArgb(0, 45, 35, 28), all);
-                var rimRect = new RectangleF(rx * 0.55f, -ry, rx * 0.6f, ry * 1.6f);
-                using (var rim = new LinearGradientBrush(RectangleF.Inflate(rimRect, 1, 1), Color.FromArgb(0, 255, 236, 214), Color.FromArgb(89, 255, 236, 214), LinearGradientMode.Horizontal))
+                var rimColor = Mix(Mix(Hex(0xFFECD6), Hex(0xFFA86E), p.Warm), Hex(0xAFC2FF), p.Night * 0.8f);
+                float rimAlpha = 0.35f + 0.25f * p.Warm + 0.1f * p.Night;
+                bool rimRight = p.LightX <= 0;
+                var rimRect = rimRight ? new RectangleF(rx * 0.55f, -ry, rx * 0.6f, ry * 1.6f) : new RectangleF(-rx * 1.15f, -ry, rx * 0.6f, ry * 1.6f);
+                using (var rim = new LinearGradientBrush(RectangleF.Inflate(rimRect, 1, 1), Alpha(rimColor, rimRight ? 0 : rimAlpha), Alpha(rimColor, rimRight ? rimAlpha : 0), LinearGradientMode.Horizontal))
                     g.FillRectangle(rim, rimRect);
                 var hl = g.Save();
-                g.TranslateTransform(-rx * 0.4f, -ry * 0.55f);
-                g.RotateTransform(-0.55f * Deg);
-                FillEllipse(g, Color.FromArgb(77, 255, 251, 245), 0, 0, rx * 0.26f, ry * 0.12f);
+                g.TranslateTransform(rx * 0.4f * p.LightX, -ry * 0.55f);
+                g.RotateTransform(0.55f * p.LightX * Deg);
+                FillEllipse(g, Color.FromArgb((int)(77 + 60 * p.Wet), 255, 251, 245), 0, 0, rx * 0.26f, ry * 0.12f);
                 g.Restore(hl);
+                if (p.Wet > 0.02f)
+                {
+                    using (var damp = new SolidBrush(Color.FromArgb((int)(55 * p.Wet), 40, 34, 30))) g.FillRectangle(damp, all);
+                    var gloss = g.Save();
+                    g.TranslateTransform(rx * 0.3f * p.LightX, -ry * 0.62f);
+                    g.RotateTransform(0.4f * p.LightX * Deg);
+                    FillEllipse(g, Color.FromArgb((int)(150 * p.Wet), 255, 255, 255), 0, 0, rx * 0.16f, ry * 0.045f);
+                    g.Restore(gloss);
+                }
                 if (p.Snow > 0)
                 {
-                    var shade = Alpha(Hex(0xC3CEDA), p.Snow);
-                    var white = Alpha(Hex(0xF8FAFC), p.Snow);
-                    FillEllipse(g, shade, -rx * 0.1f, -ry * 0.85f, rx * 0.55f, ry * 0.19f);
-                    FillEllipse(g, shade, rx * 0.36f, -ry * 0.77f, rx * 0.21f, ry * 0.12f);
-                    FillEllipse(g, white, -rx * 0.24f, -ry * 0.93f, rx * 0.42f, ry * 0.17f);
-                    FillEllipse(g, white, rx * 0.12f, -ry * 0.95f, rx * 0.4f, ry * 0.15f);
-                    FillEllipse(g, white, rx * 0.38f, -ry * 0.84f, rx * 0.19f, ry * 0.1f);
-                    FillEllipse(g, Alpha(Color.White, p.Snow), -rx * 0.32f, -ry * 0.99f, rx * 0.2f, ry * 0.05f);
+                    float a = Clamp(p.Snow * 3, 0, 1), k = 0.45f + 0.55f * p.Snow;
+                    var shade = Alpha(Hex(0xC3CEDA), a);
+                    var white = Alpha(Hex(0xF8FAFC), a);
+                    FillEllipse(g, shade, -rx * 0.1f, -ry * (1 - 0.15f * k), rx * 0.55f, ry * 0.19f * k);
+                    FillEllipse(g, shade, rx * 0.36f, -ry * (1 - 0.23f * k), rx * 0.21f, ry * 0.12f * k);
+                    FillEllipse(g, white, -rx * 0.24f, -ry * (1 - 0.07f * k), rx * 0.42f, ry * 0.17f * k);
+                    FillEllipse(g, white, rx * 0.12f, -ry * (1 - 0.05f * k), rx * 0.4f, ry * 0.15f * k);
+                    FillEllipse(g, white, rx * 0.38f, -ry * (1 - 0.16f * k), rx * 0.19f, ry * 0.1f * k);
+                    FillEllipse(g, Alpha(Color.White, a), -rx * 0.32f, -ry * 0.99f, rx * 0.2f, ry * 0.05f);
+                }
+                for (int i = 0; i < Math.Min(3, p.Petals); i++)
+                {
+                    float[][] at = { new[] { -0.3f, -0.95f, 0.4f }, new[] { 0.2f, -0.99f, -0.6f }, new[] { 0.45f, -0.84f, 1.1f } };
+                    var pst = g.Save();
+                    g.TranslateTransform(rx * at[i][0], ry * at[i][1]);
+                    g.RotateTransform(at[i][2] * Deg);
+                    FillEllipse(g, Hex(0xEFB3B8), 0, 0, R * 0.05f, R * 0.032f);
+                    g.Restore(pst);
                 }
                 if (p.Night > 0)
                     using (var tint = new SolidBrush(Color.FromArgb((int)(255 * 0.38f * p.Night), 24, 28, 50))) g.FillRectangle(tint, all);
@@ -278,7 +315,7 @@ namespace Stillpoint
             FillEllipse(g, blush, -R * 0.5f + lx * 0.4f, ey + R * 0.17f, R * 0.11f, R * 0.06f);
             FillEllipse(g, blush, R * 0.5f + lx * 0.4f, ey + R * 0.17f, R * 0.11f, R * 0.06f);
 
-            using (var pen = RoundPen(Theme.Ink, R * 0.045f * es))
+            using (var pen = RoundPen(Ink, R * 0.045f * es))
             {
                 foreach (int s in new[] { -1, 1 })
                 {
@@ -297,7 +334,7 @@ namespace Stillpoint
                                 float rr = R * 0.012f * a * es, aa = a + t * 8 * s;
                                 spiral.Add(new PointF(x + Cos(aa) * rr, y + Sin(aa) * rr));
                             }
-                            using (var thin = RoundPen(Theme.Ink, R * 0.03f * es)) g.DrawLines(thin, spiral.ToArray());
+                            using (var thin = RoundPen(Ink, R * 0.03f * es)) g.DrawLines(thin, spiral.ToArray());
                             break;
                         default:
                             float open = Clamp(p.EyeOpen, 0, 1);
@@ -310,12 +347,18 @@ namespace Stillpoint
                                 }
                                 break;
                             }
-                            float h = R * 0.1f * open * es, cy = y + R * 0.1f * es * (1 - open) * 0.5f;
-                            FillEllipse(g, Theme.Ink, x, cy, R * 0.072f * es, h);
+                            float dilate = 1 + 0.14f * p.Night;
+                            float h = R * 0.1f * open * es * dilate, cy = y + R * 0.1f * es * (1 - open) * 0.5f;
+                            if (open > 0.5f && es <= 1.3f)
+                                using (var socket = RoundPen(Color.FromArgb(40, 50, 40, 34), R * 0.03f))
+                                    Arc(g, socket, x, cy + R * 0.01f, R * 0.12f * es, Pi * 1.18f, Pi * 1.82f);
+                            FillEllipse(g, Ink, x, cy, R * 0.072f * es * dilate, h);
                             if (open > 0.5f && es <= 1.3f)
                             {
-                                FillEllipse(g, Color.FromArgb(230, 255, 255, 255), x + R * 0.025f * es - lx * 0.15f, cy - h * 0.42f, R * 0.024f * es, R * 0.024f * es);
-                                FillEllipse(g, Color.FromArgb(230, 255, 255, 255), x - R * 0.025f * es - lx * 0.15f, cy + h * 0.35f, R * 0.011f * es, R * 0.011f * es);
+                                float shine = p.Blush > 0.5f ? 1.35f : 1;
+                                float side = p.LightX <= 0 ? -1 : 1;
+                                FillEllipse(g, Color.FromArgb(235, 255, 255, 255), x + side * R * 0.025f * es - lx * 0.15f, cy - h * 0.42f, R * 0.024f * es * shine, R * 0.024f * es * shine);
+                                FillEllipse(g, Color.FromArgb(200, 255, 255, 255), x - side * R * 0.025f * es - lx * 0.15f, cy + h * 0.35f, R * 0.011f * es * shine, R * 0.011f * es * shine);
                             }
                             if (open < 0.9f)
                                 using (var lidPen = RoundPen(Color.FromArgb(140, 60, 50, 44), R * 0.03f * es))
@@ -330,19 +373,43 @@ namespace Stillpoint
                     case Mouth.Smile: Arc(g, pen, mx, my - R * 0.06f, R * 0.09f, Pi * 0.2f, Pi * 0.8f); break;
                     case Mouth.O: FillEllipse(g, MouthInside, mx, my, R * (0.035f + 0.05f * p.Yawn), R * (0.03f + 0.08f * p.Yawn)); break;
                     case Mouth.Flat: g.DrawLine(pen, mx - R * 0.05f, my, mx + R * 0.05f, my); break;
+                    case Mouth.Grin:
+                        using (var grin = new GraphicsPath())
+                        {
+                            grin.AddArc(mx - R * 0.11f, my - R * 0.1f, R * 0.22f, R * 0.18f, 10, 160);
+                            grin.CloseFigure();
+                            using (var b = new SolidBrush(MouthInside)) g.FillPath(b, grin);
+                        }
+                        FillEllipse(g, Hex(0xD9776A), mx, my + R * 0.05f, R * 0.05f, R * 0.025f);
+                        break;
+                    case Mouth.Tongue:
+                        FillEllipse(g, MouthInside, mx, my, R * 0.045f, R * 0.035f);
+                        FillEllipse(g, Hex(0xE07C82), mx + R * 0.01f, my + R * 0.05f, R * 0.035f, R * 0.04f);
+                        break;
                     case Mouth.Wavy:
                         var wave = new PointF[9];
                         for (int i = 0; i < wave.Length; i++) wave[i] = new PointF(mx - R * 0.1f + i * R * 0.025f, my + (i % 2 == 1 ? -1 : 1) * R * 0.02f);
-                        using (var thin = RoundPen(Theme.Ink, R * 0.035f)) g.DrawLines(thin, wave);
+                        using (var thin = RoundPen(Ink, R * 0.035f)) g.DrawLines(thin, wave);
                         break;
-                    default: FillEllipse(g, Theme.Ink, mx, my, R * 0.03f * es, R * 0.022f * es); break;
+                    default: FillEllipse(g, Ink, mx, my, R * 0.03f * es, R * 0.022f * es); break;
                 }
+                if (p.Brow != Brow.None)
+                    using (var brow = RoundPen(Alpha(Ink, 0.8f), R * 0.032f))
+                        foreach (int s in new[] { -1, 1 })
+                        {
+                            float bx0 = s * ex + lx, by0 = ey + ly - R * 0.17f;
+                            float inner = 0, outerY = 0;
+                            if (p.Brow == Brow.Worried) { inner = -R * 0.035f; outerY = R * 0.015f; }
+                            else if (p.Brow == Brow.Sleepy) { inner = R * 0.02f; outerY = R * 0.03f; }
+                            else if (s > 0) { inner = -R * 0.03f; outerY = -R * 0.03f; }
+                            g.DrawLine(brow, bx0 - s * R * 0.06f, by0 + inner, bx0 + s * R * 0.06f, by0 + outerY);
+                        }
             }
             g.Restore(outer);
 
             if (p.Zzz > 0.05f)
             {
-                var zColor = p.Night > 0.5f ? Hex(0xC9CCDA) : Theme.Muted;
+                var zColor = p.Night > 0.5f ? Hex(0xC9CCDA) : Hex(0x5F5C5A);
                 for (int i = 0; i < 3; i++)
                 {
                     float ph = (t * 0.4f + i / 3f) % 1;
@@ -358,6 +425,8 @@ namespace Stillpoint
         struct Speck { public float X, Y, S, O; public bool Light; }
 
         static readonly Speck[] Specks;
+        const int GrainSize = 96;
+        static readonly TextureBrush Grain;
 
         static SpiritArt()
         {
@@ -368,6 +437,25 @@ namespace Stillpoint
                 float a = (float)rnd.NextDouble() * Pi * 2, r = (float)Math.Sqrt(rnd.NextDouble()) * 0.85f;
                 Specks[i] = new Speck { X = Cos(a) * r, Y = Sin(a) * r * 0.85f, S = 0.008f + (float)rnd.NextDouble() * 0.02f, O = 0.08f + (float)rnd.NextDouble() * 0.2f, Light = rnd.NextDouble() < 0.3 };
             }
+            var grain = new Bitmap(GrainSize, GrainSize, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            using (var g = Graphics.FromImage(grain))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                for (int i = 0; i < 70; i++)
+                {
+                    float x = (float)rnd.NextDouble() * GrainSize, y = (float)rnd.NextDouble() * GrainSize, r = 3 + (float)rnd.NextDouble() * 11;
+                    bool light = rnd.NextDouble() < 0.4;
+                    var c = light ? Color.FromArgb(22, 255, 250, 240) : Color.FromArgb(20, 60, 48, 40);
+                    FillRadial(g, x, y, r, r * (0.6f + (float)rnd.NextDouble() * 0.5f), c, Color.FromArgb(0, c));
+                }
+                for (int i = 0; i < 420; i++)
+                {
+                    bool light = rnd.NextDouble() < 0.45;
+                    var c = light ? Color.FromArgb(40 + rnd.Next(40), 250, 245, 236) : Color.FromArgb(30 + rnd.Next(40), 55, 45, 38);
+                    using (var b = new SolidBrush(c)) g.FillRectangle(b, (float)rnd.NextDouble() * GrainSize, (float)rnd.NextDouble() * GrainSize, 0.8f, 0.8f);
+                }
+            }
+            Grain = new TextureBrush(grain) { WrapMode = WrapMode.Tile };
         }
 
         public static void DrawParticles(Graphics g, List<Particle> bits)
@@ -402,7 +490,7 @@ namespace Stillpoint
                     case Bit.Spark:
                         var star = new PointF[8];
                         for (int i = 0; i < 8; i++) { float r = i % 2 == 1 ? q.Size * 0.32f : q.Size, an = i * Pi / 4; star[i] = new PointF(Cos(an) * r, Sin(an) * r); }
-                        FillPolygon(g, Alpha(Hex(0xE3AE4F), a), star);
+                        FillPolygon(g, Alpha(Hex(0xE3AE4F), a * (0.65f + 0.35f * Sin(q.Age * 28 + q.Size))), star);
                         break;
                     case Bit.Heart:
                         using (var path = new GraphicsPath())
@@ -429,6 +517,11 @@ namespace Stillpoint
                     case Bit.Autumn: FillEllipse(g, Alpha(AutumnHues[q.Hue % AutumnHues.Length], a), 0, 0, q.Size * 0.55f, q.Size); break;
                     case Bit.Petal: FillEllipse(g, Alpha(Hex(0xEFB3B8), a), 0, 0, q.Size * 0.6f, q.Size * 0.9f); break;
                     case Bit.Feather: GardenArt.DrawFeather(g, 0, 0, 0, q.Night); break;
+                    case Bit.Drip:
+                        using (var trail = new Pen(Alpha(Hex(0xC9D6E2), a * 0.5f), 0.7f)) g.DrawLine(trail, 0, -3.5f, 0, 0);
+                        FillEllipse(g, Alpha(Hex(0xDCE6EF), a * 0.85f), 0, 0.4f, 0.9f, 1.3f);
+                        break;
+                    case Bit.Vapor: FillEllipse(g, Alpha(Color.White, a * 0.3f), 0, 0, q.Size * (1 + k * 1.8f), q.Size * (0.8f + k * 1.4f)); break;
                     case Bit.Snow:
                         FillEllipse(g, Alpha(Hex(0xAEBBCB), a * 0.45f), 0, 0.3f, q.Size + 0.5f, q.Size + 0.5f);
                         FillEllipse(g, Alpha(Color.White, a), 0, 0, q.Size, q.Size);
@@ -461,8 +554,8 @@ namespace Stillpoint
                 FillEllipse(g, Color.FromArgb(230, 255, 246, 230), 7.5f, -4.5f, 1.2f, 1.2f);
                 g.Restore(wing);
             }
-            using (var body = RoundPen(Theme.Ink, 1.6f)) g.DrawLine(body, 0, -5, 0, 5);
-            using (var antenna = new Pen(Theme.Ink, 0.8f))
+            using (var body = RoundPen(Ink, 1.6f)) g.DrawLine(body, 0, -5, 0, 5);
+            using (var antenna = new Pen(Ink, 0.8f))
             using (var path = new GraphicsPath())
             {
                 Quad(path, new PointF(0, -5), new PointF(-2, -9), new PointF(-3.5f, -10));
@@ -483,7 +576,7 @@ namespace Stillpoint
             FillEllipse(g, brown, 0, -4, 7, 5);
             FillEllipse(g, Hex(0xD9774E), 2.6f, -3, 4, 3.6f);
             FillEllipse(g, brown, 5, -9, 3.7f, 3.5f);
-            FillEllipse(g, Theme.Ink, 6.2f, -9.6f, 0.85f, 0.85f);
+            FillEllipse(g, Ink, 6.2f, -9.6f, 0.85f, 0.85f);
             FillPolygon(g, Hex(0xE0A040), new PointF(8.2f, -9.6f), new PointF(11.2f, -8.8f), new PointF(8.2f, -8.1f));
             float flap = flying ? Sin(t * 26) : 0.15f;
             var wing = g.Save();
@@ -515,8 +608,8 @@ namespace Stillpoint
                 g.DrawLine(stalk, 9.2f * stretch, -5.5f, 10.8f * stretch + wiggle, -10.2f);
                 g.DrawLine(stalk, 7.8f * stretch, -5.8f, 8.1f * stretch - wiggle, -10.6f);
             }
-            FillEllipse(g, Theme.Ink, 10.8f * stretch + wiggle, -10.4f, 0.9f, 0.9f);
-            FillEllipse(g, Theme.Ink, 8.1f * stretch - wiggle, -10.8f, 0.9f, 0.9f);
+            FillEllipse(g, Ink, 10.8f * stretch + wiggle, -10.4f, 0.9f, 0.9f);
+            FillEllipse(g, Ink, 8.1f * stretch - wiggle, -10.8f, 0.9f, 0.9f);
             FillRadial(g, -1.5f, -7, 6.4f, 6.4f, Hex(0xC08A5A), Hex(0x7E5232));
             using (var spiral = new Pen(Hex(0x6A4428), 0.9f))
             {
@@ -539,8 +632,8 @@ namespace Stillpoint
             FillEllipse(g, green, 3.2f, -8.2f, 2.4f, 2.3f);
             FillEllipse(g, Color.FromArgb(240, 250, 248, 236), -3.2f, -8.4f, 1.5f, 1.4f);
             FillEllipse(g, Color.FromArgb(240, 250, 248, 236), 3.2f, -8.4f, 1.5f, 1.4f);
-            FillEllipse(g, Theme.Ink, -3.1f, -8.4f, 0.8f, 0.8f);
-            FillEllipse(g, Theme.Ink, 3.3f, -8.4f, 0.8f, 0.8f);
+            FillEllipse(g, Ink, -3.1f, -8.4f, 0.8f, 0.8f);
+            FillEllipse(g, Ink, 3.3f, -8.4f, 0.8f, 0.8f);
             using (var mouth = new Pen(Hex(0x4D6B37), 0.7f)) Arc(g, mouth, 0, -6.4f, 2.6f, Pi * 0.25f, Pi * 0.75f);
             if (croak > 0.02f) FillEllipse(g, Alpha(Hex(0xE4ECC8), 0.9f), 0, -2.2f, 3.4f * croak, 2.6f * croak);
             g.Restore(state);
@@ -574,20 +667,40 @@ namespace Stillpoint
         }
     }
 
-    enum StoneMood { Awake, Sleepy, Asleep }
+    enum StoneMood { Awake, Sleepy, Asleep, Blink, Yawn }
 
     static class StoneFaces
     {
         public static Bitmap Face(StoneMood mood, int size)
         {
-            var bitmap = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            int scale = size <= 64 ? 4 : 1;
+            using (var big = Draw(mood, size, scale))
+            {
+                if (scale == 1) return (Bitmap)big.Clone();
+                var bitmap = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                using (var g = Graphics.FromImage(bitmap))
+                {
+                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                    g.DrawImage(big, new Rectangle(0, 0, size, size));
+                }
+                return bitmap;
+            }
+        }
+
+        static Bitmap Draw(StoneMood mood, int size, int scale)
+        {
+            var bitmap = new Bitmap(size * scale, size * scale, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using (var g = Graphics.FromImage(bitmap))
             {
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                g.ScaleTransform(scale, scale);
                 var pose = new SpiritPose { Bare = true, Blush = 0.3f, EyeScale = size <= 20 ? 2.1f : size <= 32 ? 1.7f : size <= 64 ? 1.4f : 1.2f };
                 if (mood == StoneMood.Sleepy) { pose.EyeOpen = 0.4f; pose.Mouth = Mouth.Flat; }
                 else if (mood == StoneMood.Asleep) { pose.Eyes = Eyes.Closed; pose.Night = 0.35f; pose.Blush = 0.15f; }
+                else if (mood == StoneMood.Blink) pose.Eyes = Eyes.Closed;
+                else if (mood == StoneMood.Yawn) { pose.EyeOpen = 0.25f; pose.Mouth = Mouth.O; pose.Yawn = 1; }
                 else if (size > 32) pose.Mouth = Mouth.Smile;
                 SpiritArt.DrawSpirit(g, size / 2f, size * 0.93f, size * 0.47f, pose, 0, shadow: false);
             }

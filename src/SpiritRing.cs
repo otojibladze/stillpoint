@@ -68,6 +68,10 @@ namespace Stillpoint
         float nextAct = 8, bfAt = -1, frogAt = -1, snailNext = 20, petSaidT = -99, heartT, noteT, humT = -99, demoT = -99, rainbowT = -99, purrT = -99, cricketNext = 15;
         float rainAcc, ambientAcc;
         float fogK, wetReal, flashT = -99, lightningNext = 20, tracesT = -99;
+        float parX, parY, wind, windDrift, gustT = -99, gustNext = 15, starT = -99, starNext = 30, starX, starY, starDx, starDy, shimmerK, shownProgress;
+        float zoomT = -99, landT = -99, snowPile, vaporNext, splashAcc, dripAcc, boredT = -99;
+        int petalsOnHead;
+        readonly Critter dragonfly = new Critter();
         bool snowing, snowGround;
         readonly Traces traces = new Traces();
         AwayReport away;
@@ -91,7 +95,19 @@ namespace Stillpoint
         public bool Plain
         {
             get => plain;
-            set { if (plain == value) return; plain = value; Invalidate(); }
+            set
+            {
+                if (plain == value) return;
+                if (IsHandleCreated && Visible && Width > 20 && Height > 20)
+                {
+                    fadeShot?.Dispose();
+                    fadeShot = new Bitmap(Width, Height);
+                    using (var g = Graphics.FromImage(fadeShot)) Render(g, Now);
+                    fadeT = Now;
+                }
+                plain = value;
+                Invalidate();
+            }
         }
         int fontKey;
 
@@ -130,7 +146,7 @@ namespace Stillpoint
                 if (breaks < Garden.FlowerBreaks && next.BreaksToday >= Garden.FlowerBreaks)
                 {
                     if (season == Season.Winter) { snowmanT = rakeT + 0.8f; Later("I made a snowman!", rakeT + DemoLength + 2.5f, 3f); }
-                    else { bloomT = rakeT + 0.8f; Later("I grew a flower!", rakeT + DemoLength + 2.5f, 3f); }
+                    else { bloomT = rakeT + 0.8f; zoomT = Math.Max(zoomT, rakeT + DemoLength + 2.3f); Later("I grew a flower!", rakeT + DemoLength + 2.5f, 3f); }
                 }
                 breaks = next.BreaksToday;
             }
@@ -141,6 +157,13 @@ namespace Stillpoint
                 else Stopped(t);
             }
             if (known && next.Away && !state.Away) Chat("Hello? Are you there?", 4f);
+            var gained = next.Keepsakes & ~state.Keepsakes;
+            if (known && gained != Keepsake.None)
+            {
+                zoomT = t + 0.5f;
+                string name = (gained & Keepsake.Moss) != 0 ? "moss" : (gained & Keepsake.Lantern) != 0 ? "a stone lantern" : (gained & Keepsake.Pond) != 0 ? "a pond" : "a baby pebble";
+                Later("Look! The garden got " + name + ".", t + 0.8f, 3.4f);
+            }
             if (known && !string.IsNullOrEmpty(next.Name) && next.Name != state.Name) Say($"{next.Name}. I like it!", 3f);
             known = true;
             hasLast = next.LastEnd != default(DateTime);
@@ -190,6 +213,9 @@ namespace Stillpoint
             if (maxRain > 0.25f) frogAt = demoT + DemoLength + 1;
             maxRain = 0;
             BlowAwayTraces();
+            for (int i = 0; i < petalsOnHead; i++)
+                Emit(new Particle { Kind = Bit.Petal, X = SX + (i - 1) * 14, Y = points.Head.Y - 2, Vx = (i - 1) * 30 + Rand * 10, Vy = -30, Vr = 3, Size = 2.4f, Target = Ground + 6, Life = 4 });
+            petalsOnHead = 0;
         }
 
         public void ShowAway(AwayReport report)
@@ -233,7 +259,40 @@ namespace Stillpoint
             Emit(new Particle { Kind = Bit.Leaf, X = points.Tip.X, Y = points.Tip.Y, Vx = 8, Vy = 4, Vr = 2, Life = 4, Size = 6, Target = Ground - 2 });
         }
 
-        public void Announce(string text) => Later(text, Now + 1.2f, 3.4f);
+        public void Announce(string text, bool special = false)
+        {
+            Later(text, Now + 1.2f, 3.4f);
+            if (special) zoomT = Now + 1;
+        }
+
+        void StartDragonfly(float t)
+        {
+            dragonfly.State = 1;
+            dragonfly.T0 = t;
+            dragonfly.K = 0;
+            dragonfly.Side = rng.NextDouble() < 0.5 ? -1 : 1;
+            dragonfly.X = SX - dragonfly.Side * 170;
+            dragonfly.Y = 110;
+            dragonfly.From = new PointF(dragonfly.X, dragonfly.Y);
+            dragonfly.To = new PointF(80 + Rand * 140, 70 + Rand * 60);
+            Visit(Visitors.Dragonfly);
+        }
+
+        void StepDragonfly(float t)
+        {
+            var c = dragonfly;
+            if (!c.Active) return;
+            float since = t - c.T0;
+            float hop = since % 1.1f;
+            int segment = (int)(since / 1.1f);
+            if (segment != (int)c.K) { c.K = segment; c.From = new PointF(c.X, c.Y); c.To = since > 7 ? new PointF(SX + c.Side * 190, 40 + Rand * 40) : new PointF(70 + Rand * 160, 60 + Rand * 70); }
+            float k = SpiritArt.Smooth(0, 0.35f, hop);
+            float nx = c.From.X + (c.To.X - c.From.X) * k, ny = c.From.Y + (c.To.Y - c.From.Y) * k + SpiritArt.Sin(t * 14) * 0.6f;
+            if (Math.Abs(nx - c.X) > 0.3f) c.Side = nx > c.X ? 1 : -1;
+            c.X = nx;
+            c.Y = ny;
+            if (since > 8.2f || Running) c.State = 0;
+        }
 
         string Pick(string[] list) => list[rng.Next(list.Length)];
 
@@ -266,7 +325,7 @@ namespace Stillpoint
         {
             get
             {
-                if (plain || IsDisposed || !IsHandleCreated || !Visible) return false;
+                if ((plain && !Fading) || IsDisposed || !IsHandleCreated || !Visible) return false;
                 var form = FindForm();
                 return form != null && form.Visible && form.WindowState != FormWindowState.Minimized;
             }
@@ -289,6 +348,7 @@ namespace Stillpoint
                 nextFrame = now - nextFrame > period ? now + period : nextFrame + period;
                 WaitUntil(nextFrame);
             }
+            if (fadeShot != null && !Fading) Invalidate();
         }
 
         void WaitUntil(double target)
@@ -373,18 +433,83 @@ namespace Stillpoint
                 SoundRequested?.Invoke(StoneSound.Crickets);
             }
 
+            StepAtmosphere(t, dt, now);
             EmitWeather(dt);
 
-            bool calm = t - humT > 3.8f && !petting && !butterfly.Active && !bird.Active && t - stretchT > 3 && !DemoActive(t) && t - pokeT > 2 && t - dizzyT > 3;
+            bool calm = t - humT > 3.8f && !petting && !butterfly.Active && !bird.Active && !dragonfly.Active && t - stretchT > 3 && !DemoActive(t) && t - pokeT > 2 && t - dizzyT > 3;
             Schedule(t, calm);
             StepButterfly(t);
             StepBird(t);
             StepSnail(t);
             StepFrog(t);
             StepCat(t, dt);
+            StepDragonfly(t);
             StepBits(dt, t);
             pose = Pose(t);
             SmoothLook(pose, dt);
+        }
+
+        float LightSide()
+        {
+            var now = Clock();
+            if (state.Sun.Valid)
+            {
+                double span = Math.Max(1, (state.Sun.Set - state.Sun.Rise).TotalMinutes);
+                return SpiritArt.Clamp((float)((now - state.Sun.Rise).TotalMinutes / span * 2 - 1), -1, 1);
+            }
+            return SpiritArt.Clamp(((float)now.TimeOfDay.TotalHours - 13) / 6, -1, 1);
+        }
+
+        void StepAtmosphere(float t, float dt, DateTime now)
+        {
+            if (t > gustNext) { gustT = t; gustNext = t + 18 + Rand * 25; }
+            float gust = SpiritArt.Sin(SpiritArt.Clamp((t - gustT) / 3.5f, 0, 1) * SpiritArt.Pi);
+            wind = 0.35f * SpiritArt.Sin(t * 0.37f) + 0.2f * SpiritArt.Sin(t * 0.91f + 1) + 0.9f * gust;
+            windDrift += dt * wind * 6;
+            float tx = 0, ty = 0;
+            if (pointerIn && t - pointerT < 4) { tx = SpiritArt.Clamp((pointer.X - 150) / 150, -1, 1); ty = SpiritArt.Clamp((pointer.Y - 150) / 150, -1, 1); }
+            float pa = 1 - (float)Math.Exp(-dt * 3);
+            parX += (tx - parX) * pa;
+            parY += (ty - parY) * pa;
+            float target = Running ? state.Progress : 0;
+            if (target < shownProgress - 0.3f) shownProgress = target;
+            else shownProgress += (target - shownProgress) * (1 - (float)Math.Exp(-dt * 4));
+            bool hot = season == Season.Summer && now.Hour >= 12 && now.Hour < 16 && nightK < 0.2f && cloudK < 0.4f;
+            shimmerK += ((hot ? 1 : 0) - shimmerK) * (1 - (float)Math.Exp(-dt * 0.5));
+            if (nightK > 0.8f && cloudK < 0.5f && t > starNext)
+            {
+                starNext = t + 40 + Rand * 60;
+                starT = t;
+                starX = 50 + Rand * 140;
+                starY = 22 + Rand * 45;
+                float angle = 0.35f + Rand * 0.35f;
+                starDx = SpiritArt.Cos(angle);
+                starDy = SpiritArt.Sin(angle);
+            }
+            bool raining = rainK > 0.2f && !snowing;
+            float topY = points.Head.Y - 6;
+            splashAcc += raining ? dt * rainK * 7 : 0;
+            while (splashAcc >= 1)
+            {
+                splashAcc -= 1;
+                float x = SX + (Rand - 0.5f) * R * 1.3f;
+                Emit(new Particle { Kind = Bit.Splash, X = x, Y = topY + 0.012f * (x - SX) * (x - SX), Life = 0.3f, Night = nightK });
+            }
+            dripAcc += raining || wetReal > 0.6f ? dt * 0.8f : 0;
+            while (dripAcc >= 1)
+            {
+                dripAcc -= 1;
+                float x = SX + (Rand - 0.5f) * R * 1.4f;
+                Emit(new Particle { Kind = Bit.Drip, X = x, Y = topY + 12 + 0.01f * (x - SX) * (x - SX), Vy = 14, Life = 2.2f, Target = Ground - 4 });
+            }
+            if (snowing && rainK > 0.3f) snowPile = Math.Min(0.45f, snowPile + dt * rainK / 900);
+            else snowPile = Math.Max(0, snowPile - dt / 1800);
+            bool cold = season == Season.Winter || snowGround;
+            if (cold && !Sleeping && t > vaporNext)
+            {
+                vaporNext = t + 2.6f + Rand;
+                Emit(new Particle { Kind = Bit.Vapor, X = SX + lookX * 4, Y = Ground - R * 0.84f * 0.94f + R * 0.22f, Vx = 6 + wind * 6, Vy = -9, Life = 1.6f, Size = 2.5f });
+            }
         }
 
         void SmoothLook(SpiritPose p, float dt)
@@ -449,6 +574,8 @@ namespace Stillpoint
             if (Running && Drowsiness > 0.45f) return;
             double r = rng.NextDouble();
             if (!Running && hasLast && r < 0.3 && rainK < 0.3f) { if (rng.NextDouble() < 0.5) StartFlyer(butterfly, t); else StartFlyer(bird, t); }
+            else if (season == Season.Summer && !Running && nightK < 0.3f && r < 0.5 && !dragonfly.Active) StartDragonfly(t);
+            else if (!Running && r < 0.4 && t - boredT > 60) boredT = t;
             else if (r < (state.Chat == Chattiness.Chatty ? 0.5 : 0.62)) humT = t;
             else Chat(Pick(Running ? ThoughtsSitting : ThoughtsFree), 3.4f, thought: true);
         }
@@ -626,6 +753,13 @@ namespace Stillpoint
                         if (q.Kind == Bit.Leaf) q.Vy = Math.Min(q.Vy + 18 * dt, 26);
                         float sway = q.Kind == Bit.Snow ? 5 : q.Kind == Bit.Petal ? 8 : q.Kind == Bit.Autumn ? 12 : 22;
                         q.X += SpiritArt.Sin(q.Age * 2.6f + q.Size) * sway * dt;
+                        if (q.Vy != 0) q.X += wind * (q.Kind == Bit.Snow ? 10 : 22) * dt;
+                        if (q.Kind == Bit.Petal && q.Vy != 0 && petalsOnHead < 3 && Math.Abs(q.X - SX) < R * 0.55f && Math.Abs(q.Y - (points.Head.Y - 4 + 0.012f * (q.X - SX) * (q.X - SX))) < 3 && rng.NextDouble() < 0.4)
+                        {
+                            petalsOnHead++;
+                            bits.RemoveAt(i);
+                            continue;
+                        }
                         if (q.Target > 0 && q.Y >= q.Target && q.Vy != 0)
                         {
                             q.Vx = q.Vy = q.Vr = 0;
@@ -636,6 +770,17 @@ namespace Stillpoint
                     case Bit.Puff:
                         q.Vx *= 0.94f;
                         q.Vy *= 0.94f;
+                        q.X += wind * 8 * dt;
+                        break;
+                    case Bit.Spark:
+                        q.Vy += 90 * dt;
+                        break;
+                    case Bit.Drip:
+                        if (q.Y >= q.Target) { q.Vy = 0; q.Life = Math.Min(q.Life, q.Age + 0.3f); }
+                        break;
+                    case Bit.Vapor:
+                        q.Vx *= 0.98f;
+                        q.Vy *= 0.97f;
                         break;
                 }
                 float ox = q.X - 150, oy = q.Y - 150;
@@ -651,7 +796,13 @@ namespace Stillpoint
                 Leaves = Math.Min(3, 1 + Math.Max(0, breaks)),
                 Stem = Math.Min(4, Math.Max(0, breaks)),
                 Bloom = breaks >= Garden.FlowerBreaks && season != Season.Winter ? SpiritArt.Clamp((t - bloomT) / 1.5f, 0, 1) : 0,
-                Snow = snowGround ? 1 : 0,
+                Snow = snowGround ? 1 + snowPile : snowing ? snowPile * 2 : 0,
+                LightX = LightSide(),
+                Warm = Sky.Glow(Clock(), state.Sun),
+                Wet = snowing ? 0 : Math.Max(rainK, wetReal * 0.6f),
+                Wind = wind,
+                Petals = petalsOnHead,
+                Brow = state.Away && Running ? Brow.Worried : butterfly.Active || bird.Active || dragonfly.Active ? Brow.Curious : Running && Drowsiness > 0.75f ? Brow.Sleepy : Brow.None,
                 Wilt = breaks < Garden.FlowerBreaks && state.BreaksYesterday >= Garden.FlowerBreaks && season != Season.Winter ? 1 : 0,
                 Bud = breaks >= 2 && breaks < Garden.FlowerBreaks && season != Season.Winter && state.BreaksYesterday < Garden.FlowerBreaks ? 1 : 0,
             };
@@ -782,7 +933,14 @@ namespace Stillpoint
                     if (!landed && s > 0.96f)
                     {
                         landed = true;
+                        landT = t;
                         SoundRequested?.Invoke(StoneSound.Chime);
+                        if (season == Season.Autumn)
+                            for (int i = 0; i < 4; i++)
+                            {
+                                int side = i % 2 == 1 ? 1 : -1;
+                                Emit(new Particle { Kind = Bit.Autumn, X = SX + side * (44 + Rand * 20), Y = Ground - 2, Vx = side * (25 + Rand * 25), Vy = -28 - Rand * 18, Vr = 3, Size = 3.2f, Hue = rng.Next(4), Target = Ground + 4 + Rand * 14, Life = 3 });
+                            }
                         for (int i = 0; i < 6; i++)
                         {
                             int side = i % 2 == 1 ? 1 : -1;
@@ -794,17 +952,26 @@ namespace Stillpoint
             if (DemoActive(t) && !Sleeping && !Running) ApplyStretch(p, t - demoT);
             if (petting && !Sleeping)
             {
-                p.Eyes = Eyes.Happy; p.Mouth = Mouth.Smile; p.Blush = 0.75f; p.Sy -= 0.03f; p.Sx += 0.02f;
+                p.Eyes = Eyes.Happy; p.Mouth = Mouth.Grin; p.Blush = 0.75f; p.Sy -= 0.03f; p.Sx += 0.02f;
                 p.Tilt += SpiritArt.Clamp((pointer.X - SX) / 300, -0.12f, 0.12f);
             }
             float pt = t - pokeT;
             if (pt >= 0 && pt < 1)
             {
                 float w = (float)Math.Exp(-pt * 4) * SpiritArt.Sin(pt * 26);
-                p.Tilt += 0.22f * w; p.Sx += 0.06f * w; p.Sy -= 0.04f * w;
+                float jelly = (float)Math.Exp(-pt * 5) * SpiritArt.Sin(pt * 34 + 1);
+                p.Tilt += 0.18f * w; p.Sx += 0.06f * w + 0.07f * jelly; p.Sy -= 0.04f * w + 0.08f * jelly;
                 if (!Sleeping) { p.Eyes = Eyes.Happy; p.Mouth = Mouth.Smile; p.Blush = 0.6f; }
                 else if (pt < 0.5f) { p.Eyes = Eyes.Open; p.EyeOpen = 0.3f; }
             }
+            float lt = t - landT;
+            if (lt >= 0 && lt < 0.7f)
+            {
+                float settle = (float)Math.Exp(-lt * 7) * SpiritArt.Cos(lt * 22);
+                p.Sy -= 0.1f * settle;
+                p.Sx += 0.08f * settle;
+            }
+            if (t - boredT < 2.6f && !Running && !Sleeping) { p.Mouth = Mouth.Tongue; p.Eyes = Eyes.Happy; }
             float zt = t - dizzyT;
             if (zt >= 0 && zt < 2.8f)
             {
@@ -967,35 +1134,52 @@ namespace Stillpoint
             CenteredText(g, state.Note, bubbleFont, Theme.AccentText, cx, cy + size * 0.14f);
         }
 
-        Bitmap sceneCache;
-        long sceneKey = -1;
+        Bitmap backCache, groundCache, frameCache, fadeShot;
+        long backKey = -1, groundKey = -1;
+        int frameKey = -1;
+        float fadeT = -99;
 
-        Bitmap SceneImage(int px, float s, SceneLook look)
+        Bitmap Layer(ref Bitmap cache, ref long cacheKey, long key, int px, float s, Action<Graphics> draw)
         {
-            long key = look.Key(px);
-            if (sceneCache != null && key == sceneKey) return sceneCache;
-            if (sceneCache == null || sceneCache.Width != px)
+            if (cache != null && key == cacheKey && cache.Width == px) return cache;
+            if (cache == null || cache.Width != px)
             {
-                sceneCache?.Dispose();
-                sceneCache = new Bitmap(px, px, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+                cache?.Dispose();
+                cache = new Bitmap(px, px, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
             }
-            sceneKey = key;
-            using (var g = Graphics.FromImage(sceneCache))
-            using (var disc = Disc())
+            cacheKey = key;
+            using (var g = Graphics.FromImage(cache))
+            using (var disc = Disc(143))
             {
                 g.Clear(Color.Transparent);
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.ScaleTransform(s, s);
                 g.SetClip(disc, CombineMode.Intersect);
-                GardenArt.DrawScene(g, look, new RectangleF(0, 0, 300, 300));
+                draw(g);
             }
-            return sceneCache;
+            return cache;
         }
 
-        static GraphicsPath Disc()
+        Bitmap FrameImage(int px, float s)
+        {
+            if (frameCache != null && frameKey == px) return frameCache;
+            frameCache?.Dispose();
+            frameCache = new Bitmap(px, px, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            frameKey = px;
+            using (var g = Graphics.FromImage(frameCache))
+            {
+                g.Clear(Color.Transparent);
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.ScaleTransform(s, s);
+                GardenArt.DrawDiscShadow(g);
+            }
+            return frameCache;
+        }
+
+        static GraphicsPath Disc(float r = 140)
         {
             var disc = new GraphicsPath();
-            disc.AddEllipse(150 - 140, 150 - 140, 280, 280);
+            disc.AddEllipse(150 - r, 150 - r, r * 2, r * 2);
             return disc;
         }
 
@@ -1006,23 +1190,65 @@ namespace Stillpoint
             return SpiritArt.Smooth(0, 3, since) * (1 - SpiritArt.Smooth(42, 50, since));
         }
 
+        float ZoomLevel(float t)
+        {
+            float since = t - zoomT;
+            if (since < 0 || since > 2.6f) return 1;
+            return 1 + 0.07f * SpiritArt.Smooth(0, 0.6f, since) * (1 - SpiritArt.Smooth(1.6f, 2.6f, since));
+        }
+
+        bool Fading => fadeShot != null && Now - fadeT < 0.45f;
+
         protected override void OnPaint(PaintEventArgs e) => Render(e.Graphics, Now);
 
         public void Render(Graphics g, float t)
         {
-            if (plain)
+            if (plain) RenderPlain(g);
+            else RenderGarden(g, t);
+            if (fadeShot == null) return;
+            float k = (t - fadeT) / 0.45f;
+            if (k >= 1)
             {
-                RenderPlain(g);
+                fadeShot.Dispose();
+                fadeShot = null;
                 return;
             }
+            using (var attributes = new System.Drawing.Imaging.ImageAttributes())
+            {
+                attributes.SetColorMatrix(new System.Drawing.Imaging.ColorMatrix { Matrix33 = 1 - SpiritArt.Smooth(0, 1, k) });
+                g.DrawImage(fadeShot, new Rectangle(0, 0, fadeShot.Width, fadeShot.Height), 0, 0, fadeShot.Width, fadeShot.Height, GraphicsUnit.Pixel, attributes);
+            }
+        }
+
+        void RenderGarden(Graphics g, float t)
+        {
             g.Clear(Parent?.BackColor ?? Theme.Background);
             if (pose == null) pose = Pose(t);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             float size = Math.Min(Width, Height), s = size / 300f;
             if (size < 20) return;
             var o = Origin;
+            int px = (int)Math.Ceiling(size) + 1;
+            g.DrawImage(FrameImage(px, s), new Rectangle((int)o.X, (int)o.Y, px, px));
             var state0 = g.Save();
             float night = Math.Max(0, nightK);
+            float z = ZoomLevel(t);
+            if (z > 1.0005f)
+            {
+                float zx = o.X + 150 * s, zy = o.Y + 160 * s;
+                using (var disc = Disc(143))
+                using (var m = new Matrix())
+                {
+                    m.Translate(o.X, o.Y);
+                    m.Scale(s, s);
+                    disc.Transform(m);
+                    g.SetClip(disc, CombineMode.Intersect);
+                }
+                g.TranslateTransform(zx, zy);
+                g.ScaleTransform(z, z);
+                g.TranslateTransform(-zx, -zy);
+            }
+            var now = Clock();
             var look = new SceneLook
             {
                 Night = night,
@@ -1034,26 +1260,46 @@ namespace Stillpoint
                 Snowman = season != Season.Winter ? 0 : breaks >= Garden.FlowerBreaks ? SpiritArt.Clamp((t - snowmanT) / 1.5f, 0, 1) : state.BreaksYesterday >= Garden.FlowerBreaks ? 1 : 0,
                 SnowmanMelted = season == Season.Winter && breaks < Garden.FlowerBreaks && state.BreaksYesterday >= Garden.FlowerBreaks,
                 Rainbow = RainbowLevel(t),
-                Dusk = Sky.Glow(Clock(), state.Sun),
-                MoonPhase = Sky.MoonPhase(Clock()),
+                Dusk = Sky.Glow(now, state.Sun),
+                MoonPhase = Sky.MoonPhase(now),
                 Southern = state.Southern,
                 Wet = Math.Max(wetReal, AwayWet(t)),
                 SnowGround = snowGround,
                 FadedRakes = state.BreaksYesterday > breaks ? 2 + Math.Min(state.BreaksYesterday, 8) : 0,
-                FadeAlpha = 0.65f - 0.45f * SpiritArt.Clamp((float)Clock().TimeOfDay.TotalHours / 18f, 0, 1),
+                FadeAlpha = 0.65f - 0.45f * SpiritArt.Clamp((float)now.TimeOfDay.TotalHours / 18f, 0, 1),
+                Shafts = MorningLight(now),
+                Halo = Math.Max(fogK, cloudK > 0.15f && cloudK < 0.8f ? 0.6f : 0),
             };
-            var scene = SceneImage((int)Math.Ceiling(size) + 1, s, look);
-            g.DrawImage(scene, new Rectangle((int)o.X, (int)o.Y, scene.Width, scene.Height));
-            g.TranslateTransform(o.X, o.Y);
+            float bx = -parX * 3, by = -parY * 2, gx = -parX * 1.4f, gy = -parY * 0.8f;
+            var back = Layer(ref backCache, ref backKey, look.BackKey(px), px, s, bg => GardenArt.DrawBackground(bg, look, new RectangleF(-10, -10, 320, 320)));
+            g.DrawImage(back, new Rectangle((int)Math.Round(o.X + bx * s), (int)Math.Round(o.Y + by * s), px, px));
+
+            var sky = g.Save();
+            g.TranslateTransform((float)Math.Round(o.X + bx * s), (float)Math.Round(o.Y + by * s));
             g.ScaleTransform(s, s);
             GardenArt.DrawStars(g, t, night * (1 - cloudK));
+            if (t - starT < 0.9f) GardenArt.DrawShootingStar(g, starX + starDx * (t - starT) * 160, starY + starDy * (t - starT) * 160, starDx, starDy, (t - starT) / 0.9f);
+            if (cloudK > 0.02f || fogK > 0.02f)
+            {
+                using (var disc = Disc()) g.SetClip(disc, CombineMode.Intersect);
+                GardenArt.DrawClouds(g, t + windDrift, cloudK, night, new RectangleF(0, 0, 300, 300));
+                GardenArt.DrawFog(g, t, fogK, night);
+            }
+            g.Restore(sky);
+
+            var groundImage = Layer(ref groundCache, ref groundKey, look.GroundKey(px), px, s, gg => GardenArt.DrawGround(gg, look));
+            g.DrawImage(groundImage, new Rectangle((int)Math.Round(o.X + gx * s), (int)Math.Round(o.Y + gy * s), px, px));
+            g.TranslateTransform((float)Math.Round(o.X + gx * s), (float)Math.Round(o.Y + gy * s));
+            g.ScaleTransform(s, s);
+            GardenArt.DrawTufts(g, season, night, wind);
+            if ((state.Keepsakes & Keepsake.Pond) != 0 && !snowGround) GardenArt.DrawPondGlints(g, t, night);
+            if ((state.Keepsakes & Keepsake.Lantern) != 0) GardenArt.DrawLanternFlicker(g, t, night);
+            GardenArt.DrawHeatShimmer(g, t, shimmerK);
             float fireflies = Math.Max(night, season == Season.Summer && NightHour(19) ? 0.6f : 0);
             GardenArt.DrawFireflies(g, t, fireflies * (1 - cloudK * 0.6f));
-            bool clipped = cloudK > 0.02f || bird.Active || butterfly.Active || cat.K > 0.02f || frog.Active;
+            bool clipped = bird.Active || butterfly.Active || dragonfly.Active || cat.K > 0.02f || frog.Active;
             var clip = g.Save();
             if (clipped) using (var disc = Disc()) g.SetClip(disc, CombineMode.Intersect);
-            GardenArt.DrawClouds(g, t, cloudK, night, new RectangleF(0, 0, 300, 300));
-            GardenArt.DrawFog(g, t, fogK, night);
             if (traces.Any) GardenArt.DrawTraces(g, traces, night, snowGround);
             points = SpiritArt.DrawSpirit(g, SX, Ground, R, pose, t);
             if ((state.Keepsakes & Keepsake.Baby) != 0)
@@ -1068,28 +1314,93 @@ namespace Stillpoint
             SpiritArt.DrawParticles(g, bits);
             if (bird.Active) SpiritArt.DrawBird(g, bird.X, bird.Y, t, bird.State == 3 ? bird.To.X - bird.From.X : -bird.Side, bird.State != 2);
             if (butterfly.Active) SpiritArt.DrawButterfly(g, butterfly.X, butterfly.Y, t, butterfly.State == 2);
+            if (dragonfly.Active) GardenArt.DrawDragonfly(g, dragonfly.X, dragonfly.Y, t, dragonfly.Side);
             g.Restore(clip);
-
-            float ring = Running ? state.Progress : 0;
             float flash = t - flashT;
             if (flash >= 0 && flash < 0.45f)
             {
                 float k = flash < 0.08f ? 1 : flash < 0.16f ? 0.2f : flash < 0.24f ? 0.7f : 1 - SpiritArt.Smooth(0.24f, 0.45f, flash);
-                SpiritArt.FillEllipse(g, SpiritArt.Alpha(Color.White, 0.45f * k), 150, 150, 140, 140);
+                SpiritArt.FillEllipse(g, SpiritArt.Alpha(Color.White, 0.45f * k), 150, 150, 143, 143);
             }
-            Draw.Ring(g, new RectangleF(1, 1, 298, 298), 10, Theme.Track, Theme.Accent, ring);
             g.Restore(state0);
+
+            var ringState = g.Save();
+            g.TranslateTransform(o.X, o.Y);
+            g.ScaleTransform(s, s);
+            bool near = Running && (1 - state.Progress) * state.Interval < 120;
+            float pulse = near ? 0.5f + 0.5f * SpiritArt.Sin(t * 4) : 0;
+            Draw.Ring(g, new RectangleF(1, 1, 298, 298), 10 + 1.6f * pulse, Theme.Track, Theme.Accent, shownProgress);
+            if (shownProgress > 0.005f && shownProgress < 0.999f)
+            {
+                float a = (-90 + 360 * shownProgress) * SpiritArt.Pi / 180, r = 144;
+                float tx = 150 + SpiritArt.Cos(a) * r, ty = 150 + SpiritArt.Sin(a) * r;
+                SpiritArt.FillRadial(g, tx, ty, 11 + 3 * pulse, 11 + 3 * pulse, SpiritArt.Alpha(Theme.Accent, 0.55f + 0.3f * pulse), SpiritArt.Alpha(Theme.Accent, 0));
+            }
+            g.Restore(ringState);
 
             EnsureFonts(size);
             bool dark = night > 0.5f;
             string cap = state.Caption;
             if (DemoActive(t) && !Running) cap = "STRETCH  ·  " + Stretches[demoIndex].Name;
-            var timeColor = dark ? SpiritArt.Hex(0xE6E2DA) : Running ? Theme.Ink : Theme.Muted;
-            var capColor = dark ? SpiritArt.Hex(0xB9BACB) : Theme.Muted;
+            var timeColor = dark ? SpiritArt.Hex(0xE6E2DA) : Running ? SpiritArt.Ink : SpiritArt.Hex(0x5F5C5A);
+            var capColor = dark ? SpiritArt.Hex(0xB9BACB) : SpiritArt.Hex(0x5F5C5A);
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-            CenteredText(g, state.Time, timeFont, timeColor, o.X + 150 * s, o.Y + 234 * s);
+            RollingText(g, state.Time, timeFont, timeColor, o.X + 150 * s, o.Y + 234 * s, t);
             CenteredText(g, cap, captionFont, capColor, o.X + 150 * s, o.Y + 257 * s);
             DrawBubble(g, t, o, s);
+        }
+
+        string shownTime = "";
+        float[] rollT = new float[0];
+        string rollOld = "";
+
+        void RollingText(Graphics g, string text, Font font, Color color, float cx, float cy, float t)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            if (text != shownTime)
+            {
+                if (text.Length == shownTime.Length)
+                {
+                    var times = new float[text.Length];
+                    for (int i = 0; i < text.Length; i++) times[i] = text[i] != shownTime[i] ? t : (i < rollT.Length ? rollT[i] : -99);
+                    rollT = times;
+                    rollOld = shownTime;
+                }
+                else
+                {
+                    rollT = new float[text.Length];
+                    for (int i = 0; i < rollT.Length; i++) rollT[i] = -99;
+                    rollOld = text;
+                }
+                shownTime = text;
+            }
+            var size = Measure(g, text, font);
+            float emPx = font.SizeInPoints * g.DpiY / 72f;
+            float ascent = emPx * font.FontFamily.GetCellAscent(font.Style) / font.FontFamily.GetEmHeight(font.Style);
+            float top = cy + emPx * 0.36f - ascent, left = cx - size.Width / 2, lineH = emPx * 1.2f;
+            var band = g.Save();
+            g.SetClip(new RectangleF(left - 4, top + emPx * 0.05f, size.Width + 8, lineH * 0.95f), CombineMode.Intersect);
+            for (int i = 0; i < text.Length; i++)
+            {
+                float x = left + (i == 0 ? 0 : Measure(g, text.Substring(0, i), font).Width);
+                float k = i < rollT.Length ? SpiritArt.Smooth(0, 0.3f, t - rollT[i]) : 1;
+                if (k >= 1 || i >= rollOld.Length)
+                {
+                    using (var b = new SolidBrush(color)) g.DrawString(text[i].ToString(), font, b, x, top, Tight);
+                    continue;
+                }
+                using (var oldBrush = new SolidBrush(SpiritArt.Alpha(color, (color.A / 255f) * (1 - k))))
+                    g.DrawString(rollOld[i].ToString(), font, oldBrush, x, top - k * emPx * 0.7f, Tight);
+                using (var newBrush = new SolidBrush(SpiritArt.Alpha(color, (color.A / 255f) * k)))
+                    g.DrawString(text[i].ToString(), font, newBrush, x, top + (1 - k) * emPx * 0.7f, Tight);
+            }
+            g.Restore(band);
+        }
+
+        static float MorningLight(DateTime now)
+        {
+            float h = (float)now.TimeOfDay.TotalHours;
+            return SpiritArt.Smooth(6.5f, 7.5f, h) * (1 - SpiritArt.Smooth(9.5f, 11f, h));
         }
 
         static readonly StringFormat Tight = new StringFormat(StringFormat.GenericTypographic) { FormatFlags = StringFormatFlags.NoWrap | StringFormatFlags.MeasureTrailingSpaces };
@@ -1152,7 +1463,10 @@ namespace Stillpoint
                 wake.Dispose();
                 if (frameTimer != IntPtr.Zero) CloseHandle(frameTimer);
                 frameTimer = IntPtr.Zero;
-                sceneCache?.Dispose();
+                backCache?.Dispose();
+                groundCache?.Dispose();
+                frameCache?.Dispose();
+                fadeShot?.Dispose();
                 timeFont?.Dispose();
                 captionFont?.Dispose();
                 bubbleFont?.Dispose();
