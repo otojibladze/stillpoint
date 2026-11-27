@@ -20,6 +20,7 @@ namespace Stillpoint
 
         public static readonly Release[] All =
         {
+            R("3.14.4", "2026-11-27", "The ground reaches all the way to the hills. No more empty strip next to the sand."),
             R("3.14.3", "2026-11-27", "Clicking the garden picture now shows the same picture bigger in the middle of the screen. Nothing moves or gets cut off. Click it again, press Esc or click elsewhere to close it."),
             R("3.14.2", "2026-11-27", "The flower on Pebble's head no longer has leaves sticking through it."),
             R("3.14.1", "2026-11-27", "Click the garden picture to make it bigger. Click again to shrink it back.", "Leaves on planted flowers no longer poke into the flower."),

@@ -27,6 +27,7 @@ namespace Stillpoint
             k = k * 11 + Q(MoonDim, 10);
             k = k * 61 + Q(SunCover, 60);
             k = k * 2 + (SunAnnular ? 1 : 0);
+            k = k * 21 + Q(Wet, 20);
             return k;
         }
 
@@ -242,6 +243,10 @@ namespace Stillpoint
             var haze = new RectangleF(area.Left, 146, area.Width, Horizon + 6 - 146);
             using (var b = new LinearGradientBrush(RectangleF.Inflate(haze, 0, 1), Alpha(horizon, 0), Alpha(horizon, 0.55f), LinearGradientMode.Vertical))
                 g.FillRectangle(b, haze);
+            var land = Mix(SandColor(look), near, 0.3f);
+            var plain = new RectangleF(area.Left, Horizon + 3, area.Width, Math.Max(1, area.Bottom - Horizon - 3));
+            using (var b = new LinearGradientBrush(new RectangleF(plain.X, plain.Y - 1, plain.Width, 42), Mix(land, horizon, 0.45f), land, LinearGradientMode.Vertical) { WrapMode = WrapMode.TileFlipX })
+                g.FillRectangle(b, plain);
         }
 
         static readonly PointF[] MilkyDots = BuildMilky();
@@ -274,6 +279,13 @@ namespace Stillpoint
                 }
         }
 
+        static Color SandColor(SceneLook look)
+        {
+            var ground = look.SnowGround ? Season.Winter : look.Season;
+            var sand = Mix(SandDay(ground), SandNight(ground), look.Night);
+            return look.Wet > 0 && ground != Season.Winter ? Mix(sand, Mix(sand, Hex(0x8A7660), 0.45f), look.Wet * 0.7f) : sand;
+        }
+
         public static void DrawGround(Graphics g, SceneLook look)
         {
             float n = look.Night;
@@ -282,8 +294,7 @@ namespace Stillpoint
             using (var groundPath = new GraphicsPath())
             {
                 groundPath.AddEllipse(150 - 260, Horizon, 520, 300);
-                var sandColor = Mix(SandDay(ground), SandNight(ground), n);
-                if (look.Wet > 0 && ground != Season.Winter) sandColor = Mix(sandColor, Mix(sandColor, Hex(0x8A7660), 0.45f), look.Wet * 0.7f);
+                var sandColor = SandColor(look);
                 using (var sand = new SolidBrush(sandColor)) g.FillPath(sand, groundPath);
                 var state = g.Save();
                 g.SetClip(groundPath, CombineMode.Intersect);
