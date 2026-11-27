@@ -233,6 +233,7 @@ namespace Stillpoint
                 Streak = Garden.OnTimeStreak(tracker.Sessions, tracker.Current, today, interval),
                 UsualStart = Garden.UsualStart(tracker.Sessions, today),
                 StoriesSeen = Stories.Count(app.Album),
+                Roam = Roam.Today(tracker.Sessions, tracker.Current, DateTime.Now),
                 Name = app.Settings.StoneName,
                 Chat = app.Settings.Chattiness,
                 BreaksYesterday = Garden.BreaksOn(tracker.Sessions, tracker.Current, today.AddDays(-1)),

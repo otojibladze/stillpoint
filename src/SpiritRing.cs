@@ -34,6 +34,7 @@ namespace Stillpoint
         public float Tree = -1;
         public int Weeds, TotalBreaks, Streak, StoriesSeen;
         public double UsualStart = double.NaN;
+        public RoamTime Roam;
     }
 
     sealed class Critter
@@ -98,7 +99,7 @@ namespace Stillpoint
         readonly List<(float At, string Text, float Seconds)> pending = new List<(float At, string Text, float Seconds)>();
         bool bubbleThought;
 
-        Font timeFont, captionFont, bubbleFont, plainFont;
+        Font timeFont, captionFont, bubbleFont, plainFont, roamFont, roamCapFont;
         bool plain;
 
         public bool Plain
@@ -1222,6 +1223,7 @@ namespace Stillpoint
             pointerIn = true;
             pointerT = Now;
             Cursor = OnStone(q) ? Cursors.Hand : Cursors.Default;
+            HoverRoam(e.Location);
         }
 
         protected override void OnMouseLeave(EventArgs e)
@@ -1278,11 +1280,15 @@ namespace Stillpoint
             captionFont?.Dispose();
             bubbleFont?.Dispose();
             plainFont?.Dispose();
+            roamFont?.Dispose();
+            roamCapFont?.Dispose();
             float pt = 72f / Math.Max(1, DeviceDpi);
             timeFont = Theme.Light(Math.Max(6f, size * 0.1f * pt));
             captionFont = Theme.SemiBold(Math.Max(5f, size * 0.033f * pt));
             bubbleFont = Theme.Regular(Math.Max(6f, size * 0.046f * pt));
             plainFont = Theme.Light(Math.Max(6f, size * 0.15f * pt));
+            roamFont = Theme.SemiBold(Math.Max(5f, size * 0.043f * pt));
+            roamCapFont = Theme.SemiBold(Math.Max(4f, size * 0.019f * pt));
         }
 
         void RenderPlain(Graphics g)
@@ -1299,6 +1305,7 @@ namespace Stillpoint
             CenteredText(g, state.Caption, captionFont, Theme.Muted, cx, cy - size * 0.14f);
             CenteredText(g, state.Time, plainFont, Running ? Theme.Ink : Theme.Muted, cx, cy);
             CenteredText(g, state.Note, bubbleFont, Theme.AccentText, cx, cy + size * 0.14f);
+            DrawRoam(g);
         }
 
         Bitmap backCache, groundCache, fadeShot;
@@ -1517,6 +1524,7 @@ namespace Stillpoint
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             RollingText(g, state.Time, timeFont, timeColor, o.X + 150 * s, o.Y + 234 * s, t);
             CenteredText(g, cap, captionFont, capColor, o.X + 150 * s, o.Y + 257 * s);
+            DrawRoam(g);
             DrawBubble(g, t, o, s);
         }
 
@@ -1640,6 +1648,9 @@ namespace Stillpoint
                 captionFont?.Dispose();
                 bubbleFont?.Dispose();
                 plainFont?.Dispose();
+                roamFont?.Dispose();
+                roamCapFont?.Dispose();
+                roamTip.Dispose();
             }
             base.Dispose(disposing);
         }
