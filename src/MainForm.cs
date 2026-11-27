@@ -13,7 +13,7 @@ namespace Stillpoint
         readonly Label status;
         readonly ToggleSwitch stoneToggle;
         const int BaseMain = 400, BaseRail = 58, BaseHeight = 640;
-        static readonly string[] PageOrder = { "timer", "garden", "history", "settings", "changes" };
+        static readonly string[] PageOrder = { "timer", "garden", "journal", "history", "settings", "changes" };
         readonly NavRail rail;
         readonly Panel main;
         readonly PageStack stack;
@@ -28,6 +28,7 @@ namespace Stillpoint
         GardenForm garden;
         SettingsForm settings;
         ChangesForm changes;
+        JournalForm journal;
         bool syncing;
 
         public MainForm(TrayApp app)
@@ -105,6 +106,10 @@ namespace Stillpoint
             stoneToggle.CheckedChanged += (s, e) => { stoneLabel.Text = stoneToggle.Checked ? "Garden mode" : "Simple mode"; if (!syncing) app.SetStoneOn(stoneToggle.Checked); };
             stoneLabel.Click += (s, e) => stoneToggle.Checked = !stoneToggle.Checked;
             ring.Visited += app.AddVisitor;
+            ring.Touch = app.Touches;
+            ring.TouchChanged += app.SaveTouches;
+            ring.DreamShared += app.MarkDreamTold;
+            ring.HintShown += app.MarkHint;
             ApplyStoneMode();
         }
 
@@ -234,6 +239,11 @@ namespace Stillpoint
                 UsualStart = Garden.UsualStart(tracker.Sessions, today),
                 StoriesSeen = Stories.Count(app.Album),
                 Roam = Roam.Today(tracker.Sessions, tracker.Current, DateTime.Now, app.RoamFrom, app.RoamGaps),
+                Stars = app.Stars,
+                Dream = app.DreamTonight,
+                DreamTold = app.DreamTold,
+                BreakEnds = app.BreakEnds,
+                Hints = app.Settings.Hints,
                 Name = app.Settings.StoneName,
                 Chat = app.Settings.Chattiness,
                 BreaksYesterday = Garden.BreaksOn(tracker.Sessions, tracker.Current, today.AddDays(-1)),
@@ -268,6 +278,7 @@ namespace Stillpoint
 
             if (history != null && !history.IsDisposed) history.SetSessions(app.Tracker.Sessions, app.Tracker.Current, app.Album, interval);
             if (garden != null && !garden.IsDisposed) garden.SetData(app.Tracker.Sessions, app.Tracker.Current, app.Album, interval);
+            if (journal != null && !journal.IsDisposed && stack.Current == "journal") journal.RefreshEntries();
             if (settings != null && !settings.IsDisposed) settings.UpdateView();
         }
 
@@ -314,10 +325,14 @@ namespace Stillpoint
                 var next = new GardenForm();
                 next.SetData(app.Tracker.Sessions, app.Tracker.Current, app.Album, app.Tracker.ReminderIntervalSeconds);
                 next.CalendarRequested += d => ShowHistory(d);
+                next.JournalFor = app.JournalEntry;
+                next.JournalRequested += ShowJournal;
                 return next;
             });
             if (day != null) garden.ShowDay(day.Value);
         }
+
+        void ShowJournal() => OpenPage("journal", "Pebble's journal", ref journal, () => new JournalForm(app), "garden");
 
         void ShowSettings() => OpenPage("settings", "Settings", ref settings, () => new SettingsForm(app));
 

@@ -11,6 +11,18 @@ namespace Stillpoint
         static readonly float[][] Crown = { new[] { 0f, 0f, 1f }, new[] { -0.58f, 0.18f, 0.68f }, new[] { 0.6f, 0.14f, 0.7f }, new[] { -0.3f, -0.5f, 0.7f }, new[] { 0.32f, -0.46f, 0.66f }, new[] { 0f, -0.8f, 0.52f }, new[] { -0.82f, -0.18f, 0.46f }, new[] { 0.84f, -0.26f, 0.45f } };
         static readonly float[][] Blossoms = { new[] { -0.4f, -0.3f }, new[] { 0.2f, -0.6f }, new[] { 0.55f, 0.1f }, new[] { -0.7f, 0.2f }, new[] { 0.05f, 0.25f }, new[] { -0.15f, -0.85f }, new[] { 0.75f, -0.45f }, new[] { -0.45f, -0.65f }, new[] { 0.35f, -0.15f } };
 
+        public static (Color Dark, Color Light) RakeColors(float night, bool winter) =>
+            (night > 0.5f ? Color.FromArgb(89, 20, 22, 34) : winter ? Color.FromArgb(80, 120, 135, 160) : Color.FromArgb(82, 140, 120, 96),
+             night > 0.5f ? Color.FromArgb(64, 120, 124, 150) : winter ? Color.FromArgb(220, 255, 255, 255) : Color.FromArgb(140, 255, 250, 240));
+
+        public static (PointF Center, float Radius) TreeCrown(float growth)
+        {
+            float h = 9 + 69 * growth;
+            if (h < 17) return (new PointF(TreeAt.X + 0.6f, TreeAt.Y - h * 0.6f), 7);
+            float cr = 5 + 22 * growth;
+            return (new PointF(TreeAt.X, TreeAt.Y - h + cr * 0.8f), cr * 1.1f);
+        }
+
         public static void DrawTree(Graphics g, float growth, Season season, float n, bool snowy)
         {
             float x = TreeAt.X, y = TreeAt.Y, h = 9 + 69 * growth;
@@ -101,6 +113,27 @@ namespace Stillpoint
                 WildArt.DrawCub(g, 60, 222, 0.5f, 1, new CritterPose { Sit = 1 }, 0.6f, 0.52f, night);
                 WildArt.DrawCub(g, 106, 222, 1.7f, -1, new CritterPose(), 0.6f, 0.52f, night);
             }
+        }
+
+        public static void DrawSnowmanOver(Graphics g, SceneLook look) => DrawSnowman(g, look.Snowman, look.Night, look.SnowmanMelted);
+
+        public static string PlantSpot(PointF q, System.Collections.Generic.IEnumerable<Plant> plants, Keepsake keepsakes)
+        {
+            if (q.Y < 182 || q.Y > 230 || (q.X - 150) * (q.X - 150) + (q.Y - 150) * (q.Y - 150) > 128 * 128) return "Not there. Try the open sand.";
+            if (q.X > 96 && q.X < 204 && q.Y > 213) return "Not there. That's where the time goes.";
+            if (Math.Abs(q.X - StoneX) < 64 && q.Y < StoneGround + 6) return "Too close to me. I'd squash it.";
+            if ((keepsakes & Keepsake.Pond) != 0)
+            {
+                float dx = (q.X - PondAt.X) / (PondRx + 5), dy = (q.Y - PondAt.Y) / (PondRy + 4);
+                if (dx * dx + dy * dy < 1) return "Not in the pond.";
+            }
+            if ((keepsakes & Keepsake.Lantern) != 0 && Math.Abs(q.X - LanternAt.X) < 11 && q.Y < LanternAt.Y + 5) return "Not there. Try the open sand.";
+            foreach (var r in Rocks)
+                if ((q.X - r[0]) * (q.X - r[0]) + (q.Y - r[1]) * (q.Y - r[1]) < (r[2] + 4) * (r[2] + 4)) return "That's a rock. Try the sand.";
+            if (Math.Abs(q.X - TreeAt.X) < 8 && q.Y < TreeAt.Y + 4) return "Too close to our tree.";
+            foreach (var p in plants)
+                if ((q.X - p.X) * (q.X - p.X) + (q.Y - p.Y) * (q.Y - p.Y) < 13 * 13) return "Too close to the other one.";
+            return null;
         }
 
         public static void DrawWeeds(Graphics g, int count, Season ground, float n)

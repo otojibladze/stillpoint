@@ -47,6 +47,8 @@ namespace Stillpoint
         public string Temper = "";
         public DateTime RoamFrom = DateTime.MinValue;
         public string RoamGaps = "";
+        public string DreamTold = "";
+        public string Hints = "";
 
         public bool HasTown => !double.IsNaN(TownLat) && !double.IsNaN(TownLon);
 
@@ -80,6 +82,11 @@ namespace Stillpoint
         public string SessionsPath => Path.Combine(Dir, "sessions.csv");
         string SettingsPath => Path.Combine(Dir, "settings.ini");
         string AlbumPath => Path.Combine(Dir, "album.csv");
+        string TouchesPath => Path.Combine(Dir, "garden.txt");
+
+        public Touches LoadTouches() => Touches.Parse(ReadLines(TouchesPath) ?? ReadLines(TouchesPath + ".bak"));
+
+        public void SaveTouches(Touches touches) => WriteAtomic(TouchesPath, touches.Format());
 
         public Album LoadAlbum() => Album.Parse(ReadLines(AlbumPath) ?? ReadLines(AlbumPath + ".bak"));
 
@@ -159,6 +166,8 @@ namespace Stillpoint
                     case "memoryDay": settings.MemoryDay = value; break;
                     case "temper": settings.Temper = value; break;
                     case "roamGaps": settings.RoamGaps = value; break;
+                    case "dreamTold": settings.DreamTold = value; break;
+                    case "hints": settings.Hints = value; break;
                     case "roamFrom":
                         if (DateTime.TryParseExact(value, TimeFormat, Inv, DateTimeStyles.None, out var roamFrom)) settings.RoamFrom = roamFrom;
                         break;
@@ -206,6 +215,8 @@ namespace Stillpoint
                 "temper=" + s.Temper,
                 "roamFrom=" + (s.RoamFrom == DateTime.MinValue ? "" : s.RoamFrom.ToString(TimeFormat, Inv)),
                 "roamGaps=" + (s.RoamGaps ?? ""),
+                "dreamTold=" + (s.DreamTold ?? ""),
+                "hints=" + (s.Hints ?? ""),
             };
             WriteAtomic(SettingsPath, string.Join("\r\n", lines) + "\r\n");
         }

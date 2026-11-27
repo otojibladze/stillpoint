@@ -36,6 +36,11 @@ namespace Stillpoint
         public int Weeds, TotalBreaks, Streak, StoriesSeen;
         public double UsualStart = double.NaN;
         public RoamTime Roam;
+        public List<StarDay> Stars = new List<StarDay>();
+        public Dream Dream;
+        public bool DreamTold;
+        public List<DateTime> BreakEnds = new List<DateTime>();
+        public string Hints = "";
     }
 
     sealed class Critter
@@ -493,6 +498,9 @@ namespace Stillpoint
             StepVisitors(t, dt);
             StepWild(t, dt);
             StepSeasons(t, dt);
+            StepTouch(t, dt);
+            StepDreams(t);
+            StepConstellation(t);
             StepLife(t, dt);
             StepSky(t, dt);
             StepBits(dt, t);
@@ -818,6 +826,7 @@ namespace Stillpoint
                 float s = SpiritArt.Sin(t * 0.9f) * 0.03f;
                 p.Sy = 1 + s;
                 p.Sx = 1 - s * 0.4f;
+                ApplyDreamFace(p, t);
                 return p;
             }
 
@@ -1094,20 +1103,24 @@ namespace Stillpoint
             pointerIn = true;
             pointerT = Now;
             Cursor = OnStone(q) ? Cursors.Hand : Cursors.Default;
-            HoverRoam(e.Location);
+            TouchMove(e.Location, q, e.Button);
         }
 
         protected override void OnMouseLeave(EventArgs e)
         {
             base.OnMouseLeave(e);
             pointerIn = false;
+            EndRake();
+            SetTip(null);
         }
 
         protected override void OnMouseClick(MouseEventArgs e)
         {
             base.OnMouseClick(e);
-            if (e.Button != MouseButtons.Left || !OnStone(ToScene(e.Location))) return;
-            Poke(Now);
+            if (e.Button != MouseButtons.Left) return;
+            var q = ToScene(e.Location);
+            if (OnStone(q)) Poke(Now);
+            else TouchClick(q);
         }
 
         public void Poke(float t)
@@ -1307,7 +1320,7 @@ namespace Stillpoint
                 MoonDim = sky.MoonDim,
                 SunCover = sky.SunCover,
                 SunAnnular = sky.Eclipse != null && sky.Eclipse.Kind == EclipseKind.SolarAnnular,
-                Tree = state.Tree,
+                Tree = -1,
                 Weeds = Math.Max(0, shownWeeds),
             };
             const float bx = 0, by = 0, gx = 0, gy = 0;
@@ -1318,6 +1331,7 @@ namespace Stillpoint
             g.TranslateTransform((float)Math.Round(o.X + bx * s), (float)Math.Round(o.Y + by * s));
             g.ScaleTransform(s, s);
             GardenArt.DrawStars(g, t, night * (1 - cloudK));
+            DrawConstellation(g, t, night);
             DrawSky(g, t, night);
             if (cloudK > 0.02f || fogK > 0.02f)
             {
@@ -1331,7 +1345,9 @@ namespace Stillpoint
             g.DrawImage(groundImage, new Rectangle((int)Math.Round(o.X + gx * s), (int)Math.Round(o.Y + gy * s), px, px));
             g.TranslateTransform((float)Math.Round(o.X + gx * s), (float)Math.Round(o.Y + gy * s));
             g.ScaleTransform(s, s);
+            DrawLiveTree(g, t, night, look);
             GardenArt.DrawTufts(g, season, night, wind);
+            DrawTouches(g, t, night);
             if ((state.Keepsakes & Keepsake.Pond) != 0 && !snowGround) GardenArt.DrawPondGlints(g, t, night);
             DrawPondLife(g, t, night);
             if ((state.Keepsakes & Keepsake.Lantern) != 0) GardenArt.DrawLanternFlicker(g, t, night);
@@ -1364,6 +1380,7 @@ namespace Stillpoint
             DrawStories(g, t, night, air: true);
             DrawBirdNow(g, t);
             DrawButterflyNow(g, t);
+            DrawDream(g, t, night);
             if (dragonfly.Active && dragonfly.D <= 0) GardenArt.DrawDragonfly(g, dragonfly.X, dragonfly.Y, t, dragonfly.Side);
             g.Restore(clip);
             float flash = t - flashT;

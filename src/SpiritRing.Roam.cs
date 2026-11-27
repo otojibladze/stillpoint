@@ -9,7 +9,6 @@ namespace Stillpoint
     {
         static readonly Color RoamGreen = SpiritArt.Hex(0x6F8F58);
         readonly ToolTip roamTip = new ToolTip();
-        bool roamHover;
 
         RectangleF RoamCircle
         {
@@ -46,14 +45,13 @@ namespace Stillpoint
             CenteredText(g, RoamText(roam.Left), roamFont, empty && !roam.Running ? Theme.AccentText : Theme.Ink, cx, cy + 4 * s);
         }
 
-        void HoverRoam(Point at)
+        bool RoamAt(Point at)
         {
             var c = RoamCircle;
             float dx = at.X - (c.X + c.Width / 2), dy = at.Y - (c.Y + c.Height / 2);
-            bool inside = state.Roam.Shown && dx * dx + dy * dy <= c.Width * c.Width / 4;
-            if (inside == roamHover) return;
-            roamHover = inside;
-            roamTip.SetToolTip(this, inside ? "Free roam: every 30 minutes you sit today earns 5 minutes away.\nIt counts down while you're up and starts fresh each day." : null);
+            return state.Roam.Shown && dx * dx + dy * dy <= c.Width * c.Width / 4;
         }
+
+        string RoamTipAt(Point at) => RoamAt(at) ? "Free roam: every 30 minutes you sit today earns 5 minutes away.\nIt counts down while you're up and starts fresh each day." : null;
     }
 }

@@ -73,6 +73,8 @@ namespace Stillpoint
             };
             Tracker.SetRunning(Settings.Running, DateTime.Now, continueSession);
             Album = store.LoadAlbum();
+            Touches = store.LoadTouches();
+            if (Touches.Prune(DateTime.Now)) SaveTouches();
             if (Enum.TryParse(Settings.Temper, out Temper saved)) Temper = saved;
 
             ApplyTheme();
@@ -130,6 +132,68 @@ namespace Stillpoint
         public Settings Settings { get; }
         public UsageTracker Tracker { get; }
         public Album Album { get; }
+        public Touches Touches { get; }
+        bool Southern => Settings.HasTown && Settings.TownLat < 0;
+        string cacheKey = "";
+        List<StarDay> stars = new List<StarDay>();
+        List<DateTime> breakEnds = new List<DateTime>();
+        (DateTime Night, string Key, Dream Dream) dreamCache;
+
+        public void SaveTouches()
+        {
+            try { Store.SaveTouches(Touches); }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { SaveError = ex.Message; }
+        }
+
+        void RefreshCaches()
+        {
+            string key = Tracker.Sessions.Count + "|" + (Tracker.Current == null) + "|" + DateTime.Today.ToString("yyyyMMdd");
+            if (key == cacheKey) return;
+            cacheKey = key;
+            stars = Constellation.Stars(Tracker.Sessions, Tracker.Current);
+            breakEnds = Tracker.Sessions.Where(s => s != Tracker.Current).Select(s => s.End).OrderBy(e => e).ToList();
+        }
+
+        public List<StarDay> Stars { get { RefreshCaches(); return stars; } }
+
+        public List<DateTime> BreakEnds { get { RefreshCaches(); return breakEnds; } }
+
+        public DayFacts FactsFor(DateTime day) => Journal.Facts(Tracker.Sessions, Tracker.Current, Album, day, Tracker.ReminderIntervalSeconds, Southern);
+
+        public string JournalEntry(DateTime day)
+        {
+            var facts = FactsFor(day);
+            return Journal.Entry(facts, day.Date < DateTime.Today ? Dreams.Of(facts) : null);
+        }
+
+        public Dream DreamTonight
+        {
+            get
+            {
+                var night = SkyEvents.NightOf(DateTime.Now);
+                string key = Tracker.Sessions.Count + "|" + Album.Version;
+                if (dreamCache.Dream == null || dreamCache.Night != night || dreamCache.Key != key) dreamCache = (night, key, Dreams.Of(FactsFor(night)));
+                return dreamCache.Dream;
+            }
+        }
+
+        public bool DreamTold => Settings.DreamTold == SkyEvents.NightOf(DateTime.Now).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+
+        public void MarkDreamTold(DateTime night)
+        {
+            Settings.DreamTold = night.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+            SaveSettings();
+        }
+
+        public void MarkHint(string id)
+        {
+            var hints = (Settings.Hints ?? "").Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+            if (hints.Contains(id)) return;
+            hints.Add(id);
+            Settings.Hints = string.Join(",", hints);
+            SaveSettings();
+        }
+
         public bool Away => Tracker.IsCounting && Tracker.IdleSeconds >= WalkAwaySeconds;
 
         public GardenDay GardenOn(DateTime day) => Garden.Day(Tracker.Sessions, Tracker.Current, day, Album, Tracker.ReminderIntervalSeconds);

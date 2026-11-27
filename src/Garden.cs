@@ -182,6 +182,15 @@ namespace Stillpoint
 
         public static float TreeGrowth(int days) => days < 0 ? -1 : 1 - (float)Math.Exp(-days / 140.0);
 
+        public static int WeedsGrown(IReadOnlyList<Session> sessions, Session current, DateTime day)
+        {
+            day = day.Date;
+            var previous = DateTime.MinValue;
+            foreach (var s in sessions)
+                if (s != current && s.Start.Date < day && s.Start.Date > previous) previous = s.Start.Date;
+            return previous == DateTime.MinValue ? 0 : Math.Max(0, Math.Min(MaxWeeds, (day - previous).Days - 2));
+        }
+
         public static int Weeds(IReadOnlyList<Session> sessions, Session current, DateTime day)
         {
             day = day.Date;

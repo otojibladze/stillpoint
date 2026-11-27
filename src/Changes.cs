@@ -20,6 +20,7 @@ namespace Stillpoint
 
         public static readonly Release[] All =
         {
+            R("3.13.0", "2026-11-27", "Pebble dreams at night about your day, and tells you about it in the morning.", "Pebble keeps a journal. Read it on the Garden page.", "Every day your flower blooms lights a star. Twelve make a constellation, and Pebble names it.", "Touch the garden: drag to rake the sand, double-click to plant a seed that grows with your breaks, click the tree to shake it."),
             R("3.12.1", "2026-11-27", "Free roam remembers the time you used when you press Resume."),
             R("3.12.0", "2026-11-27", "New animals: a rabbit at dawn and dusk, bats on summer nights, earthworms after rain, and a little mouse at night.", "Animals notice each other: the cat stalks the bird, a fox scares off the squirrel, the owl hoots at the moth, the mouse hides from the cat.", "Seasons bring stories: fox cubs in spring, the squirrel buries acorns in autumn and digs them up in winter, frogspawn turns into tadpoles in the pond.", "Weather matters: birds hide under Pebble's leaf in the rain, the frog loves puddles, butterflies struggle on windy days."),
             R("3.11.1", "2026-11-27", "Free roam time also starts fresh after the computer shuts down or restarts."),

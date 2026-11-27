@@ -16,7 +16,9 @@ namespace Stillpoint
         readonly Label heroStats;
         readonly Label heroVisitors;
         readonly WeekStrip week;
-        readonly Card friendsCard = new Card(), storiesCard = new Card();
+        readonly Card friendsCard = new Card(), storiesCard = new Card(), journalCard = new Card();
+        readonly Label journalText;
+        string journalKey;
         string friendsKey, storiesKey;
         readonly Dictionary<Keepsake, (KeepsakeIcon Icon, Label Since, ThinBar Bar)> keepsakeRows = new Dictionary<Keepsake, (KeepsakeIcon, Label, ThinBar)>();
         IReadOnlyList<Session> sessions = new List<Session>();
@@ -51,6 +53,16 @@ namespace Stillpoint
             heroVisitors = new Label { AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9.5f), Margin = new Padding(0, 0, 0, 8) };
             week = new WeekStrip { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 2) };
             var hint = new Label { Text = "Double-click a day to open it in the calendar.", AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(8.5f), Anchor = AnchorStyles.None, Margin = new Padding(0, 0, 0, 6) };
+            journalText = new Label { AutoSize = true, Font = Theme.Regular(9.5f), Margin = new Padding(0, 0, 0, 6) };
+            var readAll = Ui.Link("Read the whole journal");
+            readAll.Anchor = AnchorStyles.Left;
+            readAll.LinkClicked += (s, e) => JournalRequested?.Invoke();
+            var journalBody = new TableLayoutPanel { ColumnCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
+            journalBody.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            Ui.AddRow(journalBody, journalText);
+            Ui.AddRow(journalBody, readAll);
+            journalCard.AddRow(journalBody, new Label { AutoSize = true, Margin = new Padding(0) });
+            journalCard.SizeChanged += (s, e) => journalText.MaximumSize = new Size(Math.Max(100, journalCard.ClientSize.Width - LogicalToDeviceUnits(36)), 0);
             var keepsakes = new Card();
             foreach (var (keepsake, name, need) in new[] { (Keepsake.Moss, "Moss", "7 days in a row"), (Keepsake.Lantern, "Stone lantern", "50 breaks"), (Keepsake.Pond, "Pond", "100 breaks"), (Keepsake.Baby, "Baby pebble", "30 days") })
             {
@@ -62,7 +74,7 @@ namespace Stillpoint
                 keepsakes.AddRow(Ui.Row(icon, label, note), Ui.Row(since, bar));
                 keepsakeRows[keepsake] = (icon, since, bar);
             }
-            foreach (var c in new Control[] { weekHead, hero, heroHead, heroVisitors, week, hint, Caption("Keepsakes"), keepsakes, Caption("Friends"), friendsCard, Caption("Stories"), storiesCard })
+            foreach (var c in new Control[] { weekHead, hero, heroHead, heroVisitors, week, hint, Caption("Pebble's journal"), journalCard, Caption("Keepsakes"), keepsakes, Caption("Friends"), friendsCard, Caption("Stories"), storiesCard })
             {
                 root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
                 root.Controls.Add(c, 0, root.RowCount++);
@@ -78,6 +90,8 @@ namespace Stillpoint
         }
 
         public event Action<DateTime> CalendarRequested;
+        public event Action JournalRequested;
+        public Func<DateTime, string> JournalFor { get; set; }
 
         public void SetData(IReadOnlyList<Session> list, Session now, Album visits, double reminderInterval)
         {
@@ -116,6 +130,12 @@ namespace Stillpoint
             string visitors = animals.Count == 0 ? "No visitors" : "Visitors: " + string.Join(", ", animals);
             Ui.SetText(heroVisitors, happenings.Count == 0 ? visitors : visitors + "  ·  " + string.Join(", ", happenings));
             week.SetDays(days, gardenDate);
+            string key = gardenDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + "|" + sessions.Count + "|" + (album?.Version ?? 0) + "|" + (int)(DateTime.Now.TimeOfDay.TotalMinutes / 10);
+            if (key != journalKey && JournalFor != null)
+            {
+                journalKey = key;
+                Ui.SetText(journalText, JournalFor(gardenDate.Date));
+            }
 
             var progress = Garden.Progress(sessions, current, DateTime.Today);
             SetKeepsake(Keepsake.Moss, progress.MossSince, progress.Streak / (float)Garden.MossStreak);
