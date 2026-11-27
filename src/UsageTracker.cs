@@ -45,6 +45,8 @@ namespace Stillpoint
         public bool Running => current != null;
         public bool CanResume => current == null && last != null;
         public Session Current => current;
+        public const double SettleSeconds = 120;
+        public Session Unsettled => current ?? (last != null && (DateTime.Now - last.End).TotalSeconds < SettleSeconds ? last : null);
         public DateTime SessionStarted => (current ?? last)?.Start ?? default(DateTime);
         public double SessionSeconds => (current ?? last)?.Seconds ?? 0;
         public PauseReason Paused { get; private set; }

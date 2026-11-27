@@ -217,7 +217,8 @@ namespace Stillpoint
                     break;
             }
             var today = DateTime.Today;
-            var keep = Garden.Progress(tracker.Sessions, tracker.Current, today);
+            var settling = tracker.Unsettled;
+            var keep = Garden.Progress(tracker.Sessions, settling, today);
             ring.SetSession(new RingState
             {
                 Running = tracker.Running,
@@ -229,14 +230,14 @@ namespace Stillpoint
                 Time = Fmt.Clock(tracker.SessionSeconds),
                 Caption = caption,
                 Note = note,
-                BreaksToday = Garden.BreaksOn(tracker.Sessions, tracker.Current, today),
+                BreaksToday = Garden.BreaksOn(tracker.Sessions, settling, today),
                 LastEnd = tracker.Sessions.Count > 0 ? tracker.Sessions.Max(s => s.End) : default(DateTime),
                 Keepsakes = keep.Earned,
                 TotalBreaks = keep.Breaks,
                 TreeDays = Garden.DaysTogether(tracker.Sessions, today),
                 Tree = Garden.TreeGrowth(Garden.DaysTogether(tracker.Sessions, today)),
-                Weeds = Garden.Weeds(tracker.Sessions, tracker.Current, today),
-                Streak = Garden.OnTimeStreak(tracker.Sessions, tracker.Current, today, interval),
+                Weeds = Garden.Weeds(tracker.Sessions, settling, today),
+                Streak = Garden.OnTimeStreak(tracker.Sessions, settling, today, interval),
                 UsualStart = Garden.UsualStart(tracker.Sessions, today),
                 StoriesSeen = Stories.Count(app.Album),
                 Roam = Roam.Today(tracker.Sessions, tracker.Current, DateTime.Now, app.RoamFrom, app.RoamGaps),
@@ -247,7 +248,7 @@ namespace Stillpoint
                 Hints = app.Settings.Hints,
                 Name = app.Settings.StoneName,
                 Chat = app.Settings.Chattiness,
-                BreaksYesterday = Garden.BreaksOn(tracker.Sessions, tracker.Current, today.AddDays(-1)),
+                BreaksYesterday = Garden.BreaksOn(tracker.Sessions, settling, today.AddDays(-1)),
                 Sun = app.SunToday,
                 Southern = app.Settings.HasTown && app.Settings.TownLat < 0,
                 Weather = app.Weather,
@@ -278,7 +279,7 @@ namespace Stillpoint
             Ui.SetLine(saveError, app.SaveError == null ? null : "Could not save: " + app.SaveError);
 
             if (history != null && !history.IsDisposed) history.SetSessions(app.Tracker.Sessions, app.Tracker.Current, app.Album, interval);
-            if (garden != null && !garden.IsDisposed) garden.SetData(app.Tracker.Sessions, app.Tracker.Current, app.Album, interval);
+            if (garden != null && !garden.IsDisposed) garden.SetData(app.Tracker.Sessions, app.Tracker.Unsettled, app.Album, interval);
             if (journal != null && !journal.IsDisposed && stack.Current == "journal") journal.RefreshEntries();
             if (settings != null && !settings.IsDisposed) settings.UpdateView();
         }
@@ -324,7 +325,7 @@ namespace Stillpoint
             OpenPage("garden", "Garden", ref garden, () =>
             {
                 var next = new GardenForm();
-                next.SetData(app.Tracker.Sessions, app.Tracker.Current, app.Album, app.Tracker.ReminderIntervalSeconds);
+                next.SetData(app.Tracker.Sessions, app.Tracker.Unsettled, app.Album, app.Tracker.ReminderIntervalSeconds);
                 next.CalendarRequested += d => ShowHistory(d);
                 next.JournalFor = app.JournalEntry;
                 next.JournalRequested += ShowJournal;

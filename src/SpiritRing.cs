@@ -167,6 +167,7 @@ namespace Stillpoint
                 }
                 breaks = next.BreaksToday;
             }
+            else if (next.BreaksToday < breaks) breaks = next.BreaksToday;
 
             if (known && next.Running != state.Running)
             {

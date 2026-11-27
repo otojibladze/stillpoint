@@ -147,18 +147,18 @@ namespace Stillpoint
 
         void RefreshCaches()
         {
-            string key = Tracker.Sessions.Count + "|" + (Tracker.Current == null) + "|" + DateTime.Today.ToString("yyyyMMdd");
+            string key = Tracker.Sessions.Count + "|" + (Tracker.Unsettled == null) + "|" + DateTime.Today.ToString("yyyyMMdd");
             if (key == cacheKey) return;
             cacheKey = key;
-            stars = Constellation.Stars(Tracker.Sessions, Tracker.Current);
-            breakEnds = Tracker.Sessions.Where(s => s != Tracker.Current).Select(s => s.End).OrderBy(e => e).ToList();
+            stars = Constellation.Stars(Tracker.Sessions, Tracker.Unsettled);
+            breakEnds = Tracker.Sessions.Where(s => s != Tracker.Unsettled).Select(s => s.End).OrderBy(e => e).ToList();
         }
 
         public List<StarDay> Stars { get { RefreshCaches(); return stars; } }
 
         public List<DateTime> BreakEnds { get { RefreshCaches(); return breakEnds; } }
 
-        public DayFacts FactsFor(DateTime day) => Journal.Facts(Tracker.Sessions, Tracker.Current, Album, day, Tracker.ReminderIntervalSeconds, Southern);
+        public DayFacts FactsFor(DateTime day) => Journal.Facts(Tracker.Sessions, Tracker.Unsettled, Album, day, Tracker.ReminderIntervalSeconds, Southern);
 
         public string JournalEntry(DateTime day)
         {
@@ -171,7 +171,7 @@ namespace Stillpoint
             get
             {
                 var night = SkyEvents.NightOf(DateTime.Now);
-                string key = Tracker.Sessions.Count + "|" + Album.Version;
+                string key = Tracker.Sessions.Count + "|" + Album.Version + "|" + (Tracker.Unsettled == null);
                 if (dreamCache.Dream == null || dreamCache.Night != night || dreamCache.Key != key) dreamCache = (night, key, Dreams.Of(FactsFor(night)));
                 return dreamCache.Dream;
             }
@@ -196,7 +196,7 @@ namespace Stillpoint
 
         public bool Away => Tracker.IsCounting && Tracker.IdleSeconds >= WalkAwaySeconds;
 
-        public GardenDay GardenOn(DateTime day) => Garden.Day(Tracker.Sessions, Tracker.Current, day, Album, Tracker.ReminderIntervalSeconds);
+        public GardenDay GardenOn(DateTime day) => Garden.Day(Tracker.Sessions, Tracker.Unsettled, day, Album, Tracker.ReminderIntervalSeconds);
 
         public void AddVisitor(string visitor)
         {
@@ -276,7 +276,7 @@ namespace Stillpoint
 
         void UpdateTemper()
         {
-            float score = Character.Score(Tracker.Sessions, Tracker.Current, DateTime.Today, Tracker.ReminderIntervalSeconds);
+            float score = Character.Score(Tracker.Sessions, Tracker.Unsettled, DateTime.Today, Tracker.ReminderIntervalSeconds);
             bool first = Settings.Temper.Length == 0;
             var next = first ? Character.Of(score) : Character.Settle(score, Temper);
             if (!first && next == Temper) return;
@@ -294,7 +294,7 @@ namespace Stillpoint
             if (Settings.MemoryDay == today) return;
             Settings.MemoryDay = today;
             SaveSettings();
-            var memory = Memories.Today(Tracker.Sessions, Tracker.Current, Album, DateTime.Today, Tracker.ReminderIntervalSeconds, Temper, s => FriendsNow.TryGetValue(s, out var f) ? f : null);
+            var memory = Memories.Today(Tracker.Sessions, Tracker.Unsettled, Album, DateTime.Today, Tracker.ReminderIntervalSeconds, Temper, s => FriendsNow.TryGetValue(s, out var f) ? f : null);
             if (memory != null) form.Recall(memory.Text);
         }
 
