@@ -185,12 +185,13 @@ namespace Stillpoint
                     Quad(stem, P0, Q, P1);
                     g.DrawPath(pen, stem);
                 }
-                float[] spots = { 1f, 0.62f, 0.36f };
+                float head = Clamp(Math.Max(p.Bloom, Math.Max(p.Bud, p.Wilt)), 0, 1);
+                float[] spots = { 1f - 0.3f * head, 0.62f - 0.24f * head, 0.36f - 0.2f * head };
                 for (int i = 0; i < Math.Min(spots.Length, p.Leaves); i++)
                 {
                     var pt = at(spots[i]);
-                    float ang = dirAt(spots[i]), size = R * (i == 0 ? 0.085f : 0.07f);
-                    float open = i == 0 ? 0.75f : 1.05f + (1 - p.Sprout) * 0.4f;
+                    float ang = dirAt(spots[i]), size = R * (i == 0 ? 0.085f - 0.012f * head : 0.07f);
+                    float open = i == 0 ? 0.75f + 0.65f * head : 1.05f + (1 - p.Sprout) * 0.4f;
                     Leaf(g, i == 0 ? LeafTop : LeafLow, pt, ang - open, size);
                     Leaf(g, i == 0 ? LeafTop2 : LeafLow2, pt, ang + open, size * 0.92f);
                 }
