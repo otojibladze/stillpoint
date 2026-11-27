@@ -9,8 +9,12 @@ namespace Stillpoint
 {
     sealed class HistoryForm : Form
     {
+        const int DaysPerStep = 30, TallestList = 30000;
         readonly FlatButton[] tabs;
         readonly Control[] panels;
+        readonly TableLayoutPanel root;
+        readonly LinkLabel more;
+        int shownDays = DaysPerStep, tab;
         readonly Label summary;
         readonly SessionList all;
         readonly MonthView month;
@@ -40,11 +44,12 @@ namespace Stillpoint
             MinimizeBox = false;
             ShowInTaskbar = false;
 
-            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Padding = new Padding(22, 14, 22, 20), BackColor = Theme.Background };
+            root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Padding = new Padding(22, 14, 22, 20), BackColor = Theme.Background };
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             tabs = new[] { Tab("List"), Tab("Calendar") };
             var tabRow = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Anchor = AnchorStyles.Left, Margin = new Padding(0) };
@@ -58,7 +63,11 @@ namespace Stillpoint
 
             summary = new Label { AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9.5f), Margin = new Padding(0, 0, 0, 12) };
 
-            all = new SessionList { Dock = DockStyle.Fill, Margin = new Padding(0) };
+            all = new SessionList { Dock = DockStyle.Fill, Margin = new Padding(0), Expand = true, AutoSize = true };
+            more = Ui.Link("Show earlier days");
+            more.Anchor = AnchorStyles.None;
+            more.Margin = new Padding(0, 12, 0, 0);
+            more.Visible = false;
 
             month = new MonthView { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) };
             dayGarden = new GardenView { Size = new Size(44, 44), Radius = 9, Margin = new Padding(0, 0, 10, 0), Cursor = Cursors.Hand };
@@ -77,14 +86,13 @@ namespace Stillpoint
             calendarPanel.Controls.Add(dayHead, 0, 1);
             calendarPanel.Controls.Add(day, 0, 2);
 
-            var body = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0) };
             panels = new Control[] { all, calendarPanel };
-            foreach (var p in panels) body.Controls.Add(p);
 
             root.Controls.Add(head, 0, 0);
             root.Controls.Add(summary, 0, 1);
-            root.Controls.Add(body, 0, 2);
-            Controls.Add(root);
+            root.Controls.Add(all, 0, 2);
+            root.Controls.Add(more, 0, 3);
+            Controls.Add(new ScrollView(root) { FillViewport = true });
             ResumeLayout(false);
             PerformLayout();
 
@@ -93,6 +101,7 @@ namespace Stillpoint
                 int index = i;
                 tabs[i].Click += (s, e) => ShowTab(index);
             }
+            more.LinkClicked += (s, e) => { shownDays += DaysPerStep; RefreshList(); };
             month.SelectedChanged += (s, e) => RefreshDay(toTop: true);
             dayGarden.Click += (s, e) => GardenRequested?.Invoke(month.Selected);
             ShowTab(0);
@@ -117,7 +126,7 @@ namespace Stillpoint
             double weekTotal = Total(totals, DateTime.Today, 7);
             double everything = totals.Values.Sum();
             Ui.SetText(summary, $"Today {Fmt.Hm(today)}   ·   Last 7 days {Fmt.Hm(weekTotal)}   ·   All time {Fmt.Hm(everything)}");
-            all.SetRows(GroupedRows(totals));
+            RefreshList();
             month.SetTotals(totals);
             RefreshDay(toTop: false);
         }
@@ -131,13 +140,39 @@ namespace Stillpoint
 
         void ShowTab(int index)
         {
+            tab = index;
             for (int i = 0; i < tabs.Length; i++)
             {
                 tabs[i].Kind = i == index ? ButtonKind.Primary : ButtonKind.Ghost;
                 tabs[i].Invalidate();
-                panels[i].Visible = i == index;
             }
+            var shown = root.GetControlFromPosition(0, 2);
+            if (shown != panels[index])
+            {
+                root.SuspendLayout();
+                if (shown != null) root.Controls.Remove(shown);
+                panels[index].Visible = true;
+                root.Controls.Add(panels[index], 0, 2);
+                root.ResumeLayout(true);
+            }
+            UpdateMore();
             if (index == 1) month.Focus();
+        }
+
+        void RefreshList()
+        {
+            var (rows, hidden) = GroupedRows(DayTotals());
+            all.SetRows(rows);
+            moreHidden = hidden;
+            UpdateMore();
+        }
+
+        bool moreHidden;
+
+        void UpdateMore()
+        {
+            bool show = tab == 0 && moreHidden;
+            if (more.Visible != show) more.Visible = show;
         }
 
         void RefreshDay(bool toTop)
@@ -171,16 +206,20 @@ namespace Stillpoint
             return sum;
         }
 
-        List<ListRow> GroupedRows(Dictionary<DateTime, double> totals)
+        (List<ListRow> Rows, bool Hidden) GroupedRows(Dictionary<DateTime, double> totals)
         {
             var rows = new List<ListRow>();
-            foreach (var group in sessions.GroupBy(s => s.Start.Date).OrderByDescending(g => g.Key))
+            int limit = all.RowsFitting(TallestList), days = 0;
+            var groups = sessions.GroupBy(s => s.Start.Date).OrderByDescending(g => g.Key).ToList();
+            foreach (var group in groups)
             {
                 var items = group.OrderByDescending(s => s.Start).ToList();
+                if (days >= shownDays || rows.Count > 0 && rows.Count + items.Count + 1 > limit) return (rows, days >= shownDays);
                 rows.Add(new ListRow { Header = true, Left = DayName(group.Key), Middle = Count(items.Count), Right = Fmt.Hm(totals[group.Key]) });
                 rows.AddRange(items.Select(s => new ListRow { Left = Range(s), Right = Length(s.Seconds) }));
+                days++;
             }
-            return rows;
+            return (rows, false);
         }
 
         static string DayName(DateTime date)

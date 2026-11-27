@@ -29,6 +29,8 @@ namespace Stillpoint
             content.Layout += (s, e) => Fit();
         }
 
+        public bool FillViewport { get; set; }
+
         internal int ContentHeight => content.Height;
         internal int Offset => offset;
         internal int MaxOffset => Math.Max(0, content.Height - ClientSize.Height);
@@ -46,6 +48,7 @@ namespace Stillpoint
                 width = ClientSize.Width - (needBar ? bar.Width : 0);
                 height = content.GetPreferredSize(new Size(width, 0)).Height;
             }
+            if (FillViewport) height = Math.Max(height, ClientSize.Height);
             var bounds = new Rectangle(0, -Math.Min(offset, Math.Max(0, height - ClientSize.Height)), Math.Max(0, width), height);
             offset = -bounds.Y;
             if (content.Bounds != bounds) content.Bounds = bounds;

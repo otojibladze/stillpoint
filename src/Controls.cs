@@ -28,7 +28,7 @@ namespace Stillpoint
         }
 
         public static void Text(Graphics g, string text, Font font, Color color, Rectangle bounds, TextFormatFlags align) =>
-            TextRenderer.DrawText(g, text, font, bounds, color, align | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
+            TextRenderer.DrawText(g, text, font, bounds, color, align | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine | TextFormatFlags.PreserveGraphicsTranslateTransform);
 
         public static void Gear(Graphics g, Rectangle bounds, Color color)
         {
@@ -266,6 +266,19 @@ namespace Stillpoint
 
         public string EmptyText { get; set; } = "Sessions you count show up here.";
 
+        bool expand;
+
+        public bool Expand
+        {
+            get => expand;
+            set
+            {
+                expand = value;
+                SetStyle(ControlStyles.OptimizedDoubleBuffer, !value);
+                glide.Jump(0);
+            }
+        }
+
         public void SetRows(List<ListRow> next, bool toTop = false)
         {
             bool same = next.Count == rows.Count;
@@ -275,7 +288,13 @@ namespace Stillpoint
             rows = next;
             glide.Jump(Math.Min(glide.Target, MaxOffset()));
             Invalidate();
+            if (expand) Parent?.PerformLayout();
         }
+
+        public int RowsFitting(int pixels) => Math.Max(1, (pixels - Pad) / RowHeight);
+
+        public override Size GetPreferredSize(Size proposedSize) =>
+            expand ? new Size(proposedSize.Width, Math.Max(1, rows.Count) * RowHeight + Pad) : base.GetPreferredSize(proposedSize);
 
         protected override void Dispose(bool disposing)
         {
@@ -289,17 +308,18 @@ namespace Stillpoint
 
         Rectangle Inner => new Rectangle(Pad, Pad / 2, Math.Max(0, Width - Pad * 2), Math.Max(0, Height - Pad));
 
-        int MaxOffset() => Math.Max(0, rows.Count * RowHeight - Inner.Height);
+        int MaxOffset() => expand ? 0 : Math.Max(0, rows.Count * RowHeight - Inner.Height);
 
         protected override void OnMouseEnter(EventArgs e)
         {
             base.OnMouseEnter(e);
-            Focus();
+            if (!expand) Focus();
         }
 
         protected override void OnMouseWheel(MouseEventArgs e)
         {
             base.OnMouseWheel(e);
+            if (expand) return;
             glide.To(Math.Max(0, Math.Min(MaxOffset(), glide.Target - e.Delta / 120f * RowHeight * 2.5f)));
         }
 
@@ -311,7 +331,22 @@ namespace Stillpoint
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            var g = e.Graphics;
+            if (!expand)
+            {
+                PaintList(e.Graphics, ClientRectangle);
+                return;
+            }
+            var clip = Rectangle.Intersect(e.ClipRectangle, ClientRectangle);
+            if (clip.Width <= 0 || clip.Height <= 0) return;
+            using (var buffer = BufferedGraphicsManager.Current.Allocate(e.Graphics, clip))
+            {
+                PaintList(buffer.Graphics, clip);
+                buffer.Render(e.Graphics);
+            }
+        }
+
+        void PaintList(Graphics g, Rectangle clip)
+        {
             g.Clear(Parent?.BackColor ?? Theme.Background);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             float radius = Font.Height * 0.6f;
@@ -325,7 +360,7 @@ namespace Stillpoint
             g.SmoothingMode = SmoothingMode.None;
             var inner = Inner;
             int h = RowHeight;
-            g.SetClip(inner);
+            if (!expand) g.SetClip(inner);
             if (rows.Count == 0)
             {
                 Draw.Text(g, EmptyText, Font, Theme.Muted, new Rectangle(inner.Left, inner.Top, inner.Width, h), TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
@@ -343,8 +378,8 @@ namespace Stillpoint
                 for (int i = 0; i < rows.Count; i++)
                 {
                     int y = inner.Top + i * h - offset;
-                    if (y + h < inner.Top) continue;
-                    if (y > inner.Bottom) break;
+                    if (y + h < Math.Max(inner.Top, clip.Top)) continue;
+                    if (y > Math.Min(inner.Bottom, clip.Bottom)) break;
                     var row = rows[i];
                     if (i > 0) g.DrawLine(row.Header ? strong : line, left, y, right, y);
                     var font = row.Header ? bold : Font;
