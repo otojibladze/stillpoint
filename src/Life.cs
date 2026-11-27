@@ -229,6 +229,8 @@ namespace Stillpoint
             if (seen.Contains(Visitors.Aurora)) yield return make("aurora", 8, $"{ago} the northern lights danced over our garden.");
             if (seen.Contains(Visitors.Comet)) yield return make("comet", 8, $"{ago} a comet flew over us.");
             if (seen.Contains(Visitors.Fledged)) yield return make("fledged", 8, $"{ago} our chicks learned to fly.");
+            foreach (var story in Stories.All)
+                if (seen.Contains(story.Id)) yield return make(story.Id, 8, $"{ago} {story.Memory}.");
         }
 
         static string Together(int agoRank, Tone tone)

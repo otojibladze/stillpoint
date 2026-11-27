@@ -212,6 +212,7 @@ namespace Stillpoint
                     break;
             }
             var today = DateTime.Today;
+            var keep = Garden.Progress(tracker.Sessions, tracker.Current, today);
             ring.SetSession(new RingState
             {
                 Running = tracker.Running,
@@ -225,7 +226,13 @@ namespace Stillpoint
                 Note = note,
                 BreaksToday = Garden.BreaksOn(tracker.Sessions, tracker.Current, today),
                 LastEnd = tracker.Sessions.Count > 0 ? tracker.Sessions.Max(s => s.End) : default(DateTime),
-                Keepsakes = Garden.Progress(tracker.Sessions, tracker.Current, today).Earned,
+                Keepsakes = keep.Earned,
+                TotalBreaks = keep.Breaks,
+                Tree = Garden.TreeGrowth(Garden.DaysTogether(tracker.Sessions, today)),
+                Weeds = Garden.Weeds(tracker.Sessions, tracker.Current, today),
+                Streak = Garden.OnTimeStreak(tracker.Sessions, tracker.Current, today, interval),
+                UsualStart = Garden.UsualStart(tracker.Sessions, today),
+                StoriesSeen = Stories.Count(app.Album),
                 Name = app.Settings.StoneName,
                 Chat = app.Settings.Chattiness,
                 BreaksYesterday = Garden.BreaksOn(tracker.Sessions, tracker.Current, today.AddDays(-1)),

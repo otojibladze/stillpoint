@@ -40,6 +40,7 @@ namespace Stillpoint
 
         void SpawnMeteor(float t)
         {
+            MeteorSeen(t);
             var shower = sky.Shower != null && Rand < sky.ShowerLevel / (sky.ShowerLevel + 0.03f) ? sky.Shower : null;
             float x = 30 + Rand * 240, y = 14 + Rand * 100, dx, dy;
             if (shower != null)

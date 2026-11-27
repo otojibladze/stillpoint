@@ -70,7 +70,7 @@ namespace Stillpoint
 
         void ScheduleNight(float t)
         {
-            if (nightK < 0.7f || rainK > 0.4f || owl.Active || moth.Active || fox.Active || t < nightNext) return;
+            if (nightK < 0.7f || rainK > 0.4f || story.Active || owl.Active || moth.Active || fox.Active || t < nightNext) return;
             nightNext = t + 50 + Rand * 50;
             double r = rng.NextDouble();
             if (r < 0.36 && (Lantern || !NestShown)) StartOwl(t);

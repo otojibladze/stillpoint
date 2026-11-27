@@ -20,6 +20,7 @@ namespace Stillpoint
 
         public static readonly Release[] All =
         {
+            R("3.10.0", "2026-11-27", "Pebble has a daily routine: morning stretch, sunbathing, naps, sunsets and stargazing.", "A tree grows in the garden as your days together add up.", "Weeds grow while you're away. Each break pulls one.", "Pebble reacts more: wakes with a start, sulks a little when you come back, cheers good streaks and big milestones.", "Rare surprises: a balloon, a paper plane, a traveling pebble, a lost duckling, a hedgehog. Read them under Stories in the Garden."),
             R("3.9.6", "2026-11-27", "New What's new list next to Check for updates.", "Clearer update messages."),
             R("3.9.5", "2026-11-27", "History is one page: calendar on top, the day's sessions below."),
             R("3.9.4", "2026-11-27", "History shows today first. Other days are in the calendar."),

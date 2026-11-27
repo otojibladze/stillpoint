@@ -10,13 +10,14 @@ namespace Stillpoint
     enum Eyes { Open, Happy, Closed, Squeeze, Dizzy }
     enum Mouth { Dot, Smile, O, Flat, Wavy, Grin, Tongue }
     enum Brow { None, Worried, Sleepy, Curious }
-    enum Bit { Puff, Spark, Heart, Note, Dot, Leaf, Rain, Splash, Snow, Petal, Autumn, Ripple, Feather, Drip, Vapor, Pollen, Dirt, Hoot }
+    enum Bit { Puff, Spark, Heart, Note, Dot, Leaf, Rain, Splash, Snow, Petal, Autumn, Ripple, Feather, Drip, Vapor, Pollen, Dirt, Hoot, Dew, Confetti }
     enum MiniMood { Yawn, Look, Happy }
 
     sealed class SpiritPose
     {
         public float Sx = 1, Sy = 1, Tilt, Dy, EyeOpen = 1, LookX, LookY, Yawn, Blush = 0.35f, Sprout = 1, Zzz, Night, Bloom, Snow, EyeScale = 1, Bud, Wilt, LightX = -1, Warm, Wet, Wind, BrowK = 1;
         public Brow Brow;
+        public Color Tint;
         public int Petals;
         public Eyes Eyes = Eyes.Open;
         public Mouth Mouth = Mouth.Dot;
@@ -46,6 +47,7 @@ namespace Stillpoint
         static readonly Color StoneLight = Hex(0xDCD4CA), StoneMid = Hex(0xADA398), StoneDark = Hex(0x776D63);
         static readonly Color Stem = Hex(0x56763F), LeafTop = Hex(0x86A96B), LeafTop2 = Hex(0x7A9E60), LeafLow = Hex(0x76985C), LeafLow2 = Hex(0x6A8C52);
         static readonly Color Petal = Hex(0xE58A72), PetalCenter = Hex(0xF0C35A), MouthInside = Hex(0x4A3530);
+        static readonly Color[] ConfettiHues = { Hex(0xE27C6B), Hex(0xE8C46A), Hex(0x9CC08A), Hex(0x8DB1D6), Hex(0xC79BD8) };
         static readonly Color[] AutumnHues = { Hex(0xD9823F), Hex(0xC4552F), Hex(0xE3B04B), Hex(0xB86B3A) };
 
         public static Color Hex(int rgb) => Color.FromArgb((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255);
@@ -260,6 +262,8 @@ namespace Stillpoint
                 using (var rim = new LinearGradientBrush(RectangleF.Inflate(rimRect, 1, 0), Alpha(rimColor, rimRight ? 0 : rimAlpha), Alpha(rimColor, rimRight ? rimAlpha : 0), LinearGradientMode.Horizontal))
                     g.FillPath(rim, body);
                 g.Restore(rimClip);
+                if (p.Tint.A > 0)
+                    using (var tint = new SolidBrush(p.Tint)) g.FillPath(tint, body);
                 if (p.Wet > 0.02f)
                     using (var damp = new SolidBrush(Color.FromArgb((int)(55 * p.Wet), 40, 34, 30))) g.FillPath(damp, body);
 
@@ -481,7 +485,8 @@ namespace Stillpoint
                     case Bit.Dot: a = Sin(k * Pi) * 0.8f; break;
                     case Bit.Leaf:
                     case Bit.Autumn:
-                    case Bit.Petal: a = k < 0.8f ? 1 : (1 - k) * 5; break;
+                    case Bit.Petal:
+                    case Bit.Confetti: a = k < 0.8f ? 1 : (1 - k) * 5; break;
                     case Bit.Dirt: a = k < 0.6f ? 1 : (1 - k) / 0.4f; break;
                     case Bit.Rain:
                     case Bit.Snow: a = Math.Min(1, (1 - k) * 4); break;
@@ -545,6 +550,14 @@ namespace Stillpoint
                         break;
                     case Bit.Pollen:
                         FillEllipse(g, Alpha(Hex(0xF4D35E), a), 0, 0, q.Size, q.Size);
+                        break;
+                    case Bit.Dew:
+                        FillEllipse(g, Alpha(Hex(0xCFE3F2), a * 0.9f), 0, 0, q.Size * 0.75f, q.Size);
+                        FillEllipse(g, Alpha(Color.White, a * 0.8f), -q.Size * 0.25f, -q.Size * 0.3f, q.Size * 0.25f, q.Size * 0.25f);
+                        break;
+                    case Bit.Confetti:
+                        float flip = 0.25f + 0.75f * Math.Abs(Cos(q.Age * 7 + q.Size * 5));
+                        FillPolygon(g, Alpha(ConfettiHues[q.Hue % ConfettiHues.Length], a), new PointF(-q.Size, -q.Size * 0.5f * flip), new PointF(q.Size, -q.Size * 0.5f * flip), new PointF(q.Size, q.Size * 0.5f * flip), new PointF(-q.Size, q.Size * 0.5f * flip));
                         break;
                     case Bit.Dirt: FillEllipse(g, Alpha(Mix(Hex(0xB09A7C), Hex(0x3E4052), q.Night * 0.85f), a), 0, 0, q.Size, q.Size * 0.8f); break;
                     case Bit.Hoot:

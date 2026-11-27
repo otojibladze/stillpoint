@@ -32,7 +32,8 @@ namespace Stillpoint
 
         public long GroundKey(int px) => Key(px) ^ (long)Q(Night, 48) << 50;
         public Season Season = Season.Autumn;
-        public int RakeLines = 2, FadedRakes;
+        public int RakeLines = 2, FadedRakes, Weeds;
+        public float Tree = -1;
         public Keepsake Keepsakes;
         public bool SnowGround, SnowmanMelted, Southern;
 
@@ -53,6 +54,8 @@ namespace Stillpoint
             m = m * 11 + Q(FadeAlpha, 10);
             m = m * 16 + Math.Min(15, FadedRakes);
             m = m * 8 + (SnowGround ? 1 : 0) + (SnowmanMelted ? 2 : 0) + (Southern ? 4 : 0);
+            m = m * 8 + Math.Min(7, Weeds);
+            m = m * 402 + (Tree < 0 ? 0 : 1 + Q(Tree, 400));
             return k * 1000003 ^ m;
         }
 
@@ -67,7 +70,7 @@ namespace Stillpoint
         public bool Any => SnailTrack > 0.01f || Paws > 0.01f || FoxPrints > 0.01f || Feather || Leaves > 0;
     }
 
-    static class GardenArt
+    static partial class GardenArt
     {
         public const float StoneX = 150, StoneGround = 194, StoneR = 56, Horizon = 174, BabyR = 11;
         public static readonly PointF LanternAt = new PointF(262, 192), PondAt = new PointF(72, 184), SnowmanAt = new PointF(40, 196);
@@ -317,6 +320,8 @@ namespace Stillpoint
             }
 
             DrawSeasonGround(g, season, n);
+            if (look.Tree >= 0) DrawTree(g, look.Tree, season, n, look.SnowGround);
+            DrawWeeds(g, look.Weeds, ground, n);
             if ((look.Keepsakes & Keepsake.Pond) != 0) DrawPond(g, ground, n);
             DrawRocks(g, ground, n, (look.Keepsakes & Keepsake.Moss) != 0);
             if ((look.Keepsakes & Keepsake.Lantern) != 0) DrawLantern(g, ground, n);
@@ -723,6 +728,8 @@ namespace Stillpoint
             MoonPhase = Sky.MoonPhase(day.Date.AddHours(21)),
             MoonShadow = night > 0.3f && EclipseOn(day, false) ? 1 : 0,
             SunCover = night < 0.5f && EclipseOn(day, true) ? 0.75f : 0,
+            Tree = day.Tree,
+            Weeds = day.Weeds,
         };
 
         static bool EclipseOn(GardenDay day, bool solar)
@@ -821,6 +828,7 @@ namespace Stillpoint
                 CritterArt.DrawLadybug(g, seat.X, seat.Y, (float)Math.Atan2(seat.Y - before.Y, seat.X - before.X), 0, still);
             }
             if (v.Contains(Visitors.Bee)) CritterArt.DrawBee(g, points.Tip.X + 15, points.Tip.Y - 9, 0.37f, -1, still);
+            StoryArt.DrawStill(g, v, points.Tip, night);
             g.Restore(state);
         }
     }

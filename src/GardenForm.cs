@@ -16,8 +16,8 @@ namespace Stillpoint
         readonly Label heroStats;
         readonly Label heroVisitors;
         readonly WeekStrip week;
-        readonly Card friendsCard = new Card();
-        string friendsKey;
+        readonly Card friendsCard = new Card(), storiesCard = new Card();
+        string friendsKey, storiesKey;
         readonly Dictionary<Keepsake, (KeepsakeIcon Icon, Label Since, ThinBar Bar)> keepsakeRows = new Dictionary<Keepsake, (KeepsakeIcon, Label, ThinBar)>();
         IReadOnlyList<Session> sessions = new List<Session>();
         Session current;
@@ -62,7 +62,7 @@ namespace Stillpoint
                 keepsakes.AddRow(Ui.Row(icon, label, note), Ui.Row(since, bar));
                 keepsakeRows[keepsake] = (icon, since, bar);
             }
-            foreach (var c in new Control[] { weekHead, hero, heroHead, heroVisitors, week, hint, Caption("Keepsakes"), keepsakes, Caption("Friends"), friendsCard })
+            foreach (var c in new Control[] { weekHead, hero, heroHead, heroVisitors, week, hint, Caption("Keepsakes"), keepsakes, Caption("Friends"), friendsCard, Caption("Stories"), storiesCard })
             {
                 root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
                 root.Controls.Add(c, 0, root.RowCount++);
@@ -123,6 +123,26 @@ namespace Stillpoint
             SetKeepsake(Keepsake.Pond, progress.PondSince, progress.Breaks / (float)Garden.PondBreaks);
             SetKeepsake(Keepsake.Baby, progress.BabySince, progress.Days / (float)Garden.BabyDays);
             ShowFriends(Friends.All(album, DateTime.Today));
+            ShowStories(Stories.Log(album, 8));
+        }
+
+        void ShowStories(List<(DateTime Day, Story Story)> log)
+        {
+            string key = string.Join("|", log.Select(x => x.Day.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + x.Story.Id));
+            if (key == storiesKey) return;
+            storiesKey = key;
+            storiesCard.SuspendLayout();
+            storiesCard.Clear();
+            int width = LogicalToDeviceUnits(270);
+            if (log.Count == 0)
+                storiesCard.AddRow(new Label { Text = "Rare things happen in the garden. They get written here.", AutoSize = true, MaximumSize = new Size(width, 0), ForeColor = Theme.Muted, Font = Theme.Regular(9f), Margin = new Padding(0) }, new Label { AutoSize = true, Margin = new Padding(0) });
+            foreach (var (day, story) in log)
+            {
+                var text = new Label { Text = story.Text, AutoSize = true, MaximumSize = new Size(width, 0), Font = Theme.Regular(9.5f), Margin = new Padding(0, 1, 0, 0) };
+                var date = new Label { Text = day.ToString("d MMM", CultureInfo.CurrentCulture), AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(8.5f), Anchor = AnchorStyles.Right, Margin = new Padding(8, 2, 0, 0) };
+                storiesCard.AddRow(text, date);
+            }
+            storiesCard.ResumeLayout(true);
         }
 
         void ShowFriends(List<Friend> list)

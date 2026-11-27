@@ -15,13 +15,14 @@ namespace Stillpoint
         public const string Butterfly = "butterfly", Bird = "bird", Snail = "snail", Frog = "frog", Cat = "cat", Dragonfly = "dragonfly", Rainbow = "rainbow";
         public const string Ladybug = "ladybug", Bee = "bee", Squirrel = "squirrel", Owl = "owl", Moth = "moth", Fox = "fox", Snails = "snails", Turtle = "turtle";
         public const string Meteors = "meteors", Eclipse = "eclipse", Aurora = "aurora", Comet = "comet", Fledged = "fledged";
-        public static readonly string[] Order = { Butterfly, Bird, Bee, Ladybug, Dragonfly, Squirrel, Snail, Snails, Turtle, Frog, Owl, Moth, Fox, Cat, Rainbow, Meteors, Eclipse, Aurora, Comet, Fledged };
-        static readonly string[] Happenings = { Rainbow, Meteors, Eclipse, Aurora, Comet, Fledged };
+        public const string Duckling = "duckling", Balloon = "balloon", Traveler = "traveler", Plane = "plane", Hedgehog = "hedgehog";
+        public static readonly string[] Order = { Butterfly, Bird, Bee, Ladybug, Dragonfly, Squirrel, Snail, Snails, Turtle, Frog, Owl, Moth, Fox, Cat, Rainbow, Meteors, Eclipse, Aurora, Comet, Fledged, Duckling, Balloon, Traveler, Plane, Hedgehog };
+        static readonly string[] Happenings = { Rainbow, Meteors, Eclipse, Aurora, Comet, Fledged, Duckling, Balloon, Traveler, Plane, Hedgehog };
 
         public static bool IsAnimal(string id) => Array.IndexOf(Happenings, id) < 0;
 
         public static string Label(string id) =>
-            id == Rainbow ? "Rain, then a rainbow" : id == Meteors ? "Meteor shower" : id == Aurora ? "Northern lights" : id == Fledged ? "The chicks flew" : Capital(id == Snails ? "two snails" : id);
+            Stories.Of(id)?.Label ?? (id == Rainbow ? "Rain, then a rainbow" : id == Meteors ? "Meteor shower" : id == Aurora ? "Northern lights" : id == Fledged ? "The chicks flew" : Capital(id == Snails ? "two snails" : id));
 
         public static string Noun(string id) => id == Snails ? "two snails" : ("aeiou".IndexOf(id[0]) >= 0 ? "an " : "a ") + id;
 
@@ -51,7 +52,8 @@ namespace Stillpoint
         public Season Season;
         public Keepsake Keepsakes;
         public HashSet<string> Visitors = new HashSet<string>();
-        public float Clouds, Rain;
+        public float Clouds, Rain, Tree = -1;
+        public int Weeds;
         public bool Today;
         public bool Empty => SitSeconds <= 0;
     }
@@ -161,6 +163,54 @@ namespace Stillpoint
             return p;
         }
 
+        public const int MaxWeeds = 6;
+
+        public static int DaysTogether(IReadOnlyList<Session> sessions, DateTime day)
+        {
+            var first = DateTime.MaxValue;
+            foreach (var s in sessions) if (s.Start.Date < first) first = s.Start.Date;
+            return first > day.Date ? -1 : (day.Date - first).Days;
+        }
+
+        public static float TreeGrowth(int days) => days < 0 ? -1 : 1 - (float)Math.Exp(-days / 140.0);
+
+        public static int Weeds(IReadOnlyList<Session> sessions, Session current, DateTime day)
+        {
+            day = day.Date;
+            var previous = DateTime.MinValue;
+            int cleared = 0;
+            foreach (var s in sessions)
+            {
+                if (s == current) continue;
+                var d = s.Start.Date;
+                if (d < day && d > previous) previous = d;
+                else if (d == day) cleared++;
+            }
+            if (previous == DateTime.MinValue) return 0;
+            return Math.Max(0, Math.Min(MaxWeeds, (day - previous).Days - 2) - cleared);
+        }
+
+        public static bool OnTime(Session s, double interval) => s.Seconds >= 120 && s.Seconds <= interval * 1.15;
+
+        public static int OnTimeStreak(IReadOnlyList<Session> sessions, Session current, DateTime day, double interval)
+        {
+            int streak = 0;
+            foreach (var s in sessions.Where(s => s != current && s.Start.Date == day.Date).OrderByDescending(s => s.Start))
+            {
+                if (s.Seconds < 60) continue;
+                if (!OnTime(s, interval)) break;
+                streak++;
+            }
+            return streak;
+        }
+
+        public static double UsualStart(IReadOnlyList<Session> sessions, DateTime day)
+        {
+            var starts = sessions.Where(s => s.Start.Date < day.Date && s.Start.Date >= day.Date.AddDays(-14))
+                .GroupBy(s => s.Start.Date).Select(g => g.Min(s => s.Start).TimeOfDay.TotalHours).OrderBy(h => h).ToList();
+            return starts.Count < 3 ? double.NaN : starts[starts.Count / 2];
+        }
+
         public static GardenDay Day(IReadOnlyList<Session> sessions, Session current, DateTime day, Album album, double interval)
         {
             var list = sessions.Where(s => s.Start.Date == day.Date).ToList();
@@ -173,6 +223,8 @@ namespace Stillpoint
                 LongestSeconds = list.Count == 0 ? 0 : list.Max(s => s.Seconds),
                 Keepsakes = Progress(sessions, current, day).Earned,
                 Today = day.Date == DateTime.Today,
+                Tree = TreeGrowth(DaysTogether(sessions, day)),
+                Weeds = Weeds(sessions, current, day),
             };
             if (album != null) g.Visitors = new HashSet<string>(album.On(day));
             g.Clouds = Weather.Clouds(g.LongestSeconds, interval);

@@ -14,7 +14,7 @@ namespace Stillpoint
     {
         public static string Signature(GardenDay day, float night, Size size) =>
             day == null ? "" : string.Join("|", day.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture), day.Breaks, (int)(day.Clouds * 20), (int)(day.Rain * 20),
-                (int)day.Keepsakes, string.Join(",", Visitors.Sorted(day.Visitors)), day.Empty, (int)(night * 20), size.Width, size.Height);
+                (int)day.Keepsakes, string.Join(",", Visitors.Sorted(day.Visitors)), day.Empty, (int)(night * 20), size.Width, size.Height, (int)(day.Tree * 400), day.Weeds);
 
         public static Bitmap Render(GardenDay day, float night, Size size, float radius, Color around)
         {
