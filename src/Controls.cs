@@ -249,11 +249,19 @@ namespace Stillpoint
         List<ListRow> rows = new List<ListRow>();
         int offset;
         readonly Font bold = Theme.SemiBold(9.5f);
+        readonly Glide glide;
 
         public SessionList()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.Selectable, true);
             Font = Theme.Regular(9.5f);
+            glide = new Glide(v =>
+            {
+                int next = (int)Math.Round(v);
+                if (next == offset) return;
+                offset = next;
+                Invalidate();
+            });
         }
 
         public string EmptyText { get; set; } = "Sessions you count show up here.";
@@ -262,16 +270,16 @@ namespace Stillpoint
         {
             bool same = next.Count == rows.Count;
             for (int i = 0; same && i < next.Count; i++) same = next[i].Same(rows[i]);
-            if (toTop) offset = 0;
+            if (toTop) glide.Jump(0);
             if (same && !toTop) return;
             rows = next;
-            offset = Math.Min(offset, MaxOffset());
+            glide.Jump(Math.Min(glide.Target, MaxOffset()));
             Invalidate();
         }
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing) bold.Dispose();
+            if (disposing) { bold.Dispose(); glide.Dispose(); }
             base.Dispose(disposing);
         }
 
@@ -292,10 +300,13 @@ namespace Stillpoint
         protected override void OnMouseWheel(MouseEventArgs e)
         {
             base.OnMouseWheel(e);
-            int next = Math.Max(0, Math.Min(MaxOffset(), offset - Math.Sign(e.Delta) * RowHeight * 2));
-            if (next == offset) return;
-            offset = next;
-            Invalidate();
+            glide.To(Math.Max(0, Math.Min(MaxOffset(), glide.Target - e.Delta / 120f * RowHeight * 2.5f)));
+        }
+
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            if (glide != null && glide.Target > MaxOffset()) glide.Jump(MaxOffset());
         }
 
         protected override void OnPaint(PaintEventArgs e)

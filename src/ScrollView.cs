@@ -9,11 +9,13 @@ namespace Stillpoint
     {
         readonly Control content;
         readonly ScrollBarStrip bar;
+        readonly Glide glide;
         int offset;
         bool fitting;
 
         public ScrollView(Control content)
         {
+            glide = new Glide(v => Apply((int)Math.Round(v)));
             this.content = content;
             DoubleBuffered = true;
             Dock = DockStyle.Fill;
@@ -47,17 +49,32 @@ namespace Stillpoint
             var bounds = new Rectangle(0, -Math.Min(offset, Math.Max(0, height - ClientSize.Height)), Math.Max(0, width), height);
             offset = -bounds.Y;
             if (content.Bounds != bounds) content.Bounds = bounds;
+            if (glide.Target > MaxOffset) glide.Jump(MaxOffset);
             bar.Invalidate();
             fitting = false;
         }
 
-        internal void ScrollTo(int value)
+        int Clamp(float value) => (int)Math.Max(0, Math.Min(MaxOffset, value));
+
+        internal void ScrollTo(int value) => glide.Jump(Clamp(value));
+
+        internal void GlideTo(float value) => glide.To(Clamp(value));
+
+        internal void WheelBy(int delta) => GlideTo(glide.Target - delta / 120f * Font.Height * 4);
+
+        void Apply(int next)
         {
-            int next = Math.Max(0, Math.Min(MaxOffset, value));
             if (next == offset) return;
             offset = next;
             content.Top = -offset;
             bar.Invalidate();
+            Update();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) glide.Dispose();
+            base.Dispose(disposing);
         }
 
         protected override void OnResize(EventArgs e)
@@ -69,7 +86,7 @@ namespace Stillpoint
         protected override void OnMouseWheel(MouseEventArgs e)
         {
             base.OnMouseWheel(e);
-            ScrollTo(offset - Math.Sign(e.Delta) * Font.Height * 4);
+            WheelBy(e.Delta);
         }
 
         sealed class ScrollBarStrip : Control
@@ -114,7 +131,10 @@ namespace Stillpoint
                 if (e.Button != MouseButtons.Left) return;
                 var thumb = Thumb();
                 if (e.Y < thumb.Top || e.Y > thumb.Bottom)
-                    view.ScrollTo(view.Offset + Math.Sign(e.Y - thumb.Top) * view.ClientSize.Height * 9 / 10);
+                {
+                    view.GlideTo(view.Offset + Math.Sign(e.Y - thumb.Top) * view.ClientSize.Height * 9 / 10);
+                    return;
+                }
                 dragging = true;
                 dragStart = e.Y;
                 dragOffset = view.Offset;
@@ -143,7 +163,7 @@ namespace Stillpoint
             protected override void OnMouseWheel(MouseEventArgs e)
             {
                 base.OnMouseWheel(e);
-                view.ScrollTo(view.Offset - Math.Sign(e.Delta) * view.Font.Height * 4);
+                view.WheelBy(e.Delta);
             }
         }
     }

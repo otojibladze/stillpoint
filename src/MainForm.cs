@@ -41,8 +41,8 @@ namespace Stillpoint
             var root = Ui.Column(new Padding(26, 12, 26, 18));
             root.SuspendLayout();
 
-            stoneToggle = new ToggleSwitch { Margin = new Padding(8, 2, 0, 0) };
-            var stoneLabel = new Label { Text = app.Settings.StoneOn ? "Garden mode" : "Simple mode", AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9f), Margin = new Padding(0), Cursor = Cursors.Hand };
+            stoneToggle = new ToggleSwitch { Margin = new Padding(8, 0, 0, 0), Anchor = AnchorStyles.None };
+            var stoneLabel = new Label { Text = app.Settings.StoneOn ? "Garden mode" : "Simple mode", AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9f), Margin = new Padding(0), Anchor = AnchorStyles.None, Cursor = Cursors.Hand };
             var stoneRow = Ui.Row(stoneLabel, stoneToggle);
             stoneRow.Anchor = AnchorStyles.Right;
             stoneRow.Margin = new Padding(0);

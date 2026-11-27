@@ -360,7 +360,7 @@ namespace Stillpoint
 
         void OnIdle(object sender, EventArgs e)
         {
-            while (Animating && !PeekMessage(out _, IntPtr.Zero, 0, 0, 0))
+            while (Animating && !Frames.Busy && !PeekMessage(out _, IntPtr.Zero, 0, 0, 0))
             {
                 float t = Now;
                 float dt = Math.Min(0.1f, t - last);
