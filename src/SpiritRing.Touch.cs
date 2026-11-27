@@ -9,10 +9,7 @@ namespace Stillpoint
 {
     sealed partial class SpiritRing
     {
-        RakeStroke raking;
-        bool rakeDown, rakeGap, rakeUsed;
-        Point rakeDownAt;
-        float treeShakeT = -99, sandWash, sandHoverT = -1, touchSaidT = -99;
+        float treeShakeT = -99, sandHoverT = -1, touchSaidT = -99;
         string tipNow;
         readonly HashSet<string> hintsShown = new HashSet<string>();
         readonly Dictionary<Plant, int> plantStages = new Dictionary<Plant, int>();
@@ -56,84 +53,11 @@ namespace Stillpoint
             roamTip.SetToolTip(this, text);
         }
 
-        protected override void OnMouseDown(MouseEventArgs e)
+        void TouchMove(Point at, PointF q)
         {
-            base.OnMouseDown(e);
-            rakeUsed = false;
-            if (!CanTouch || e.Button != MouseButtons.Left || RoamAt(e.Location)) return;
-            var q = ToScene(e.Location);
-            if (!OnSand(q) || NearStone(q)) return;
-            rakeDown = true;
-            rakeGap = false;
-            rakeDownAt = e.Location;
-            raking = null;
-        }
-
-        protected override void OnMouseUp(MouseEventArgs e)
-        {
-            base.OnMouseUp(e);
-            EndRake();
-        }
-
-        void EndRake()
-        {
-            if (raking != null && raking.Points.Count >= 2) CommitStroke();
-            raking = null;
-            rakeDown = false;
-        }
-
-        void TouchMove(Point at, PointF q, MouseButtons buttons)
-        {
-            if (rakeDown && (buttons & MouseButtons.Left) != 0)
-            {
-                bool ok = OnSand(q) && !NearStone(q);
-                if (raking == null)
-                {
-                    if (!rakeGap && Math.Abs(at.X - rakeDownAt.X) + Math.Abs(at.Y - rakeDownAt.Y) < 5) return;
-                    if (!ok) return;
-                    raking = new RakeStroke { At = Clock() };
-                    raking.Points.Add(rakeGap ? q : ToScene(rakeDownAt));
-                    rakeGap = false;
-                    rakeUsed = true;
-                }
-                var last = raking.Points[raking.Points.Count - 1];
-                if (!ok)
-                {
-                    if (raking.Points.Count >= 2) CommitStroke();
-                    raking = null;
-                    rakeGap = true;
-                }
-                else if (Dist(q, last.X, last.Y) >= 2.5f)
-                {
-                    raking.Points.Add(q);
-                    if (raking.Points.Count >= Touches.MaxPoints)
-                    {
-                        CommitStroke();
-                        raking = new RakeStroke { At = Clock() };
-                        raking.Points.Add(q);
-                    }
-                }
-            }
-            sandHoverT = !rakeDown && OnSand(q) && !NearStone(q) && !OnTree(q) ? (sandHoverT < 0 ? Now : sandHoverT) : -1;
+            sandHoverT = OnSand(q) && !NearStone(q) && !OnTree(q) ? (sandHoverT < 0 ? Now : sandHoverT) : -1;
             SetTip(RoamTipAt(at) ?? StarTip(q));
             if (OnTree(q) || InPond(q)) Cursor = Cursors.Hand;
-        }
-
-        void CommitStroke()
-        {
-            var stroke = raking;
-            raking = null;
-            if (stroke == null || stroke.Points.Count < 2) return;
-            Touch.Strokes.Add(stroke);
-            Touch.Prune(Clock());
-            TouchChanged?.Invoke();
-            float t = Now;
-            if (!HintDone("raked"))
-            {
-                MarkHint("raked");
-                Chat(Tone == Tone.Dry ? "Nice lines. I've been doing that for 3000 years." : "Ooh. Very zen.", 2.6f);
-                if (!HintDone("plant")) { MarkHint("plant"); Later("Double-click the sand to plant a seed.", t + 3, 3.4f); }
-            }
         }
 
         protected override void OnMouseDoubleClick(MouseEventArgs e)
@@ -146,7 +70,7 @@ namespace Stillpoint
 
         bool TouchClick(PointF q)
         {
-            if (!CanTouch || rakeUsed) return false;
+            if (!CanTouch) return false;
             float t = Now;
             if (OnTree(q)) { ShakeTree(t); return true; }
             if (InPond(q))
@@ -242,20 +166,11 @@ namespace Stillpoint
         void StepTouch(float t, float dt)
         {
             if (Touch == null) return;
-            bool washing = rainK > 0.45f && Touch.Strokes.Count > 0;
-            sandWash = washing ? Math.Min(1, sandWash + dt / 14) : Math.Max(0, sandWash - dt / 3);
-            if (sandWash >= 1)
-            {
-                Touch.Strokes.Clear();
-                sandWash = 0;
-                TouchChanged?.Invoke();
-                if (!Sleeping && t - touchSaidT > 10) { touchSaidT = t; Chat(snowing ? "The snow covered our lines." : "The rain smoothed our sand.", 2.6f); }
-            }
             bool quiet = bubble == null || t >= bubbleEnd;
-            if (sandHoverT > 0 && Now - sandHoverT > 2.5f && quiet && !HintDone("rake") && !HintDone("raked") && !Sleeping && known && !Busy(t))
+            if (sandHoverT > 0 && Now - sandHoverT > 2.5f && quiet && !HintDone("plant") && !HintDone("seed") && !Sleeping && known && !Busy(t))
             {
-                MarkHint("rake");
-                Say("Psst. Drag across the sand to rake it.", 3.4f);
+                MarkHint("plant");
+                Say("Psst. Double-click the sand to plant a seed.", 3.4f);
             }
             foreach (var p in Touch.Plants)
             {
@@ -288,10 +203,6 @@ namespace Stillpoint
             if (Touch == null) return;
             var now = Clock();
             bool winter = snowGround || season == Season.Winter;
-            float wash = 1 - sandWash;
-            foreach (var s in Touch.Strokes)
-                TouchArt.DrawStroke(g, s.Points, wash * (1 - Smooth(48, 72, (float)(now - s.At).TotalHours)), night, winter);
-            if (raking != null) TouchArt.DrawStroke(g, raking.Points, 1, night, winter);
             bool neglected = state.Weeds > 0;
             foreach (var p in Touch.Plants.OrderBy(p => p.Y))
             {

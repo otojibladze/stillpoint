@@ -95,8 +95,8 @@ namespace Stillpoint
             footer.Anchor = AnchorStyles.None;
             footer.Margin = new Padding(0, 16, 0, 0);
             updateStatus = Ui.Small(Theme.Muted);
-            updateStatus.TextAlign = ContentAlignment.MiddleCenter;
-            updateStatus.Anchor = AnchorStyles.None;
+            updateStatus.TextAlign = ContentAlignment.MiddleRight;
+            updateStatus.Anchor = AnchorStyles.Right;
 
             Ui.AddRow(root, Caption("Reminder"));
             Ui.AddRow(root, reminder);

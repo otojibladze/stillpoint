@@ -288,7 +288,8 @@ namespace Stillpoint
                 var state = g.Save();
                 g.SetClip(groundPath, CombineMode.Intersect);
                 bool winter = ground == Season.Winter;
-                var (darkLine, lightLine) = RakeColors(n, winter);
+                var darkLine = n > 0.5f ? Color.FromArgb(89, 20, 22, 34) : winter ? Color.FromArgb(80, 120, 135, 160) : Color.FromArgb(82, 140, 120, 96);
+                var lightLine = n > 0.5f ? Color.FromArgb(64, 120, 124, 150) : winter ? Color.FromArgb(220, 255, 255, 255) : Color.FromArgb(140, 255, 250, 240);
                 int lines = Math.Min(10, Math.Max(look.RakeLines, look.FadedRakes));
                 for (int i = 0; i < lines; i++)
                 {

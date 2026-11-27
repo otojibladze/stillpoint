@@ -12,35 +12,6 @@ namespace Stillpoint
 
         static Color Dim(Color c, float night, float k = 0.45f) => Mix(c, NightBlue, night * k);
 
-        static PointF[] Offset(IList<PointF> pts, float d)
-        {
-            var result = new PointF[pts.Count];
-            for (int i = 0; i < pts.Count; i++)
-            {
-                var a = pts[Math.Max(0, i - 1)];
-                var b = pts[Math.Min(pts.Count - 1, i + 1)];
-                float dx = b.X - a.X, dy = b.Y - a.Y, len = (float)Math.Sqrt(dx * dx + dy * dy) + 0.0001f;
-                result[i] = new PointF(pts[i].X - dy / len * d, pts[i].Y + dx / len * d);
-            }
-            return result;
-        }
-
-        public static void DrawStroke(Graphics g, IList<PointF> pts, float alpha, float night, bool winter)
-        {
-            if (pts.Count < 2 || alpha < 0.01f) return;
-            var (dark, light) = GardenArt.RakeColors(night, winter);
-            using (var darkPen = new Pen(Color.FromArgb((int)(dark.A * alpha), dark), 1.2f) { LineJoin = LineJoin.Round, StartCap = LineCap.Round, EndCap = LineCap.Round })
-            using (var lightPen = new Pen(Color.FromArgb((int)(light.A * alpha), light), 0.9f) { LineJoin = LineJoin.Round, StartCap = LineCap.Round, EndCap = LineCap.Round })
-                foreach (float d in new[] { -2.4f, 0f, 2.4f })
-                {
-                    var line = Offset(pts, d);
-                    g.DrawLines(darkPen, line);
-                    var lit = Offset(pts, d - 0.7f);
-                    for (int i = 0; i < lit.Length; i++) lit[i] = new PointF(lit[i].X - 0.3f, lit[i].Y - 0.4f);
-                    g.DrawLines(lightPen, lit);
-                }
-        }
-
         static readonly Color[][] Petals =
         {
             new[] { Hex(0xE0566B), Hex(0xF08AA0) },

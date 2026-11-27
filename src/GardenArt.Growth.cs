@@ -11,10 +11,6 @@ namespace Stillpoint
         static readonly float[][] Crown = { new[] { 0f, 0f, 1f }, new[] { -0.58f, 0.18f, 0.68f }, new[] { 0.6f, 0.14f, 0.7f }, new[] { -0.3f, -0.5f, 0.7f }, new[] { 0.32f, -0.46f, 0.66f }, new[] { 0f, -0.8f, 0.52f }, new[] { -0.82f, -0.18f, 0.46f }, new[] { 0.84f, -0.26f, 0.45f } };
         static readonly float[][] Blossoms = { new[] { -0.4f, -0.3f }, new[] { 0.2f, -0.6f }, new[] { 0.55f, 0.1f }, new[] { -0.7f, 0.2f }, new[] { 0.05f, 0.25f }, new[] { -0.15f, -0.85f }, new[] { 0.75f, -0.45f }, new[] { -0.45f, -0.65f }, new[] { 0.35f, -0.15f } };
 
-        public static (Color Dark, Color Light) RakeColors(float night, bool winter) =>
-            (night > 0.5f ? Color.FromArgb(89, 20, 22, 34) : winter ? Color.FromArgb(80, 120, 135, 160) : Color.FromArgb(82, 140, 120, 96),
-             night > 0.5f ? Color.FromArgb(64, 120, 124, 150) : winter ? Color.FromArgb(220, 255, 255, 255) : Color.FromArgb(140, 255, 250, 240));
-
         public static (PointF Center, float Radius) TreeCrown(float growth)
         {
             float h = 9 + 69 * growth;

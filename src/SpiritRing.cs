@@ -1103,14 +1103,13 @@ namespace Stillpoint
             pointerIn = true;
             pointerT = Now;
             Cursor = OnStone(q) ? Cursors.Hand : Cursors.Default;
-            TouchMove(e.Location, q, e.Button);
+            TouchMove(e.Location, q);
         }
 
         protected override void OnMouseLeave(EventArgs e)
         {
             base.OnMouseLeave(e);
             pointerIn = false;
-            EndRake();
             SetTip(null);
         }
 
