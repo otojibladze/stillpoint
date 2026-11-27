@@ -140,19 +140,6 @@ namespace Stillpoint
 
         public static void DrawStill(Graphics g, ICollection<string> seen, PointF tip, float night)
         {
-            if (seen.Contains(Visitors.Traveler))
-            {
-                var p = TravelerPose(night);
-                p.Eyes = Eyes.Happy;
-                DrawTraveler(g, TravelerRest.X, TravelerRest.Y, p, 0, night);
-            }
-            if (seen.Contains(Visitors.Plane)) DrawPlane(g, PlaneRest.X, PlaneRest.Y, 0.06f, -1, night);
-            if (seen.Contains(Visitors.Duckling))
-            {
-                DrawDuck(g, 58, DuckY, 1, 0, 0, night, false, 0);
-                DrawDuck(g, 76, DuckY + 1, -1, 0, 0, night, true, 0);
-            }
-            if (seen.Contains(Visitors.Hedgehog)) DrawHedgehog(g, 128, HedgehogY, -1, 0, 0, 0, 0, night);
             if (seen.Contains(Visitors.Balloon))
             {
                 var at = new PointF(tip.X + 34, tip.Y - 15);

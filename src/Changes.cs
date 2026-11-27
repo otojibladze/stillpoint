@@ -20,6 +20,7 @@ namespace Stillpoint
 
         public static readonly Release[] All =
         {
+            R("3.13.3", "2026-11-27", "Animals in the garden pictures no longer pile on top of each other."),
             R("3.13.2", "2026-11-27", "Check for updates finds a new version right away."),
             R("3.13.1", "2026-11-27", "Raking the sand is gone. Double-click the sand to plant a seed.", "The update message in Settings sits at the bottom right."),
             R("3.13.0", "2026-11-27", "Pebble dreams at night about your day, and tells you about it in the morning.", "Pebble keeps a journal. Read it on the Garden page.", "Every day your flower blooms lights a star. Twelve make a constellation, and Pebble names it.", "Touch the garden: drag to rake the sand, double-click to plant a seed that grows with your breaks, click the tree to shake it."),

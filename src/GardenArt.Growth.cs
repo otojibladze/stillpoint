@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using static Stillpoint.SpiritArt;
 
 namespace Stillpoint
@@ -101,14 +103,49 @@ namespace Stillpoint
                     foreach (var at in new[] { new PointF(51, 187.5f), new PointF(91, 189), new PointF(97, 183.5f) }) DrawFrog(g, at.X, at.Y, 0, 0, 0, 0.32f);
             }
             if (v.Contains(Visitors.Bat)) WildArt.DrawBat(g, 232, 74, 0.7f, 1, 1, night);
-            if (v.Contains(Visitors.Worm)) WildArt.DrawWorm(g, 156, 221, 1, 0.4f, 0.8f, 0.7f, night);
-            if (v.Contains(Visitors.Rabbit)) WildArt.DrawRabbit(g, 240, 212, 0.4f, -1, new CritterPose { Tilt = 1 }, night);
-            if (v.Contains(Visitors.Mouse)) WildArt.DrawMouse(g, 180, 215, 0.6f, -1, new CritterPose { Sit = 1, Acorn = true }, night);
-            if (v.Contains(Visitors.Cubs))
+        }
+
+        static readonly (float Y, float[] X)[] Slots = { (217, new float[] { 230, 70, 256, 44, 202, 98, 150, 176, 124 }), (231, new float[] { 243, 57, 216, 84, 188, 112, 163, 137 }) };
+
+        static void DrawGroundStills(Graphics g, ICollection<string> v, float night)
+        {
+            var still = new CritterPose();
+            var items = new List<(string Id, float Width, Action<float, float, float> Draw)>
             {
-                WildArt.DrawCub(g, 60, 222, 0.5f, 1, new CritterPose { Sit = 1 }, 0.6f, 0.52f, night);
-                WildArt.DrawCub(g, 106, 222, 1.7f, -1, new CritterPose(), 0.6f, 0.52f, night);
+                (Visitors.Fox, 30, (x, y, f) => CritterArt.DrawFox(g, x, y, 0, f, new CritterPose { Sit = 1, Curl = 1 }, night)),
+                (Visitors.Cat, 30, (x, y, f) => DrawCat(g, x, y, 0, -f, new CritterPose { Curl = 1 })),
+                (Visitors.Duckling, 36, (x, y, f) => { StoryArt.DrawDuck(g, x - 9 * f, y, f, 0, 0, night, false, 0); StoryArt.DrawDuck(g, x + 9 * f, y + 1, -f, 0, 0, night, true, 0); }),
+                (Visitors.Cubs, 30, (x, y, f) => { WildArt.DrawCub(g, x - 8, y, 0.5f, 1, new CritterPose { Sit = 1 }, 0.6f, 0.52f, night); WildArt.DrawCub(g, x + 8, y, 1.7f, -1, new CritterPose(), 0.6f, 0.52f, night); }),
+                (Visitors.Traveler, 24, (x, y, f) => { var p = StoryArt.TravelerPose(night); p.Eyes = Eyes.Happy; p.LookX = f; StoryArt.DrawTraveler(g, x, y, p, 0, night); }),
+                (Visitors.Squirrel, 26, (x, y, f) => CritterArt.DrawSquirrel(g, x, y, 0.3f, f, new CritterPose { Acorn = true }, night)),
+                (Visitors.Rabbit, 22, (x, y, f) => WildArt.DrawRabbit(g, x, y, 0.4f, f, new CritterPose { Tilt = 1 }, night)),
+                (Visitors.Turtle, 22, (x, y, f) => CritterArt.DrawTurtle(g, x, y, 0.5f, f, still, night)),
+                (Visitors.Hedgehog, 24, (x, y, f) => StoryArt.DrawHedgehog(g, x, y, f, 0, 0, 0, 0, night)),
+                (Visitors.Snails, 36, (x, y, f) => { DrawSnail(g, x - 10, y, 0.4f, 1); DrawSnail(g, x + 10, y, 0.9f, -1); }),
+                (Visitors.Snail, 24, (x, y, f) => DrawSnail(g, x, y, 0.4f, f)),
+                (Visitors.Frog, 16, (x, y, f) => DrawFrog(g, x, y, 0, 0)),
+                (Visitors.Mouse, 18, (x, y, f) => WildArt.DrawMouse(g, x, y, 0.6f, f, new CritterPose { Sit = 1, Acorn = true }, night)),
+                (Visitors.Plane, 20, (x, y, f) => StoryArt.DrawPlane(g, x, y, 0.06f, f, night)),
+                (Visitors.Worm, 14, (x, y, f) => WildArt.DrawWorm(g, x, y, f, 0.4f, 0.8f, 0.7f, night)),
+            };
+            var placed = new List<(float X, float Y, float Width, Action<float, float, float> Draw)>();
+            foreach (var item in items.Where(i => v.Contains(i.Id)))
+            {
+                bool done = false;
+                foreach (var (y, xs) in Slots)
+                {
+                    foreach (var x in xs)
+                    {
+                        if (x - item.Width / 2 < 16 || x + item.Width / 2 > 284) continue;
+                        if (placed.Any(p => p.Y == y && Math.Abs(p.X - x) < (p.Width + item.Width) / 2 + 3)) continue;
+                        placed.Add((x, y, item.Width, item.Draw));
+                        done = true;
+                        break;
+                    }
+                    if (done) break;
+                }
             }
+            foreach (var p in placed.OrderBy(p => p.Y)) p.Draw(p.X, p.Y, p.X < StoneX ? 1 : -1);
         }
 
         public static void DrawSnowmanOver(Graphics g, SceneLook look) => DrawSnowman(g, look.Snowman, look.Night, look.SnowmanMelted);

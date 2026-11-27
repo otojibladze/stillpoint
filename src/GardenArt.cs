@@ -800,20 +800,11 @@ namespace Stillpoint
             DrawCaches(g, day.Caches, -1, day.Season, night, day.Season == Season.Winter, 0);
             if ((day.Keepsakes & Keepsake.Baby) != 0) DrawSpirit(g, BabyAt.X, BabyAt.Y, BabyR, BabyPose(pose, 0.5f), 2f);
             var v = day.Visitors;
-            if (v.Contains(Visitors.Snail)) DrawSnail(g, 198, 213, 0.4f, -1);
-            if (v.Contains(Visitors.Frog)) DrawFrog(g, FrogAt.X, FrogAt.Y, 0, 0);
-            if (v.Contains(Visitors.Cat)) DrawCat(g, CatAt.X, CatAt.Y, 0);
+            DrawGroundStills(g, v, night);
             if (v.Contains(Visitors.Bird)) DrawBird(g, points.Head.X, points.Head.Y, 0, 1, false);
             if (v.Contains(Visitors.Butterfly)) DrawButterfly(g, points.Tip.X, points.Tip.Y - 5, 0.6f, true);
             if (v.Contains(Visitors.Dragonfly)) DrawDragonfly(g, 96, 118, 0.3f, 1);
             var still = new CritterPose();
-            if (v.Contains(Visitors.Fox)) CritterArt.DrawFox(g, 84, 217, 0, 1, new CritterPose { Sit = 1, Curl = 1 }, night);
-            if (v.Contains(Visitors.Snails)) { DrawSnail(g, 132, 224, 0.4f, 1); DrawSnail(g, 154, 224, 0.9f, -1); }
-            if (v.Contains(Visitors.Turtle)) CritterArt.DrawTurtle(g, 186, 228, 0.5f, -1, still, night);
-            if (v.Contains(Visitors.Squirrel))
-            {
-                CritterArt.DrawSquirrel(g, DigAt.X + 9, DigAt.Y, 0.3f, -1, new CritterPose { Acorn = true }, night);
-            }
             if (v.Contains(Visitors.Owl)) { var perch = OwlPerch(pose, Keepsake.None); CritterArt.DrawOwl(g, perch.X, perch.Y, 0, new CritterPose { Turn = -0.4f }, night); }
             if (v.Contains(Visitors.Moth))
             {
