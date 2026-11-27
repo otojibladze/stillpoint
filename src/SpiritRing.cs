@@ -84,7 +84,7 @@ namespace Stillpoint
         Season season = Season.Autumn;
 
         float stretchT = -99, pokeT = -99, dizzyT = -99, wakeT = -99, yawnT = -99, rakeT = -99, bloomT = -99, snowmanT = -99;
-        float nextAct = 8, bfAt = -1, frogAt = -1, snailNext = 20, petSaidT = -99, heartT, noteT, humT = -99, demoT = -99, rainbowT = -99;
+        float nextAct = 8, snailNext = 20, petSaidT = -99, heartT, noteT, humT = -99, demoT = -99, rainbowT = -99;
         float rainAcc, ambientAcc;
         float fogK, wetReal, flashT = -99, lightningNext = 20, tracesT = -99;
         float petK, wind, windDrift, gustT = -99, gustNext = 15, shimmerK, shownProgress;
@@ -242,8 +242,6 @@ namespace Stillpoint
             else Say("Let's sit. I'll keep count.");
             wakeT = t;
             humT = -99;
-            bfAt = -1;
-            frogAt = -1;
             demoT = -99;
             maxRain = 0;
             SendAway(butterfly, t);
@@ -262,19 +260,17 @@ namespace Stillpoint
                 Chat(Voice.Startled(Tone), 2.6f);
             }
             stretchT = t + (startled ? 1.1f : 0);
+            arrivalsAt = t + 30 + Rand * 25;
             sparked = landed = false;
             humT = -99;
             demoT = stretchT + 2.1f;
             demoIndex = (Clock().DayOfYear + Math.Max(0, breaks)) % Stretches.Length;
             Later(Stretches[demoIndex].Line, demoT, DemoLength - 0.3f);
-            bfAt = demoT + DemoLength + 1.5f;
             if (maxRain > 0.15f && Daylight && !snowing)
             {
                 rainbowT = t + 2;
                 Visit(Visitors.Rainbow);
             }
-            if (maxRain > 0.25f) frogAt = demoT + DemoLength + 1;
-            if (maxRain > 0.15f && season != Season.Winter && rng.NextDouble() < 0.6) snailsAt = demoT + DemoLength + 4;
             SendAwayVisitors(t);
             if (Nest.Fragile(nestStage)) Later(nestStage == NestStage.Eggs ? "Careful... careful... the eggs!" : "Gently... the chicks are sleeping.", t + 0.2f, 2.2f);
             maxRain = 0;
@@ -333,6 +329,7 @@ namespace Stillpoint
 
         void StartDragonfly(float t)
         {
+            if (!Fits(Visitors.Dragonfly)) return;
             dragonfly.State = 1;
             dragonfly.T0 = t;
             dragonfly.K = 0;
@@ -358,7 +355,8 @@ namespace Stillpoint
             if (Math.Abs(nx - c.X) > 0.3f) c.Side = nx > c.X ? 1 : -1;
             c.X = nx;
             c.Y = ny;
-            if (since > 8.2f || Running) c.State = 0;
+            if (since > 8.2f) c.State = 0;
+            else if (Running) DragonflyLeave(t);
         }
 
         string Pick(string[] list) => list[rng.Next(list.Length)];
@@ -527,6 +525,7 @@ namespace Stillpoint
             StepFrog(t, dt);
             StepCat(t, dt);
             StepDragonfly(t);
+            StepHabitat(t);
             StepVisitors(t, dt);
             StepWild(t, dt);
             StepSeasons(t, dt);
@@ -640,23 +639,13 @@ namespace Stillpoint
         void Schedule(float t, bool calm)
         {
             if (Sleeping) return;
-            if (bfAt > 0 && t > bfAt && calm && !Running && rainK < 0.3f)
-            {
-                bfAt = -1;
-                StartDayVisitor(t);
-                nextAct = t + 14;
-                return;
-            }
-            if (frogAt > 0 && t > frogAt && !Running && frog.State == 0) { frogAt = -1; frog.State = 1; frog.T0 = t; frog.D = 0; }
-            if (snailsAt > 0 && t > snailsAt && !Running) { snailsAt = -1; StartSnails(t); }
-            if (!turtle.Active && !snail.Active && !snails.Active && Warm && Running && state.SessionSeconds >= state.Interval * 1.25 && t > turtleNext) StartTurtle(t);
-            bool wetGround = season != Season.Winter && (rainK > 0.2f || wetReal > 0.4f);
-            if (!snail.Active && !snails.Active && !turtle.Active && Running && state.SessionSeconds >= state.Interval * 0.9 && t > snailNext && wetGround && rng.NextDouble() < 0.5)
+            if (!turtle.Active && !snail.Active && !snails.Active && Running && state.SessionSeconds >= state.Interval * 1.25 && t > turtleNext) StartTurtle(t);
+            if (!snail.Active && !snails.Active && !turtle.Active && Running && state.SessionSeconds >= state.Interval * 0.9 && t > snailNext && rng.NextDouble() < 0.5)
             {
                 snailNext = t + 180;
                 StartSnails(t);
             }
-            if (!snail.Active && !snails.Active && !turtle.Active && Running && state.SessionSeconds >= state.Interval * 0.9 && t > snailNext)
+            if (!snail.Active && !snails.Active && !turtle.Active && Running && state.SessionSeconds >= state.Interval * 0.9 && t > snailNext && Fits(Visitors.Snail))
             {
                 snail.State = 1;
                 snail.T0 = t;
@@ -680,7 +669,7 @@ namespace Stillpoint
 
         void StartFlyer(Critter c, float t)
         {
-            if (c.Active) return;
+            if (c.Active || !Fits(c == bird ? Visitors.Bird : Visitors.Butterfly)) return;
             c.Side = rng.NextDouble() < 0.5 ? -1 : 1;
             c.State = 1;
             c.T0 = t;
@@ -1183,8 +1172,8 @@ namespace Stillpoint
             if (StartVisitor(visitor, t) || StartStory(visitor, t)) return;
             if (visitor == Visitors.Butterfly) StartFlyer(butterfly, t);
             else if (visitor == Visitors.Bird) StartFlyer(bird, t);
-            else if (visitor == Visitors.Snail) { snail.State = 1; snail.T0 = t - 30; }
-            else if (visitor == Visitors.Frog) { frog.State = 1; frog.T0 = t; }
+            else if (visitor == Visitors.Snail && !snail.Active && Fits(Visitors.Snail)) { snail.State = 1; snail.T0 = t - 30; }
+            else if (visitor == Visitors.Frog) StartPondFrog(t);
             else if (visitor == Visitors.Rainbow) rainbowT = t - 3;
         }
 
@@ -1385,7 +1374,7 @@ namespace Stillpoint
             DrawPondLife(g, t, night);
             if ((state.Keepsakes & Keepsake.Lantern) != 0) GardenArt.DrawLanternFlicker(g, t, night);
             GardenArt.DrawHeatShimmer(g, t, shimmerK);
-            float fireflies = season == Season.Summer ? Math.Max(night, NightHour(19) ? 0.6f : 0) * (1 - cloudK * 0.6f) : 0;
+            float fireflies = season == Season.Summer ? Math.Max(night, NightHour(19) ? 0.6f : 0) * (1 - cloudK * 0.6f) * (1 - SpiritArt.Smooth(0.1f, 0.3f, rainK)) : 0;
             bool clipped = bird.Active || butterfly.Active || dragonfly.Active || cat.Active || frog.Active || AnyVisitor || story.Active;
             var clip = g.Save();
             if (clipped) using (var disc = Disc()) g.SetClip(disc, CombineMode.Intersect);

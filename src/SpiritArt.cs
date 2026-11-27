@@ -607,7 +607,7 @@ namespace Stillpoint
             g.Restore(state);
         }
 
-        public static void DrawBird(Graphics g, float x, float y, float t, float facing, bool flying, float puff = 0, float peck = 0, float cock = 0, float shake = 0)
+        public static void DrawBird(Graphics g, float x, float y, float t, float facing, bool flying, float peck = 0, float cock = 0)
         {
             var state = g.Save();
             g.TranslateTransform(x, y);
@@ -618,22 +618,18 @@ namespace Stillpoint
                     g.DrawLine(legs, -0.5f, 0.5f, -1, 3);
                     g.DrawLine(legs, 1.5f, 0.5f, 1.5f, 3);
                 }
-            if (peck != 0 || shake != 0)
+            if (peck != 0)
             {
                 g.TranslateTransform(0.5f, 2);
-                g.RotateTransform(peck * 42 + shake * 12 * Sin(t * 46));
+                g.RotateTransform(peck * 42);
                 g.TranslateTransform(-0.5f, -2);
             }
             var brown = Hex(0x8A6A55);
-            float fat = 1 + 0.2f * puff, tuck = 1.8f * puff;
-            FillPolygon(g, Hex(0x6E5444), new PointF(-5, -3), new PointF(-12, -6.5f + puff), new PointF(-11.5f, -2.5f + puff));
-            FillEllipse(g, brown, 0, -4 - puff * 0.4f, 7 * fat, 5 * fat);
-            FillEllipse(g, Hex(0xD9774E), 2.6f, -3 - puff * 0.3f, 4 * fat, 3.6f * fat);
-            if (puff > 0.05f)
-                for (int i = 0; i < 5; i++)
-                    FillEllipse(g, Alpha(brown, 0.9f * puff), -4.5f + i * 2.2f, -8.6f - puff * 0.6f + Math.Abs(i - 2) * 0.7f, 1.4f, 1.1f);
+            FillPolygon(g, Hex(0x6E5444), new PointF(-5, -3), new PointF(-12, -6.5f), new PointF(-11.5f, -2.5f));
+            FillEllipse(g, brown, 0, -4, 7, 5);
+            FillEllipse(g, Hex(0xD9774E), 2.6f, -3, 4, 3.6f);
             var head = g.Save();
-            g.TranslateTransform(5, -9 + tuck);
+            g.TranslateTransform(5, -9);
             g.RotateTransform(cock * 26);
             FillEllipse(g, brown, 0, 0, 3.7f, 3.5f);
             FillEllipse(g, Ink, 1.2f, -0.6f, 0.85f, 0.85f);
@@ -641,9 +637,9 @@ namespace Stillpoint
             g.Restore(head);
             float flap = flying ? Sin(t * 26) : 0.15f;
             var wing = g.Save();
-            g.TranslateTransform(-1, -5.5f - puff * 0.5f);
+            g.TranslateTransform(-1, -5.5f);
             g.RotateTransform((-0.35f - flap * 0.7f) * Deg);
-            FillEllipse(g, Hex(0x6E5444), -1, 0, 6 * fat, 2.6f * fat);
+            FillEllipse(g, Hex(0x6E5444), -1, 0, 6, 2.6f);
             g.Restore(wing);
             g.Restore(state);
         }

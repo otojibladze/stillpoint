@@ -102,41 +102,49 @@ namespace Stillpoint
 
     static class Garden
     {
-        public static AwayReport WhileAway(DateTime from, DateTime to, Season season, WeatherNow weather, Random rnd)
+        static readonly (string Id, double Base, double PerHour, double Max)[] AwayOdds =
+        {
+            (Visitors.Snail, 0.25, 0.1, 0.7), (Visitors.Bird, 0.2, 0.08, 0.6), (Visitors.Cat, 0.35, 0.05, 0.55), (Visitors.Frog, 0.3, 0.1, 0.7),
+            (Visitors.Snails, 0.15, 0.05, 0.35), (Visitors.Squirrel, 0.15, 0.06, 0.45), (Visitors.Rabbit, 0.2, 0.05, 0.3), (Visitors.Mouse, 0.2, 0.03, 0.3),
+            (Visitors.Bat, 0.15, 0.03, 0.25), (Visitors.Worm, 0.3, 0.1, 0.5), (Visitors.Ladybug, 0.1, 0.04, 0.25), (Visitors.Owl, 0.2, 0.04, 0.35), (Visitors.Fox, 0.15, 0.04, 0.3),
+        };
+
+        public static AwayReport WhileAway(DateTime from, DateTime to, Season season, WeatherNow weather, Func<DateTime, SunTimes> sunOn, Random rnd)
         {
             var report = new AwayReport { From = from, To = to };
             double hours = Math.Max(0, (to - from).TotalHours);
-            var nightHours = new List<DateTime>();
-            bool day = false;
-            var twilight = new List<DateTime>();
-            for (var h = from; h < to && nightHours.Count + 1 < 200; h = h.AddHours(1))
+            var slots = new List<DateTime>();
+            for (var h = from; h < to && slots.Count < 200; h = h.AddHours(1)) slots.Add(h);
+            report.Overnight = slots.Count(h => h.Hour >= 22 || h.Hour < 6) >= 3;
+            var real = weather != null && weather.Fresh(to) ? weather : null;
+            Func<DateTime, bool> rainedAt;
+            if (real != null)
             {
-                if (h.Hour >= 22 || h.Hour < 6) nightHours.Add(h);
-                if (h.Hour >= 8 && h.Hour < 19) day = true;
-                if (h.Hour >= 5 && h.Hour < 8 || h.Hour >= 17 && h.Hour < 21) twilight.Add(h);
+                var span = real.Between(from, to);
+                report.Rained = span.Rain;
+                report.Snowed = span.Snow;
+                rainedAt = h => real.At(h) is var r && r != null && r.Value.Rain > 0.1f;
             }
-            report.Overnight = nightHours.Count >= 3;
-            if (weather != null && weather.Fresh(to))
+            else
             {
-                var real = weather.Between(from, to);
-                report.Rained = real.Rain;
-                report.Snowed = real.Snow;
+                report.Rained = hours >= 2 && season != Season.Winter && rnd.NextDouble() < 0.2;
+                var start = from.AddHours(rnd.NextDouble() * Math.Max(0, hours - 2));
+                rainedAt = h => report.Rained && h >= start && h < start.AddHours(2);
             }
-            else report.Rained = hours >= 2 && season != Season.Winter && rnd.NextDouble() < 0.2;
-            Func<DateTime> anyTime = () => from.AddSeconds(rnd.NextDouble() * (to - from).TotalSeconds);
-            if (season != Season.Winter && day && rnd.NextDouble() < Math.Min(0.7, 0.25 + hours * 0.1)) report.Visits.Add((Visitors.Snail, anyTime()));
-            if (day && rnd.NextDouble() < Math.Min(0.6, 0.2 + hours * 0.08)) report.Visits.Add((Visitors.Bird, anyTime()));
-            if (nightHours.Count > 0 && rnd.NextDouble() < 0.55) report.Visits.Add((Visitors.Cat, nightHours[rnd.Next(nightHours.Count)]));
-            if (report.Rained && season != Season.Winter && rnd.NextDouble() < 0.7) report.Visits.Add((Visitors.Frog, anyTime()));
-            if (report.Rained && season != Season.Winter && rnd.NextDouble() < 0.35) report.Visits.Add((Visitors.Snails, anyTime()));
-            if (day && rnd.NextDouble() < Math.Min(0.45, 0.15 + hours * 0.06) * (season == Season.Winter ? 0.4 : 1)) report.Visits.Add((Visitors.Squirrel, anyTime()));
-            if (twilight.Count > 0 && rnd.NextDouble() < 0.3) report.Visits.Add((Visitors.Rabbit, twilight[rnd.Next(twilight.Count)]));
-            if (nightHours.Count > 0 && rnd.NextDouble() < 0.3) report.Visits.Add((Visitors.Mouse, nightHours[rnd.Next(nightHours.Count)]));
-            if (nightHours.Count > 0 && from.Month >= 4 && from.Month <= 10 && rnd.NextDouble() < 0.25) report.Visits.Add((Visitors.Bat, nightHours[rnd.Next(nightHours.Count)]));
-            if (report.Rained && season != Season.Winter && rnd.NextDouble() < 0.5) report.Visits.Add((Visitors.Worm, anyTime()));
-            if (from.Month >= 4 && from.Month <= 10 && day && rnd.NextDouble() < 0.25) report.Visits.Add((Visitors.Ladybug, anyTime()));
-            if (nightHours.Count > 0 && rnd.NextDouble() < 0.35) report.Visits.Add((Visitors.Owl, nightHours[rnd.Next(nightHours.Count)]));
-            if (nightHours.Count > 0 && rnd.NextDouble() < 0.3) report.Visits.Add((Visitors.Fox, nightHours[rnd.Next(nightHours.Count)]));
+            var suns = new Dictionary<DateTime, SunTimes>();
+            var envs = slots.Select(h =>
+            {
+                if (!suns.TryGetValue(h.Date, out var sun)) suns[h.Date] = sun = sunOn(h.Date);
+                return (Hour: h, Env: Habitats.Hour(h, sun, real, rainedAt));
+            }).ToList();
+            foreach (var (id, baseOdds, perHour, max) in AwayOdds)
+            {
+                var fit = envs.Where(x => Habitats.Fits(id, x.Env)).Select(x => x.Hour).ToList();
+                if (fit.Count == 0 || rnd.NextDouble() >= Math.Min(max, baseOdds + perHour * fit.Count)) continue;
+                var at = fit[rnd.Next(fit.Count)];
+                var when = at.AddMinutes(rnd.NextDouble() * Math.Min(59, Math.Max(0, (to - at).TotalMinutes - 1)));
+                report.Visits.Add((id, Habitats.Fits(id, Habitats.Hour(when, sunOn(when.Date), real, rainedAt)) ? when : at));
+            }
             if (season == Season.Autumn) report.Leaves = (int)Math.Min(8, 1 + hours);
             return report;
         }

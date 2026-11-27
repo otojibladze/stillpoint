@@ -123,7 +123,7 @@ namespace Stillpoint
                 (nestStage, nestProgress) = Nest.On(Clock(), state.Southern);
                 if (season == Season.Winter) nestStage = NestStage.None;
             }
-            if (FledgeDue && fledgeT < 0 && t > 10 && nightK < 0.4f && !Running && !Sleeping && t - stretchT > 12)
+            if (FledgeDue && fledgeT < 0 && t > 10 && nightK < 0.4f && rainK < 0.2f && !Running && !Sleeping && t - stretchT > 12)
             {
                 fledgeT = t;
                 Chat("Look! The chicks are leaving the nest!", 3.2f);

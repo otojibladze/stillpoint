@@ -19,6 +19,7 @@ namespace Stillpoint
 
         void StartDayCat(float t)
         {
+            if (!Fits(Visitors.Cat)) return;
             if (cat.Active) return;
             var p = cat.P;
             cat.State = 1;
@@ -46,7 +47,7 @@ namespace Stillpoint
         void StepCat(float t, float dt)
         {
             if (cat.D == 1) { StepDayCat(t, dt); return; }
-            bool want = nightK > 0.7f && Sleeping;
+            bool want = nightK > 0.7f && Sleeping && Habitats.Fits(Visitors.Cat, LiveEnv());
             var p = cat.P;
             float s = t - cat.T0, home = GardenArt.CatAt.X, away = home + 95;
             switch (cat.State)
@@ -203,6 +204,7 @@ namespace Stillpoint
 
         void MaybeFoxChase(float t)
         {
+            if (!Fits(Visitors.Fox)) return;
             if (fox.Active || t < foxChaseNext || nightK > 0.7f || Sleeping || rainK > 0.3f || Rand > 0.25f) return;
             foxChaseNext = t + 300;
             var c = fox;

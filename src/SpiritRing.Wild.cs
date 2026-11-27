@@ -17,7 +17,6 @@ namespace Stillpoint
         PointF castAt, batVel, mouseFrom, mouseTo;
         int batExit = 1;
 
-        bool BatSeason => Garden.SeasonMonth(Clock()) >= 4 && Garden.SeasonMonth(Clock()) <= 10;
         bool WetGround => season != Season.Winter && !snowGround && (wetReal > 0.4f || rainK > 0.25f || AwayWet(Now) > 0.3f);
         Trust RabbitTrust => (Trust)(int)rabbit.D;
 
@@ -48,6 +47,7 @@ namespace Stillpoint
 
         void StartRabbit(float t)
         {
+            if (!Fits(Visitors.Rabbit)) return;
             var c = rabbit;
             if (c.Active) return;
             bool left = cat.Active || Rand < 0.5f;
@@ -215,6 +215,7 @@ namespace Stillpoint
 
         void StartBat(float t)
         {
+            if (!Fits(Visitors.Bat)) return;
             var c = bat;
             if (c.Active) return;
             c.State = 1;
@@ -270,6 +271,7 @@ namespace Stillpoint
 
         void StartWorm(float t)
         {
+            if (!Fits(Visitors.Worm)) return;
             var c = worm;
             if (c.Active) return;
             var spot = WormSpots[rng.Next(WormSpots.Length)];
@@ -331,6 +333,7 @@ namespace Stillpoint
 
         void StartMouse(float t)
         {
+            if (!Fits(Visitors.Mouse)) return;
             var c = mouse;
             if (c.Active) return;
             bool left = cat.Active || Rand < 0.5f;

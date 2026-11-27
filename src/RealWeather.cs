@@ -17,9 +17,16 @@ namespace Stillpoint
     sealed class WeatherNow
     {
         public DateTime Fetched;
-        public float CloudCover, Rain, Snowfall, SnowDepth, Wind, Gusts;
+        public float CloudCover, Rain, Snowfall, SnowDepth, Wind, Gusts, Temp = float.NaN;
         public int Code;
-        public List<(DateTime Hour, float Rain, float Snow)> Hours = new List<(DateTime, float, float)>();
+        public List<(DateTime Hour, float Rain, float Snow, float Temp)> Hours = new List<(DateTime, float, float, float)>();
+
+        public (float Rain, float Snow, float Temp)? At(DateTime time)
+        {
+            foreach (var h in Hours)
+                if (time >= h.Hour && time < h.Hour.AddHours(1)) return (h.Rain, h.Snow, h.Temp);
+            return null;
+        }
 
         public bool Fresh(DateTime now) => (now - Fetched).TotalHours < 3;
         public bool Fog => Code == 45 || Code == 48;
@@ -44,7 +51,7 @@ namespace Stillpoint
     static class RealWeather
     {
         const string Geocoding = "https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=";
-        const string Forecast = "https://api.open-meteo.com/v1/forecast?current=precipitation,rain,showers,snowfall,cloud_cover,weather_code,snow_depth,wind_speed_10m,wind_gusts_10m&hourly=precipitation,snowfall&past_days=2&forecast_days=1&timezone=GMT";
+        const string Forecast = "https://api.open-meteo.com/v1/forecast?current=precipitation,rain,showers,snowfall,cloud_cover,weather_code,snow_depth,wind_speed_10m,wind_gusts_10m,temperature_2m&hourly=precipitation,snowfall,temperature_2m&past_days=2&forecast_days=1&timezone=GMT";
         static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
         public static async Task<Town> FindTown(string name)
@@ -76,15 +83,17 @@ namespace Stillpoint
                 weather.Code = (int)Number(current, "weather_code");
                 weather.Wind = (float)Number(current, "wind_speed_10m");
                 weather.Gusts = (float)Number(current, "wind_gusts_10m");
+                if (current.TryGetValue("temperature_2m", out var temp) && temp != null) weather.Temp = (float)Number(current, "temperature_2m");
             }
             if (root.TryGetValue("hourly", out var h) && h is Dictionary<string, object> hourly
                 && hourly.TryGetValue("time", out var t) && t is object[] times
                 && hourly.TryGetValue("precipitation", out var p) && p is object[] rain
                 && hourly.TryGetValue("snowfall", out var s) && s is object[] snow)
             {
+                var temps = hourly.TryGetValue("temperature_2m", out var tt) ? tt as object[] : null;
                 for (int i = 0; i < times.Length && i < rain.Length && i < snow.Length; i++)
                     if (DateTime.TryParseExact(times[i] as string, "yyyy-MM-dd'T'HH:mm", Inv, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var hour))
-                        weather.Hours.Add((hour.ToLocalTime(), ToFloat(rain[i]), ToFloat(snow[i])));
+                        weather.Hours.Add((hour.ToLocalTime(), ToFloat(rain[i]), ToFloat(snow[i]), temps != null && i < temps.Length && temps[i] != null ? ToFloat(temps[i]) : float.NaN));
             }
             return weather;
         }

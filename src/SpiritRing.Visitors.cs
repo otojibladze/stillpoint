@@ -9,7 +9,7 @@ namespace Stillpoint
     {
         const float LadyLand = 1.02f * Pi, TurtleY = 215;
         readonly Critter ladybug = new Critter(), bee = new Critter(), squirrel = new Critter(), owl = new Critter(), moth = new Critter(), fox = new Critter(), snails = new Critter(), turtle = new Critter();
-        float faceK, nightNext = 25, turtleNext = 30, snailsAt = -1, beeDip, digHole, digMound, moundBefore, acornDrop = -1, foxPrintsT = -9999, turtleHideT = -99;
+        float faceK, nightNext = 25, turtleNext = 30, beeDip, digHole, digMound, moundBefore, acornDrop = -1, foxPrintsT = -9999, turtleHideT = -99;
         PointF digSpot = GardenArt.DigAt;
         int digIndex = -1;
         bool retrieving;
@@ -17,8 +17,6 @@ namespace Stillpoint
         bool Blooming => breaks >= Garden.FlowerBreaks && season != Season.Winter;
         bool Lantern => (state.Keepsakes & Keepsake.Lantern) != 0;
         bool Daylight => nightK < 0.35f;
-        bool Green => season != Season.Winter && !snowGround && Daylight;
-        bool Warm => Green && Garden.SeasonMonth(Clock()) >= 4 && Garden.SeasonMonth(Clock()) <= 10;
         bool VisitorBusy => ladybug.Active || bee.Active || squirrel.Active || rabbit.Active || worm.Active || cat.Active && cat.D == 1;
         bool AnyVisitor => VisitorBusy || owl.Active || moth.Active || fox.Active || snails.Active || turtle.Active || bat.Active || mouse.Active;
         bool LadybugOnStone => ladybug.State >= 2 && ladybug.State != 4;
@@ -58,14 +56,19 @@ namespace Stillpoint
                 nightNext = Math.Min(nightNext, t + 2);
                 return;
             }
-            var picks = new List<(float Weight, Action<float> Go)> { (NestBusy ? 5f : 2f, x => StartFlyer(bird, x)) };
-            if (Warm && windK < 0.75f) picks.Add((2f, x => StartFlyer(butterfly, x)));
-            if (Warm) picks.Add((1.6f, StartLadybug));
-            if (!squirrel.Active && (Green || state.Caches.Winter && state.Caches.Spot >= 0)) picks.Add((season == Season.Autumn || state.Caches.Winter ? 2.2f : 1.2f, StartSquirrel));
-            if (Warm && Blooming) picks.Add((2.4f, StartBee));
-            if (!rabbit.Active && !fox.Active) picks.Add((0.8f, StartRabbit));
-            if (!cat.Active && rainK < 0.2f && !Running) picks.Add((0.35f, StartDayCat));
-            if (!worm.Active && WetGround) picks.Add((1.2f, StartWorm));
+            var e = LiveEnv();
+            var picks = new List<(float Weight, Action<float> Go)>();
+            void Add(string id, float weight, Action<float> go) { if (Habitats.Fits(id, e)) picks.Add((weight, go)); }
+            if (!bird.Active) Add(Visitors.Bird, NestBusy ? 5f : 2f, x => StartFlyer(bird, x));
+            if (!butterfly.Active) Add(Visitors.Butterfly, 2f, x => StartFlyer(butterfly, x));
+            if (!ladybug.Active) Add(Visitors.Ladybug, 1.6f, StartLadybug);
+            if (!squirrel.Active && (!snowGround || state.Caches.Winter && state.Caches.Spot >= 0)) Add(Visitors.Squirrel, season == Season.Autumn || state.Caches.Winter ? 2.2f : 1.2f, StartSquirrel);
+            if (!bee.Active && Blooming) Add(Visitors.Bee, 2.4f, StartBee);
+            if (!rabbit.Active && !fox.Active) Add(Visitors.Rabbit, 0.8f, StartRabbit);
+            if (!cat.Active && !Running) Add(Visitors.Cat, 0.35f, StartDayCat);
+            if (!worm.Active) Add(Visitors.Worm, 1.2f, StartWorm);
+            if (!frog.Active) Add(Visitors.Frog, 0.8f, StartPondFrog);
+            if (!snails.Active && !snail.Active && !turtle.Active) Add(Visitors.Snails, 0.7f, StartSnails);
             PickOne(picks, t);
         }
 
@@ -73,18 +76,22 @@ namespace Stillpoint
         {
             PairUp(t);
             bool dusk = nightK > 0.45f && nightK < 0.7f && Clock().Hour >= 15;
-            if (nightK < 0.7f && !dusk || rainK > 0.4f || story.Active || owl.Active || moth.Active || fox.Active || bat.Active || mouse.Active || t < nightNext) return;
+            if (nightK < 0.7f && !dusk || story.Active || owl.Active || moth.Active || fox.Active || bat.Active || mouse.Active || t < nightNext) return;
             nightNext = t + 50 + Rand * 50;
+            var e = LiveEnv();
             var picks = new List<(float Weight, Action<float> Go)>();
+            void Add(string id, float weight, Action<float> go) { if (weight > 0 && Habitats.Fits(id, e)) picks.Add((weight, go)); }
             if (!dusk)
             {
-                picks.Add((Lantern || !NestShown ? 1.1f : 0, StartOwl));
-                picks.Add((Lantern || cloudK < 0.5f ? 1f : 0, StartMoth));
-                picks.Add((0.9f, StartMouse));
+                Add(Visitors.Owl, Lantern || !NestShown ? 1.1f : 0, StartOwl);
+                Add(Visitors.Moth, Lantern || cloudK < 0.5f ? 1f : 0, StartMoth);
+                Add(Visitors.Mouse, 0.9f, StartMouse);
             }
-            if (!rabbit.Active) picks.Add((dusk ? 0.6f : 1f, StartFox));
-            if (BatSeason && rainK < 0.2f) picks.Add((dusk ? 1.6f : 0.8f, StartBat));
-            if (WetGround && !worm.Active) picks.Add((0.7f, StartWorm));
+            if (!rabbit.Active) Add(Visitors.Fox, dusk ? 0.6f : 1f, StartFox);
+            Add(Visitors.Bat, dusk ? 1.6f : 0.8f, StartBat);
+            if (!worm.Active) Add(Visitors.Worm, 0.7f, StartWorm);
+            if (!frog.Active) Add(Visitors.Frog, 0.6f, StartPondFrog);
+            if (!snails.Active && !snail.Active && !turtle.Active) Add(Visitors.Snails, 0.5f, StartSnails);
             PickOne(picks, t);
         }
 
@@ -183,6 +190,7 @@ namespace Stillpoint
 
         void StartLadybug(float t)
         {
+            if (!Fits(Visitors.Ladybug)) return;
             var c = ladybug;
             if (c.Active) return;
             c.State = 1;
@@ -267,6 +275,7 @@ namespace Stillpoint
 
         void StartBee(float t)
         {
+            if (!Fits(Visitors.Bee)) return;
             var c = bee;
             if (c.Active) return;
             c.State = 1;
@@ -336,6 +345,7 @@ namespace Stillpoint
 
         void StartSquirrel(float t)
         {
+            if (!Fits(Visitors.Squirrel)) return;
             var c = squirrel;
             if (c.Active) return;
             var caches = state.Caches;
@@ -477,6 +487,7 @@ namespace Stillpoint
 
         void StartOwl(float t)
         {
+            if (!Fits(Visitors.Owl)) return;
             var c = owl;
             if (c.Active) return;
             c.State = 1;
@@ -587,6 +598,7 @@ namespace Stillpoint
 
         void StartMoth(float t)
         {
+            if (!Fits(Visitors.Moth)) return;
             var c = moth;
             if (c.Active) return;
             var light = MothLight(out _);
@@ -648,6 +660,7 @@ namespace Stillpoint
 
         void StartFox(float t)
         {
+            if (!Fits(Visitors.Fox)) return;
             var c = fox;
             if (c.Active) return;
             var trust = TrustOf(Visitors.Fox);
@@ -738,6 +751,7 @@ namespace Stillpoint
         }
         void StartSnails(float t)
         {
+            if (!Fits(Visitors.Snails)) return;
             var c = snails;
             if (c.Active || snail.Active || turtle.Active) return;
             c.State = 1;
@@ -782,6 +796,7 @@ namespace Stillpoint
 
         void StartTurtle(float t)
         {
+            if (!Fits(Visitors.Turtle)) return;
             var c = turtle;
             if (c.Active) return;
             c.State = 1;

@@ -31,7 +31,7 @@ namespace Stillpoint
                 bool awake = calm && !Sleeping && Daylight && !(Running && Drowsiness > 0.45f);
                 if (free && (night || awake) && !state.SeenToday.Any(Stories.Is) && rng.NextDouble() < (state.StoriesSeen == 0 ? 0.15 : 0.05))
                 {
-                    var fits = Stories.All.Where(s => Stories.Fits(s, Clock(), night)).ToList();
+                    var fits = Stories.All.Where(s => s.Night == night && Fits(s.Id)).ToList();
                     if (fits.Count > 0) StartStory(fits[rng.Next(fits.Count)].Id, t);
                 }
             }

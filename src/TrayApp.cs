@@ -377,7 +377,7 @@ namespace Stillpoint
             var now = DateTime.Now;
             if (Settings.StoneOn && lastSeen != DateTime.MinValue && (now - lastSeen).TotalMinutes >= 20)
             {
-                var report = Garden.WhileAway(lastSeen, now, Garden.SeasonOf(now), Weather, new Random());
+                var report = Garden.WhileAway(lastSeen, now, Garden.SeasonOf(now), Weather, d => Sky.Sun(d, Settings.TownLat, Settings.TownLon), new Random());
                 foreach (var visit in report.Visits) Album.Add(visit.At, visit.Visitor);
                 if (Album.Dirty)
                     try { Store.SaveAlbum(Album); }

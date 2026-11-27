@@ -8,13 +8,11 @@ namespace Stillpoint
     sealed partial class SpiritRing
     {
         const float RainFrogX = 113, RainFrogY = 207;
-        float windK, gustK, gustPower = 0.9f, shelterK, shelterNext = 20, rainFrogNext = 15, leafDripNext, birdPeck, birdCock, birdShakeT = -99, wormBirdNext = 30;
+        float windK, gustK, gustPower = 0.9f, rainFrogNext = 15, birdPeck, birdCock, wormBirdNext = 30;
         PointF birdGround;
 
         float WindPush => windK * gustK;
-        bool BirdShelters => bird.D == 1 && bird.State == 2;
-        PointF ShelterPerch => Surface(1.56f * Pi);
-        PointF BirdSeat => bird.D == 1 ? ShelterPerch : bird.D == 2 ? birdGround : points.Head;
+        PointF BirdSeat => bird.D == 2 ? birdGround : points.Head;
 
         void StepWind(float t, float dt, WeatherNow real)
         {
@@ -28,13 +26,11 @@ namespace Stillpoint
             }
             gustK = Sin(Clamp((t - gustT) / 3.5f, 0, 1) * Pi);
             wind = (0.35f + 0.35f * windK) * Sin(t * 0.37f) + 0.2f * Sin(t * 0.91f + 1) + gustPower * gustK;
-            shelterK += ((BirdShelters ? 1 : 0) - shelterK) * Math.Min(1, dt * 2);
         }
 
         bool TryRainVisitor(float t)
         {
             var picks = new List<(float Weight, Action<float> Go)>();
-            if (!bird.Active && !NestShown && t > shelterNext && nightK < 0.4f) picks.Add((2f, StartShelter));
             if (!frog.Active && season != Season.Winter && t > rainFrogNext) picks.Add((2f, StartRainFrog));
             if (!worm.Active && WetGround && t > wormNext) picks.Add((1.2f, StartWorm));
             if (picks.Count == 0 || Rand > 0.6f) return false;
@@ -54,14 +50,6 @@ namespace Stillpoint
                 if (picks[i].Weight > 0) { picks[i].Go(t); return; }
         }
 
-        void StartShelter(float t)
-        {
-            if (bird.Active) return;
-            StartFlyer(bird, t);
-            bird.D = 1;
-            shelterNext = t + 240;
-        }
-
         void StartGroundBird(float t, PointF at)
         {
             if (bird.Active) return;
@@ -78,7 +66,7 @@ namespace Stillpoint
             if (c.State == 1)
             {
                 var seat = BirdSeat;
-                float u = Clamp((t - c.T0) / (c.D == 1 ? 2f : 2.6f), 0, 1), e = Smooth(0, 1, u);
+                float u = Clamp((t - c.T0) / 2.6f, 0, 1), e = Smooth(0, 1, u);
                 c.X = c.From.X + (seat.X - c.From.X) * e;
                 c.Y = c.From.Y + (seat.Y - c.From.Y) * e - Sin(u * Pi) * (c.D == 2 ? 26 : 18);
                 if (u >= 1)
@@ -93,8 +81,7 @@ namespace Stillpoint
             {
                 float since = t - c.T0;
                 var seat = BirdSeat;
-                if (c.D == 1) StepShelter(t, since, seat);
-                else if (c.D == 2) StepGroundBird(t, since, seat);
+                if (c.D == 2) StepGroundBird(t, since, seat);
                 else
                 {
                     float hop = since % 1.6f < 0.25f ? Sin(since % 1.6f / 0.25f * Pi) * 3 : 0;
@@ -125,12 +112,6 @@ namespace Stillpoint
         {
             Visit(Visitors.Bird);
             bird.K = 0;
-            if (bird.D == 1)
-            {
-                bird.Side = 1;
-                Chat(Tone == Tone.Dry ? "Fine. You can borrow my leaf." : Tone == Tone.Worry ? "Quick, get under my leaf!" : Tone == Tone.Plain ? "You can stay till the rain stops." : "Stay under my leaf, little one.", 3.2f);
-                return;
-            }
             if (bird.D == 2)
             {
                 bird.Side = worm.Active && worm.X > bird.X ? -1 : 1;
@@ -139,34 +120,6 @@ namespace Stillpoint
             if (NestBusy) Chat(NestLine(), 3f);
             else if (!Known(Visitors.Bird)) Chat(Pick(new[] { "A little bird. It tickles.", "Tweet. That's bird for hello.", "We have company." }), 2.6f);
             MaybeDayCat(t);
-        }
-
-        void StepShelter(float t, float since, PointF seat)
-        {
-            var c = bird;
-            c.X = seat.X;
-            c.Y = seat.Y;
-            if (t > c.C)
-            {
-                c.C = t + 6 + Rand * 4;
-                birdShakeT = t;
-                for (int i = 0; i < 6; i++)
-                {
-                    float a = -Pi / 2 + (i - 2.5f) * 0.45f;
-                    Emit(new Particle { Kind = Bit.Dew, X = c.X, Y = c.Y - 6, Vx = Cos(a) * 45, Vy = Sin(a) * 45, Size = 1.2f, Target = c.Y + 2, Life = 1.2f });
-                }
-            }
-            if (rainK > 0.2f && !snowing && t > leafDripNext)
-            {
-                leafDripNext = t + 0.45f + Rand * 0.4f;
-                Emit(new Particle { Kind = Bit.Dew, X = points.Tip.X + (Rand - 0.5f) * 5, Y = points.Tip.Y + 3, Vy = 6, Size = 1.1f, Target = seat.Y - 1, Life = 1.5f });
-            }
-            if (rainK < 0.12f && since > 4)
-            {
-                Emit(new Particle { Kind = Bit.Note, X = c.X - 6, Y = c.Y - 14, Vx = -10, Vy = -22, Vr = 0.3f, Life = 1.2f, Size = 8 });
-                SendAway(c, t);
-            }
-            else if (since > 110 || Sleeping || nightK > 0.5f) SendAway(c, t);
         }
 
         void StepGroundBird(float t, float since, PointF seat)
@@ -191,12 +144,12 @@ namespace Stillpoint
         {
             if (!bird.Active || BirdInNest) return;
             float facing = bird.State == 3 ? bird.To.X - bird.From.X : -bird.Side;
-            float shake = Window(0, 0.45f, t - birdShakeT, 0.08f) * (bird.D == 1 ? 1 : 0);
-            SpiritArt.DrawBird(g, bird.X, bird.Y, t, facing, bird.State != 2, bird.D == 1 ? shelterK : 0, birdPeck, birdCock, shake);
+            SpiritArt.DrawBird(g, bird.X, bird.Y, t, facing, bird.State != 2, birdPeck, birdCock);
         }
 
         void StartRainFrog(float t)
         {
+            if (!Fits(Visitors.Frog)) return;
             if (frog.Active) return;
             frog.State = 1;
             frog.T0 = t;
@@ -331,7 +284,6 @@ namespace Stillpoint
 
         void ApplyWeatherPose(SpiritPose p)
         {
-            p.Wind += 2.6f * shelterK;
         }
     }
 }
