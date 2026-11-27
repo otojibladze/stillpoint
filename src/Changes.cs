@@ -1,0 +1,78 @@
+using System;
+using System.Globalization;
+using System.Linq;
+
+namespace Stillpoint
+{
+    sealed class Release
+    {
+        public string Version;
+        public DateTime Date;
+        public string[] Notes;
+    }
+
+    static class Changes
+    {
+        static Release R(string version, string date, params string[] notes) =>
+            new Release { Version = version, Date = DateTime.ParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture), Notes = notes };
+
+        public static Release Of(string version) => All.FirstOrDefault(r => r.Version == version);
+
+        public static readonly Release[] All =
+        {
+            R("3.9.6", "2026-11-27", "New What's new list next to Check for updates.", "Clearer update messages."),
+            R("3.9.5", "2026-11-27", "History is one page: calendar on top, the day's sessions below."),
+            R("3.9.4", "2026-11-27", "History shows today first. Other days are in the calendar."),
+            R("3.9.3", "2026-11-27", "History scrolls as one page."),
+            R("3.9.2", "2026-11-27", "Smoother page switching and scrolling.", "Garden mode label lines up with its switch."),
+            R("3.9.1", "2026-11-26", "The cat walks in and curls up instead of sliding.", "Main switch now says Garden mode or Simple mode.", "Removed Your sessions from Settings."),
+            R("3.9.0", "2026-11-26", "The stone gets a personality from your habits.", "It remembers special days with you.", "Animals get names as they get to know you.", "A bird builds a nest in spring.", "Real meteor showers, eclipses, a comet and northern lights.", "Fireflies and leaves fly in front of and behind the stone."),
+            R("3.8.3", "2026-11-26", "Animals follow day, night and season. No butterflies at night."),
+            R("3.8.2", "2026-11-26", "Scrollbar on long pages.", "Settings no longer cuts off the last row."),
+            R("3.8.1", "2026-11-26", "Pages slide up and down inside the window."),
+            R("3.8.0", "2026-11-26", "New side bar. Garden, History and Settings open in the main window.", "Fixed a red X after pressing Stop."),
+            R("3.7.0", "2026-11-26", "New visitors: ladybug, bee, squirrel, owl, moth, fox, snails and turtle.", "Smoother stone faces."),
+            R("3.6.3", "2026-11-26", "Stone sounds removed. The reminder sound stays."),
+            R("3.6.2", "2026-11-26", "Petting the stone looks smoother."),
+            R("3.6.1", "2026-11-26", "Cleaner stone edges."),
+            R("3.6.0", "2026-11-26", "Prettier stone and garden.", "Dark mode.", "Colors that follow the season."),
+            R("3.5.0", "2026-11-26", "Garden gets its own page.", "Simple mode turns Pebble into a plain timer.", "Default reminder is now 30 minutes."),
+            R("3.4.0", "2026-11-26", "Signs of what happened while you were away.", "Real moon, sunrise and sunset for your town.", "Optional real weather."),
+            R("3.3.1", "2026-11-26", "Fix for updates."),
+            R("3.3.0", "2026-11-26", "Updates install by themselves at a quiet moment."),
+            R("3.2.0", "2026-11-26", "Stillpoint is now Pebble.", "Window size setting."),
+            R("3.1.1", "2026-11-26", "The stone's eyes move smoothly."),
+            R("3.1.0", "2026-11-26", "A living garden: seasons, weather, visitors and keepsakes.", "Give your stone a name.", "Optional desktop buddy.", "Evening summary of your day."),
+            R("3.0.1", "2026-11-26", "Smoother stone animation."),
+            R("3.0.0", "2026-11-26", "Meet the stone: a little friend who lives in your timer."),
+            R("1.8.1", "2026-11-26", "New Settings look."),
+            R("1.8.0", "2026-11-26", "Pick a reminder sound.", "New Settings window."),
+            R("1.7.2", "2026-11-26", "Stop button now says I GOT UP."),
+            R("1.7.1", "2026-11-26", "Reminder buttons say KEEP SITTING and I GOT UP."),
+            R("1.7.0", "2026-11-26", "History grouped by day, with a calendar."),
+            R("1.6.1", "2026-11-26", "Bigger timer.", "History has its own button."),
+            R("1.6.0", "2026-11-26", "No more puzzles. Stop works right away."),
+            R("1.5.0", "2026-11-26", "10 new calm puzzles."),
+            R("1.4.1", "2026-11-26", "Resume continues your last session."),
+            R("1.4.0", "2026-11-26", "Stopping the timer closes the reminder."),
+            R("1.3.9", "2026-11-26", "Small fixes."),
+            R("1.3.8", "2026-11-25", "Reminder shows on the screen you are using."),
+            R("1.3.7", "2026-11-25", "Session list in a rounded box."),
+            R("1.3.6", "2026-11-25", "Reminder layout fix."),
+            R("1.3.5", "2026-11-25", "Reminder layout fix."),
+            R("1.3.4", "2026-11-25", "Reminder layout fix."),
+            R("1.3.3", "2026-11-25", "Reminder layout fix."),
+            R("1.3.2", "2026-11-25", "Puzzle layout fix."),
+            R("1.3.1", "2026-11-25", "Puzzles open right above the reminder."),
+            R("1.3.0", "2026-11-25", "Funny reminder messages."),
+            R("1.2.2", "2026-11-25", "Buttons fit their text."),
+            R("1.2.1", "2026-11-25", "More words for typing puzzles."),
+            R("1.2.0", "2026-11-25", "Five new puzzles."),
+            R("1.1.0", "2026-11-25", "New look."),
+            R("1.0.3", "2026-11-25", "Typing puzzle replaces math puzzles."),
+            R("1.0.2", "2026-11-25", "Reminder preview asks for the puzzle too."),
+            R("1.0.1", "2026-11-25", "Small fix."),
+            R("1.0.0", "2026-11-25", "First version: a sitting timer with reminders."),
+        };
+    }
+}

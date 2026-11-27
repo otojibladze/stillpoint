@@ -6,6 +6,8 @@ $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 
 if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Version must look like 1.2.3' }
+$changes = Get-Content (Join-Path $root 'src\Changes.cs') -Raw
+if (-not $changes.Contains("R(`"$Version`",")) { throw "Add a What's new entry for $Version in src\Changes.cs first" }
 $versionFile = Join-Path $root 'src\Version.cs'
 $text = Get-Content $versionFile -Raw
 $text = $text -replace 'Text = "[^"]+"', "Text = `"$Version`""

@@ -13,7 +13,7 @@ namespace Stillpoint
         readonly Label status;
         readonly ToggleSwitch stoneToggle;
         const int BaseMain = 400, BaseRail = 58, BaseHeight = 640;
-        static readonly string[] PageOrder = { "timer", "garden", "history", "settings" };
+        static readonly string[] PageOrder = { "timer", "garden", "history", "settings", "changes" };
         readonly NavRail rail;
         readonly Panel main;
         readonly PageStack stack;
@@ -27,6 +27,7 @@ namespace Stillpoint
         HistoryForm history;
         GardenForm garden;
         SettingsForm settings;
+        ChangesForm changes;
         bool syncing;
 
         public MainForm(TrayApp app)
@@ -144,7 +145,7 @@ namespace Stillpoint
             Top = Math.Max(area.Top, Math.Min(Top, area.Bottom - Height));
         }
 
-        void OpenPage<T>(string key, string title, ref T page, Func<T> make) where T : Form
+        void OpenPage<T>(string key, string title, ref T page, Func<T> make, string railKey = null) where T : Form
         {
             if (page == null || page.IsDisposed)
             {
@@ -161,7 +162,7 @@ namespace Stillpoint
                 pageViews[key] = view;
             }
             stack.Show(key, pageViews[key], Array.IndexOf(PageOrder, key));
-            rail.Active = key;
+            rail.Active = railKey ?? key;
         }
 
         void ShowTimer()
@@ -311,5 +312,7 @@ namespace Stillpoint
         }
 
         void ShowSettings() => OpenPage("settings", "Settings", ref settings, () => new SettingsForm(app));
+
+        public void ShowChanges() => OpenPage("changes", "What's new", ref changes, () => new ChangesForm(), "settings");
     }
 }

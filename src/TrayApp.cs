@@ -122,7 +122,7 @@ namespace Stillpoint
             SyncBuddy();
             OnTick();
             if (showWindow) ShowWindow();
-            if (updated) tray.ShowBalloonTip(5000, "Pebble updated to " + AppVersion.Text, "Your sessions and garden are just as you left them.", ToolTipIcon.Info);
+            if (updated) tray.ShowBalloonTip(5000, "Pebble updated to " + AppVersion.Text, Changes.Of(AppVersion.Text)?.Notes[0] ?? "Your sessions and garden are safe.", ToolTipIcon.Info);
         }
 
         public Store Store { get; }
@@ -476,7 +476,7 @@ namespace Stillpoint
                 UpdateAvailable = latest != null && latest > Updater.Current ? latest : null;
                 if (UpdateAvailable == null)
                 {
-                    if (manual) UpdateStatus = "You have the latest version.";
+                    if (manual) UpdateStatus = "You're up to date.";
                 }
                 else
                 {
@@ -495,8 +495,8 @@ namespace Stillpoint
             }
             catch (Exception ex)
             {
-                if (manual) UpdateStatus = "Could not check for updates: " + ex.Message;
-                else Store.Log("Update check: " + ex.Message);
+                if (manual) UpdateStatus = "Couldn't check. Try again later.";
+                Store.Log("Update check: " + ex.Message);
             }
             finally
             {
@@ -525,7 +525,8 @@ namespace Stillpoint
             }
             catch (Exception ex)
             {
-                UpdateStatus = "Update failed: " + ex.Message;
+                UpdateStatus = "Update failed. Try again later.";
+                Store.Log("Update: " + ex.Message);
                 updateBusy = false;
                 Refresh();
             }
@@ -594,6 +595,8 @@ namespace Stillpoint
                     return (Tracker.Paused & PauseReason.Locked) != 0 ? "Paused while the computer is locked" : "Paused while the computer is asleep";
             }
         }
+
+        public void ShowChanges() => form.ShowChanges();
 
         public void ShowWindow()
         {

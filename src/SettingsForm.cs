@@ -86,7 +86,12 @@ namespace Stillpoint
             updateLink = Ui.Link("");
             updateLink.Font = Theme.Regular(9f);
             updateLink.Margin = new Padding(4, 0, 0, 0);
-            var footer = Ui.Row(version, updateLink);
+            var dot = new Label { Text = "·", AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9f), Margin = new Padding(4, 0, 0, 0) };
+            var changesLink = Ui.Link("What's new");
+            changesLink.Font = Theme.Regular(9f);
+            changesLink.Margin = new Padding(4, 0, 0, 0);
+            changesLink.LinkClicked += (s, e) => app.ShowChanges();
+            var footer = Ui.Row(version, updateLink, dot, changesLink);
             footer.Anchor = AnchorStyles.None;
             footer.Margin = new Padding(0, 16, 0, 0);
             updateStatus = Ui.Small(Theme.Muted);
