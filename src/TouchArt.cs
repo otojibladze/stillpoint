@@ -69,11 +69,11 @@ namespace Stillpoint
             int leaves = kind == 1 ? 3 : 2;
             for (int i = 0; i < leaves; i++)
             {
-                float ly = -h * (0.22f + i * 0.24f), side = i % 2 == 0 ? -1 : 1;
+                float ly = -h * (kind == 0 ? 0.1f + i * 0.16f : kind == 1 ? 0.18f + i * 0.2f : 0.22f + i * 0.24f), side = i % 2 == 0 ? -1 : 1;
                 var l = g.Save();
                 g.TranslateTransform(0, ly);
-                g.RotateTransform(side * (kind == 0 ? 30 : 62) + wilt * 25 * side);
-                float lw = kind == 0 ? 0.9f : kind == 1 ? 1.6f : 1.1f, lh = kind == 0 ? 4.2f : kind == 1 ? 2.8f : 2.2f;
+                g.RotateTransform(side * (kind == 0 ? 34 : 62) + wilt * 25 * side);
+                float lw = kind == 0 ? 0.9f : kind == 1 ? 1.6f : 1.1f, lh = kind == 0 ? 3.3f : kind == 1 ? 2.8f : 2.2f;
                 FillEllipse(g, leaf, 0, -lh * 0.9f, lw, lh);
                 g.Restore(l);
             }

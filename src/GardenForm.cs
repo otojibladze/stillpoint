@@ -45,7 +45,7 @@ namespace Stillpoint
             nextWeek.Margin = new Padding(6, 0, 0, 0);
             var weekHead = Ui.TwoSides(weekLabel, Ui.Row(previousWeek, nextWeek));
             weekHead.Margin = new Padding(0, 0, 0, 10);
-            hero = new GardenView { Dock = DockStyle.Fill, Height = 190, Margin = new Padding(0, 0, 0, 10) };
+            hero = new GardenView { Dock = DockStyle.Fill, Height = 190, Margin = new Padding(0, 0, 0, 10), Expandable = true, Cursor = Cursors.Hand };
             heroTitle = new Label { AutoSize = true, Font = Theme.SemiBold(10.5f), Anchor = AnchorStyles.Left, Margin = new Padding(0) };
             heroStats = new Label { AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(9.5f), Anchor = AnchorStyles.Right, Margin = new Padding(0) };
             var heroHead = Ui.TwoSides(heroTitle, heroStats);

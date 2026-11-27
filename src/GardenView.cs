@@ -64,6 +64,64 @@ namespace Stillpoint
         }
 
         public float Radius { get; set; } = 14;
+        public bool Expandable { get; set; }
+        public bool Expanded { get; private set; }
+
+        const float GrowMs = 340, ExpandedAspect = 0.75f;
+        int baseHeight, growFrom, growTo;
+        Bitmap growRaw;
+        readonly System.Diagnostics.Stopwatch growClock = new System.Diagnostics.Stopwatch();
+        Frames growFrames;
+
+        int ExpandedHeight => Math.Max(baseHeight, (int)(Width * ExpandedAspect));
+
+        protected override void OnClick(EventArgs e)
+        {
+            base.OnClick(e);
+            if (!Expandable || day == null) return;
+            if (baseHeight == 0) baseHeight = Height;
+            Expanded = !Expanded;
+            growRaw?.Dispose();
+            growRaw = GardenPicture.Render(day, night, new Size(Width, baseHeight), 0, Parent?.BackColor ?? Theme.Background);
+            growFrom = Height;
+            growTo = Expanded ? ExpandedHeight : baseHeight;
+            growClock.Restart();
+            if (growFrames == null) growFrames = new Frames(dt => StepGrow());
+            growFrames.Start();
+        }
+
+        bool StepGrow()
+        {
+            if (IsDisposed) return false;
+            float k = SpiritArt.Smooth(0, 1, growClock.ElapsedMilliseconds / GrowMs);
+            Height = (int)Math.Round(growFrom + (growTo - growFrom) * k);
+            if (k >= 1)
+            {
+                growRaw?.Dispose();
+                growRaw = null;
+            }
+            Invalidate();
+            Update();
+            return k < 1;
+        }
+
+        void DrawGrowing(Graphics g, Color around, float radius)
+        {
+            float scale = Height / (float)growRaw.Height, w = growRaw.Width * scale;
+            g.InterpolationMode = InterpolationMode.Bilinear;
+            g.PixelOffsetMode = PixelOffsetMode.Half;
+            g.DrawImage(growRaw, new RectangleF((Width - w) / 2, 0, w, Height));
+            g.PixelOffsetMode = PixelOffsetMode.Default;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (var corners = new GraphicsPath { FillMode = FillMode.Alternate })
+            using (var round = Draw.Rounded(new RectangleF(0, 0, Width - 0.5f, Height - 0.5f), radius))
+            using (var brush = new SolidBrush(around))
+            {
+                corners.AddRectangle(new RectangleF(-1, -1, Width + 2, Height + 2));
+                corners.AddPath(round, false);
+                g.FillPath(brush, corners);
+            }
+        }
         public string Eyebrow { get; set; }
         public string Title { get; set; }
 
@@ -99,6 +157,7 @@ namespace Stillpoint
             g.Clear(around);
             if (day == null || Width < 4 || Height < 4) return;
             float radius = Radius * DeviceDpi / 96f;
+            if (growRaw != null) { DrawGrowing(g, around, radius); return; }
             string key = GardenPicture.Signature(day, night, Size) + "|" + radius + "|" + around.ToArgb();
             if (cache == null || key != cacheKey)
             {
@@ -140,6 +199,7 @@ namespace Stillpoint
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
+            if (Expanded && growRaw == null && Height != ExpandedHeight) Height = ExpandedHeight;
             Invalidate();
         }
 
@@ -150,6 +210,8 @@ namespace Stillpoint
                 cache?.Dispose();
                 slideFrom?.Dispose();
                 slideTimer?.Dispose();
+                growRaw?.Dispose();
+                growFrames?.Dispose();
             }
             base.Dispose(disposing);
         }
