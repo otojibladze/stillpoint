@@ -63,6 +63,9 @@ namespace Stillpoint
 
         int WeekHeight => (int)(smallFont.Height * 2.2f);
 
+        public override Size GetPreferredSize(Size proposedSize) =>
+            new Size(proposedSize.Width, HeaderHeight + WeekHeight + 6 * (boldFont.Height + smallFont.Height + (int)(Font.Height * 0.7f)));
+
         Rectangle PrevBox => new Rectangle(Width - HeaderHeight * 2, 0, HeaderHeight, HeaderHeight);
 
         Rectangle NextBox => new Rectangle(Width - HeaderHeight, 0, HeaderHeight, HeaderHeight);

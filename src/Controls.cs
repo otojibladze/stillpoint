@@ -236,19 +236,15 @@ namespace Stillpoint
     sealed class ListRow
     {
         public string Left = "";
-        public string Middle = "";
         public string Right = "";
-        public bool Header;
 
-        public bool Same(ListRow other) =>
-            Left == other.Left && Middle == other.Middle && Right == other.Right && Header == other.Header;
+        public bool Same(ListRow other) => Left == other.Left && Right == other.Right;
     }
 
     sealed class SessionList : Control
     {
         List<ListRow> rows = new List<ListRow>();
         int offset;
-        readonly Font bold = Theme.SemiBold(9.5f);
         readonly Glide glide;
 
         public SessionList()
@@ -296,7 +292,7 @@ namespace Stillpoint
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing) { bold.Dispose(); glide.Dispose(); }
+            if (disposing) glide.Dispose();
             base.Dispose(disposing);
         }
 
@@ -367,11 +363,8 @@ namespace Stillpoint
             int gap = h / 2;
             int left = inner.Left;
             int right = inner.Right;
-            int indent = rows[0].Header ? Font.Height / 2 : 0;
-            int lengthWidth = TextRenderer.MeasureText(g, "00h 00m", bold, Size.Empty, TextFormatFlags.NoPadding).Width;
-            int middleWidth = TextRenderer.MeasureText(g, "00 sessions", Font, Size.Empty, TextFormatFlags.NoPadding).Width;
+            int lengthWidth = TextRenderer.MeasureText(g, "00h 00m", Font, Size.Empty, TextFormatFlags.NoPadding).Width;
             using (var line = new Pen(Theme.Line))
-            using (var strong = new Pen(Theme.Border))
             {
                 for (int i = 0; i < rows.Count; i++)
                 {
@@ -379,14 +372,9 @@ namespace Stillpoint
                     if (y + h < Math.Max(inner.Top, clip.Top)) continue;
                     if (y > Math.Min(inner.Bottom, clip.Bottom)) break;
                     var row = rows[i];
-                    if (i > 0) g.DrawLine(row.Header ? strong : line, left, y, right, y);
-                    var font = row.Header ? bold : Font;
-                    int x = row.Header ? left : left + indent;
-                    int leftWidth = right - x - lengthWidth - gap - (row.Middle.Length > 0 ? middleWidth + gap : 0);
-                    Draw.Text(g, row.Left, font, Theme.Ink, new Rectangle(x, y, leftWidth, h), TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-                    if (row.Middle.Length > 0)
-                        Draw.Text(g, row.Middle, Font, Theme.Muted, new Rectangle(right - lengthWidth - gap - middleWidth, y, middleWidth, h), TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
-                    Draw.Text(g, row.Right, font, row.Header ? Theme.AccentText : Theme.Ink, new Rectangle(right - lengthWidth, y, lengthWidth, h), TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
+                    if (i > 0) g.DrawLine(line, left, y, right, y);
+                    Draw.Text(g, row.Left, Font, Theme.Ink, new Rectangle(left, y, right - left - lengthWidth - gap, h), TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                    Draw.Text(g, row.Right, Font, Theme.Ink, new Rectangle(right - lengthWidth, y, lengthWidth, h), TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
                 }
             }
             g.ResetClip();
