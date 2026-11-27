@@ -43,6 +43,11 @@ namespace Stillpoint
 
         public static void AllowAnyForeground() => AllowSetForegroundWindow(-1);
 
+        public static DateTime BootTime() => DateTime.Now - TimeSpan.FromMilliseconds(GetTickCount64());
+
+        [DllImport("kernel32.dll")]
+        static extern ulong GetTickCount64();
+
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
         static extern int RegisterApplicationRestart(string commandLine, int flags);
 

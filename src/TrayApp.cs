@@ -94,6 +94,7 @@ namespace Stillpoint
             SystemEvents.SessionSwitch += OnSessionSwitch;
             SystemEvents.PowerModeChanged += OnPowerModeChanged;
             SystemEvents.SessionEnding += OnSessionEnding;
+            SystemEvents.SessionEnded += OnSessionEnded;
             showWait = ThreadPool.RegisterWaitForSingleObject(showEvent, (state, timedOut) => OnShowSignal(), null, Timeout.Infinite, false);
 
 
@@ -886,6 +887,16 @@ namespace Stillpoint
             SaveSettings();
         }
 
+        void OnSessionEnded(object sender, SessionEndedEventArgs e)
+        {
+            Settings.RoamFrom = DateTime.Now;
+            SaveSettings();
+        }
+
+        public DateTime RoamFrom => Settings.RoamFrom > bootTime ? Settings.RoamFrom : bootTime;
+
+        readonly DateTime bootTime = Native.BootTime();
+
         void Shutdown()
         {
             if (shutDown) return;
@@ -894,6 +905,7 @@ namespace Stillpoint
             SystemEvents.SessionSwitch -= OnSessionSwitch;
             SystemEvents.PowerModeChanged -= OnPowerModeChanged;
             SystemEvents.SessionEnding -= OnSessionEnding;
+            SystemEvents.SessionEnded -= OnSessionEnded;
             Tracker.Tick(DateTime.Now, TakeDelta());
             SaveUsage();
             if (form.Visible && form.WindowState != FormWindowState.Minimized) lastSeen = DateTime.Now;
