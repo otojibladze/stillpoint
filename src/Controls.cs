@@ -291,8 +291,6 @@ namespace Stillpoint
             if (expand) Parent?.PerformLayout();
         }
 
-        public int RowsFitting(int pixels) => Math.Max(1, (pixels - Pad) / RowHeight);
-
         public override Size GetPreferredSize(Size proposedSize) =>
             expand ? new Size(proposedSize.Width, Math.Max(1, rows.Count) * RowHeight + Pad) : base.GetPreferredSize(proposedSize);
 
