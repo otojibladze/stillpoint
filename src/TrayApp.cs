@@ -629,8 +629,15 @@ namespace Stillpoint
         }
         public void Resume()
         {
-            if (Tracker.CanResume) SetRunning(true, continueLast: true);
+            if (!Tracker.CanResume) return;
+            var last = Tracker.Sessions.OrderBy(s => s.Start).LastOrDefault();
+            var now = DateTime.Now;
+            if (last != null && last.End.Date == now.Date && now > last.End)
+                Settings.RoamGaps = Roam.AddGap(Settings.RoamGaps, new RoamGap { At = last.End, Sat = last.Seconds, Gap = (now - last.End).TotalSeconds });
+            SetRunning(true, continueLast: true);
         }
+
+        public List<RoamGap> RoamGaps => Roam.ParseGaps(Settings.RoamGaps);
 
         void SetRunning(bool running, bool continueLast = false)
         {

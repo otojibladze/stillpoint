@@ -20,6 +20,7 @@ namespace Stillpoint
 
         public static readonly Release[] All =
         {
+            R("3.12.1", "2026-11-27", "Free roam remembers the time you used when you press Resume."),
             R("3.12.0", "2026-11-27", "New animals: a rabbit at dawn and dusk, bats on summer nights, earthworms after rain, and a little mouse at night.", "Animals notice each other: the cat stalks the bird, a fox scares off the squirrel, the owl hoots at the moth, the mouse hides from the cat.", "Seasons bring stories: fox cubs in spring, the squirrel buries acorns in autumn and digs them up in winter, frogspawn turns into tadpoles in the pond.", "Weather matters: birds hide under Pebble's leaf in the rain, the frog loves puddles, butterflies struggle on windy days."),
             R("3.11.1", "2026-11-27", "Free roam time also starts fresh after the computer shuts down or restarts."),
             R("3.11.0", "2026-11-27", "New Free roam timer next to the main timer: every 30 minutes you sit earns 5 minutes away.", "It counts down while you're up and starts fresh each day."),

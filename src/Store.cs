@@ -46,6 +46,7 @@ namespace Stillpoint
         public string MemoryDay = "";
         public string Temper = "";
         public DateTime RoamFrom = DateTime.MinValue;
+        public string RoamGaps = "";
 
         public bool HasTown => !double.IsNaN(TownLat) && !double.IsNaN(TownLon);
 
@@ -157,6 +158,7 @@ namespace Stillpoint
                     case "firstSnow": settings.FirstSnow = value; break;
                     case "memoryDay": settings.MemoryDay = value; break;
                     case "temper": settings.Temper = value; break;
+                    case "roamGaps": settings.RoamGaps = value; break;
                     case "roamFrom":
                         if (DateTime.TryParseExact(value, TimeFormat, Inv, DateTimeStyles.None, out var roamFrom)) settings.RoamFrom = roamFrom;
                         break;
@@ -203,6 +205,7 @@ namespace Stillpoint
                 "memoryDay=" + s.MemoryDay,
                 "temper=" + s.Temper,
                 "roamFrom=" + (s.RoamFrom == DateTime.MinValue ? "" : s.RoamFrom.ToString(TimeFormat, Inv)),
+                "roamGaps=" + (s.RoamGaps ?? ""),
             };
             WriteAtomic(SettingsPath, string.Join("\r\n", lines) + "\r\n");
         }
