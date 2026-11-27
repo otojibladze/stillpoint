@@ -80,6 +80,29 @@ namespace Stillpoint
             return Mix(c, Hex(0x2E3A3A), n * 0.8f);
         }
 
+        static void DrawWildStill(Graphics g, GardenDay day, float night)
+        {
+            var v = day.Visitors;
+            if ((day.Keepsakes & Keepsake.Pond) != 0 && day.Season != Season.Winter)
+            {
+                var (stage, k) = Wildlife.Pond(day.Date.AddHours(12), false);
+                if (stage == PondStage.Spawn) WildArt.DrawSpawn(g, 59, 184.6f, 0, k, night);
+                else if (stage == PondStage.Tadpoles)
+                    for (int i = 0; i < 4; i++) WildArt.DrawTadpole(g, PondAt.X - 12 + i * 8, PondAt.Y + (i % 2) * 2 - 1, i % 2 == 0 ? 0.3f : 3.4f, i, 0.6f + 0.5f * k, Smooth(0.65f, 1, k), night);
+                else if (stage == PondStage.Froglets || v.Contains(Visitors.Froglets))
+                    foreach (var at in new[] { new PointF(51, 187.5f), new PointF(91, 189), new PointF(97, 183.5f) }) DrawFrog(g, at.X, at.Y, 0, 0, 0, 0.32f);
+            }
+            if (v.Contains(Visitors.Bat)) WildArt.DrawBat(g, 232, 74, 0.7f, 1, 1, night);
+            if (v.Contains(Visitors.Worm)) WildArt.DrawWorm(g, 156, 221, 1, 0.4f, 0.8f, 0.7f, night);
+            if (v.Contains(Visitors.Rabbit)) WildArt.DrawRabbit(g, 240, 212, 0.4f, -1, new CritterPose { Tilt = 1 }, night);
+            if (v.Contains(Visitors.Mouse)) WildArt.DrawMouse(g, 180, 215, 0.6f, -1, new CritterPose { Sit = 1, Acorn = true }, night);
+            if (v.Contains(Visitors.Cubs))
+            {
+                WildArt.DrawCub(g, 60, 222, 0.5f, 1, new CritterPose { Sit = 1 }, 0.6f, 0.52f, night);
+                WildArt.DrawCub(g, 106, 222, 1.7f, -1, new CritterPose(), 0.6f, 0.52f, night);
+            }
+        }
+
         public static void DrawWeeds(Graphics g, int count, Season ground, float n)
         {
             for (int i = 0; i < Math.Min(count, WeedSpots.Length); i++) DrawWeed(g, WeedSpots[i].X, WeedSpots[i].Y, ground, n, i);

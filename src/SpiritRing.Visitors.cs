@@ -10,14 +10,17 @@ namespace Stillpoint
         const float LadyLand = 1.02f * Pi, TurtleY = 215;
         readonly Critter ladybug = new Critter(), bee = new Critter(), squirrel = new Critter(), owl = new Critter(), moth = new Critter(), fox = new Critter(), snails = new Critter(), turtle = new Critter();
         float faceK, nightNext = 25, turtleNext = 30, snailsAt = -1, beeDip, digHole, digMound, moundBefore, acornDrop = -1, foxPrintsT = -9999, turtleHideT = -99;
+        PointF digSpot = GardenArt.DigAt;
+        int digIndex = -1;
+        bool retrieving;
 
         bool Blooming => breaks >= Garden.FlowerBreaks && season != Season.Winter;
         bool Lantern => (state.Keepsakes & Keepsake.Lantern) != 0;
         bool Daylight => nightK < 0.35f;
         bool Green => season != Season.Winter && !snowGround && Daylight;
         bool Warm => Green && Clock().Month >= 4 && Clock().Month <= 10;
-        bool VisitorBusy => ladybug.Active || bee.Active || squirrel.Active;
-        bool AnyVisitor => VisitorBusy || owl.Active || moth.Active || fox.Active || snails.Active || turtle.Active;
+        bool VisitorBusy => ladybug.Active || bee.Active || squirrel.Active || rabbit.Active || worm.Active || cat.Active && cat.D == 1;
+        bool AnyVisitor => VisitorBusy || owl.Active || moth.Active || fox.Active || snails.Active || turtle.Active || bat.Active || mouse.Active;
         bool LadybugOnStone => ladybug.State >= 2 && ladybug.State != 4;
         SpiritPose Shape => pose ?? new SpiritPose();
 
@@ -56,26 +59,33 @@ namespace Stillpoint
                 return;
             }
             var picks = new List<(float Weight, Action<float> Go)> { (NestBusy ? 5f : 2f, x => StartFlyer(bird, x)) };
-            if (Warm) picks.Add((2f, x => StartFlyer(butterfly, x)));
+            if (Warm && windK < 0.75f) picks.Add((2f, x => StartFlyer(butterfly, x)));
             if (Warm) picks.Add((1.6f, StartLadybug));
-            if (Green && !squirrel.Active) picks.Add((season == Season.Autumn ? 2.2f : 1.2f, StartSquirrel));
+            if (!squirrel.Active && (Green || state.Caches.Winter && state.Caches.Spot >= 0)) picks.Add((season == Season.Autumn || state.Caches.Winter ? 2.2f : 1.2f, StartSquirrel));
             if (Warm && Blooming) picks.Add((2.4f, StartBee));
-            float total = 0;
-            foreach (var p in picks) total += p.Weight;
-            float r = Rand * total;
-            foreach (var p in picks)
-                if ((r -= p.Weight) <= 0) { p.Go(t); return; }
-            picks[picks.Count - 1].Go(t);
+            if (!rabbit.Active && !fox.Active) picks.Add((0.8f, StartRabbit));
+            if (!cat.Active && rainK < 0.2f && !Running) picks.Add((0.35f, StartDayCat));
+            if (!worm.Active && WetGround) picks.Add((1.2f, StartWorm));
+            PickOne(picks, t);
         }
 
         void ScheduleNight(float t)
         {
-            if (nightK < 0.7f || rainK > 0.4f || story.Active || owl.Active || moth.Active || fox.Active || t < nightNext) return;
+            PairUp(t);
+            bool dusk = nightK > 0.45f && nightK < 0.7f && Clock().Hour >= 15;
+            if (nightK < 0.7f && !dusk || rainK > 0.4f || story.Active || owl.Active || moth.Active || fox.Active || bat.Active || mouse.Active || t < nightNext) return;
             nightNext = t + 50 + Rand * 50;
-            double r = rng.NextDouble();
-            if (r < 0.36 && (Lantern || !NestShown)) StartOwl(t);
-            else if (r < 0.68 && (Lantern || cloudK < 0.5f)) StartMoth(t);
-            else StartFox(t);
+            var picks = new List<(float Weight, Action<float> Go)>();
+            if (!dusk)
+            {
+                picks.Add((Lantern || !NestShown ? 1.1f : 0, StartOwl));
+                picks.Add((Lantern || cloudK < 0.5f ? 1f : 0, StartMoth));
+                picks.Add((0.9f, StartMouse));
+            }
+            if (!rabbit.Active) picks.Add((dusk ? 0.6f : 1f, StartFox));
+            if (BatSeason && rainK < 0.2f) picks.Add((dusk ? 1.6f : 0.8f, StartBat));
+            if (WetGround && !worm.Active) picks.Add((0.7f, StartWorm));
+            PickOne(picks, t);
         }
 
         void SendAwayVisitors(float t)
@@ -84,10 +94,15 @@ namespace Stillpoint
             if (bee.State == 1 || bee.State == 2) BeeLeave(bee, t);
             if (squirrel.State == 1) SquirrelRun(squirrel, t);
             if (owl.State == 2 && !Lantern) OwlLeave(owl, t);
+            if (rabbit.State == 1 || rabbit.State == 2) LeaveRabbit(t);
+            if (cat.D == 1 && (cat.State <= 3 || cat.State == 6) && cat.Active) LeaveCat(t);
         }
 
         void PokeVisitors(float t)
         {
+            if (rabbit.Active && RabbitTrust < Trust.Trusting) RabbitAlarm(t, 0);
+            if (mouse.Active) MouseFlee(t);
+            WormRetract(t);
             if (squirrel.State == 1) { SquirrelRun(squirrel, t); Later("Oops. I scared it.", t + 0.6f, 2.2f); }
             if (turtle.Active && turtle.P.Hide < 0.5f) turtleHideT = t;
             if (owl.State == 2) OwlLeave(owl, t);
@@ -115,6 +130,10 @@ namespace Stillpoint
             else if (visitor == Visitors.Fox) StartFox(t);
             else if (visitor == Visitors.Snails) StartSnails(t);
             else if (visitor == Visitors.Turtle) StartTurtle(t);
+            else if (visitor == Visitors.Rabbit) StartRabbit(t);
+            else if (visitor == Visitors.Bat) StartBat(t);
+            else if (visitor == Visitors.Worm) StartWorm(t);
+            else if (visitor == Visitors.Mouse) StartMouse(t);
             else return false;
             return true;
         }
@@ -126,6 +145,7 @@ namespace Stillpoint
             else if (ladybug.Active) at = new PointF(ladybug.X, ladybug.Y);
             else if (squirrel.Active) at = new PointF(squirrel.X - 6, squirrel.Y - 8);
             else if (owl.Active && !Sleeping) at = new PointF(owl.X, owl.Y - 16);
+            else if (worm.State == 1 || worm.State == 2) at = new PointF(worm.X, worm.Y - 4);
             else return false;
             return true;
         }
@@ -133,7 +153,11 @@ namespace Stillpoint
         bool FarFocus(out PointF at)
         {
             at = PointF.Empty;
-            if (fox.Active) at = new PointF(fox.X + 6, fox.Y - 14);
+            if (cat.Active && cat.D == 1) at = new PointF(cat.X - 10, GardenArt.CatAt.Y - 18 - cat.A);
+            else if (fox.Active) at = new PointF(fox.X + 6, fox.Y - 14);
+            else if (rabbit.Active) at = new PointF(rabbit.X, rabbit.Y - 10);
+            else if (mouse.Active && !MouseBehind) at = new PointF(mouse.X, mouse.Y - 4);
+            else if (bat.Active) at = new PointF(bat.X, bat.Y);
             else if (snails.Active) at = new PointF((snails.A + snails.B) / 2, TurtleY - 4);
             else if (turtle.Active) at = new PointF(turtle.X, turtle.Y - 4);
             else if (moth.Active) at = new PointF(moth.X, moth.Y);
@@ -314,15 +338,22 @@ namespace Stillpoint
         {
             var c = squirrel;
             if (c.Active) return;
+            var caches = state.Caches;
+            digIndex = (caches.Autumn || caches.Winter) && caches.Spot >= 0 ? Math.Min(caches.Spot, GardenArt.CacheSpots.Length - 1) : -1;
+            retrieving = caches.Winter && digIndex >= 0;
+            digSpot = digIndex >= 0 ? GardenArt.CacheSpots[digIndex] : GardenArt.DigAt;
             c.State = 1;
             c.T0 = t;
             c.Side = -1;
             c.X = 320;
-            c.Y = GardenArt.DigAt.Y;
-            c.P.Acorn = true;
-            moundBefore = digMound;
+            c.Y = digSpot.Y;
+            c.K = 0;
+            c.P.Acorn = !caches.Winter;
+            moundBefore = retrieving ? 1 : digIndex >= 0 ? 0 : digMound;
+            digMound = moundBefore;
             Visit(Visitors.Squirrel);
-            if (!Known(Visitors.Squirrel)) Later(Pick(new[] { "A squirrel. Hiding snacks for later.", "Hey! That's my sand." }), t + 1.9f, 2.8f);
+            if (!Known(Visitors.Squirrel))
+                Later(retrieving ? "A squirrel. It remembers where it hid its acorn." : caches.Autumn ? "A squirrel. Hiding acorns for winter." : Pick(new[] { "A squirrel. Hiding snacks for later.", "Hey! That's my sand." }), t + 1.9f, 2.8f);
         }
 
         void StepSquirrel(float t, float dt)
@@ -332,43 +363,52 @@ namespace Stillpoint
             if (!c.Active)
             {
                 digHole = Math.Max(0, digHole - dt * 2);
-                float target = state.DugToday ? 1 : 0;
+                float target = state.DugToday && !state.Caches.Autumn && !state.Caches.Winter ? 1 : 0;
+                if (digIndex >= 0) target = 0;
                 digMound += (target - digMound) * Math.Min(1, dt * 3);
+                if (digMound < 0.01f && digHole < 0.01f && digIndex >= 0) { digIndex = -1; digSpot = GardenArt.DigAt; }
                 return;
             }
-            float s = t - c.T0, home = GardenArt.DigAt.X + 9;
+            float s = t - c.T0, home = digSpot.X + 9;
+            bool snow = snowGround;
             if (c.State == 1)
             {
                 if (s < 1.8f)
                 {
                     float u = s / 1.8f;
                     c.X = 320 + (home - 320) * (1 - (1 - u) * (1 - u));
-                    c.Y = GardenArt.DigAt.Y - Math.Abs(Sin(u * Pi * 5)) * 5 * (1 - u * 0.6f);
+                    c.Y = digSpot.Y - Math.Abs(Sin(u * Pi * 5)) * 5 * (1 - u * 0.6f);
                     p.Gait = u * Pi * 5;
                     p.Run = 1 - Smooth(1.55f, 1.8f, s);
                     c.Side = -1;
                     return;
                 }
+                if (c.K == 0 && s > 2.3f) { c.K = 1; MaybeFoxChase(t); }
+                if (fox.Active && fox.C == 1 && fox.X > 6) { c.State = 4; c.T0 = t; p.Dig = 0; p.Paw = 0; return; }
                 c.X = home;
-                c.Y = GardenArt.DigAt.Y;
+                c.Y = digSpot.Y;
                 p.Run = 0;
                 c.Side = s > 2.1f && s < 2.55f ? 1 : -1;
                 p.Dig = Math.Max(Window(2.9f, 5.4f, s, 0.25f), Window(6, 7, s, 0.15f) * 0.7f);
                 p.Paw = s > 2.95f && s < 5.3f ? 1 : s > 6.05f && s < 6.95f ? 2 : 0;
-                p.Acorn = s < 5.5f;
+                if (retrieving) p.Acorn = s > 5.4f;
+                else p.Acorn = state.Caches.Winter ? false : s < 5.5f;
                 p.Flick = Math.Max(Window(7, 8, s, 0.1f), Window(2.0f, 2.9f, s, 0.1f) * 0.5f);
                 digHole = Smooth(3, 5, s) * (1 - Smooth(6, 6.8f, s));
-                digMound = Math.Max(Smooth(6, 7, s), moundBefore * (1 - digHole));
-                acornDrop = s >= 5.5f && s < 6.1f ? (s - 5.5f) / 0.6f : -1;
+                digMound = retrieving ? moundBefore * (1 - Smooth(3, 4.6f, s)) : Math.Max(Smooth(6, 7, s), moundBefore * (1 - digHole));
+                acornDrop = !retrieving && !state.Caches.Winter && s >= 5.5f && s < 6.1f ? (s - 5.5f) / 0.6f : -1;
                 if (p.Paw == 1 && t > c.C)
                 {
                     c.C = t + 0.08f;
-                    Emit(new Particle { Kind = Bit.Dirt, X = GardenArt.DigAt.X + 2, Y = GardenArt.DigAt.Y - 1, Vx = 30 + Rand * 40, Vy = -45 - Rand * 35, Life = 1.3f, Size = 0.6f + Rand * 0.6f, Target = GardenArt.DigAt.Y - 1 + Rand * 5, Night = nightK });
+                    if (snow) Emit(new Particle { Kind = Bit.Snow, X = digSpot.X + 2, Y = digSpot.Y - 2, Vx = 30 + Rand * 40, Vy = -45 - Rand * 35, Size = 0.9f + Rand * 0.6f, Target = digSpot.Y - 1 + Rand * 5, Life = 1.4f });
+                    else Emit(new Particle { Kind = Bit.Dirt, X = digSpot.X + 2, Y = digSpot.Y - 1, Vx = 30 + Rand * 40, Vy = -45 - Rand * 35, Life = 1.3f, Size = 0.6f + Rand * 0.6f, Target = digSpot.Y - 1 + Rand * 5, Night = nightK });
                 }
                 if (s > 8)
                 {
-                    if (TrustOf(Visitors.Squirrel) >= Trust.Friendly && !giftLeft) { c.State = 3; c.T0 = t; c.From = new PointF(c.X, c.Y); p.Acorn = true; }
+                    if (retrieving) { c.State = 5; c.T0 = t; p.Dig = p.Flick = 0; p.Paw = 2; }
+                    else if (!state.Caches.Winter && TrustOf(Visitors.Squirrel) >= Trust.Friendly && !giftLeft) { c.State = 3; c.T0 = t; c.From = new PointF(c.X, c.Y); p.Acorn = true; }
                     else SquirrelRun(c, t);
+                    if (digIndex >= 0 && !retrieving) digMound = 0;
                 }
             }
             else if (c.State == 3)
@@ -390,6 +430,26 @@ namespace Stillpoint
                 }
                 if (s > 2.3f) SquirrelRun(c, t);
             }
+            else if (c.State == 4)
+            {
+                p.Dig = 0;
+                p.Paw = 0;
+                p.Run = 0;
+                p.Flick = 1;
+                c.Side = -1;
+                digHole = Math.Max(0, digHole - dt * 2);
+                if (s > 0.5f) SquirrelRun(c, t);
+            }
+            else if (c.State == 5)
+            {
+                p.Paw = 2;
+                p.Acorn = s < 3.2f;
+                p.Flick = Window(0.5f, 3, s, 0.3f) * 0.4f;
+                digHole = Math.Max(0, digHole - dt * 1.5f);
+                if (s > 1 && c.K < 2) c.K = 2;
+                if (s > 1 && c.K == 2) { c.K = 3; Later(Tone == Tone.Dry ? "It found its acorn. Show-off." : "It found its acorn from autumn!", t + 0.2f, 2.8f); }
+                if (s > 3.6f) SquirrelRun(c, t);
+            }
             else
             {
                 float u = Clamp(s / 1.4f, 0, 1);
@@ -400,7 +460,7 @@ namespace Stillpoint
                 p.Flick = 0;
                 acornDrop = -1;
                 c.X = c.From.X + (330 - c.From.X) * u * u;
-                c.Y = GardenArt.DigAt.Y - Math.Abs(Sin(u * Pi * 4)) * 5;
+                c.Y = digSpot.Y - Math.Abs(Sin(u * Pi * 4)) * 5;
                 p.Gait = u * Pi * 4;
                 if (u >= 1) c.State = 0;
             }
@@ -425,6 +485,8 @@ namespace Stillpoint
             c.From = new PointF(SX + c.Side * 190, 20 + Rand * 20);
             c.P.Turn = 0;
             c.P.Spread = 1;
+            c.K = 0;
+            c.A = 0;
             var trust = TrustOf(Visitors.Owl);
             c.D = (int)trust;
             c.B = trust == Trust.Family ? float.MaxValue : 10 + 5 * (int)trust;
@@ -462,6 +524,19 @@ namespace Stillpoint
                 p.Tilt = 0;
                 float look = c.X > SX ? -0.5f : 0.5f;
                 if (pointerIn && t - pointerT < 3 && Dist(pointer, c.X, c.Y - 18) < 40) look = Clamp((pointer.X - c.X) / 22, -1.2f, 1.2f);
+                if (moth.State == 2)
+                {
+                    look = Clamp((moth.X - c.X) / 18, -1.2f, 1.2f);
+                    if (c.K <= 0) c.K = t;
+                    if (c.A == 0 && t - c.K > 3)
+                    {
+                        c.A = 1;
+                        c.C = 0;
+                        owlHootT = t;
+                        MothFlee(t, new PointF(c.X, c.Y - 18));
+                        if (!Sleeping) Later(Tone == Tone.Dry ? "Owl versus moth. The moth wins." : Tone == Tone.Worry ? "Easy, owl. Let it go." : "The owl hooted at the moth. Off it goes!", t + 0.5f, 2.8f);
+                    }
+                }
                 var trust = (Trust)(int)c.D;
                 float kiss = trust >= Trust.Friendly ? Window(6.2f, 8f, s, 0.5f) : 0;
                 if (kiss > 0) look += ((c.X > SX ? -1.1f : 1.1f) - look) * kiss;
@@ -470,6 +545,9 @@ namespace Stillpoint
                 float blink = (s + 1.1f) % 3.6f;
                 p.Blink = Math.Max(blink < 0.6f ? Sin(blink / 0.6f * Pi) : 0, Window(6.6f, 7.8f, s, 0.45f) * kiss);
                 p.Puff = trust == Trust.Wary ? 0 : Math.Max(Window(4.2f, 5, s, 0.2f), Math.Max(Window(12, 12.8f, s, 0.2f), trust >= Trust.Trusting ? Window(19, 19.8f, s, 0.2f) : 0));
+                float hoot = Window(0, 1.3f, t - owlHootT, 0.2f);
+                p.Puff = Math.Max(p.Puff, hoot);
+                p.Tilt = 0.12f * hoot * Math.Sign(moth.X - c.X);
                 if (trust == Trust.Wary && pointerIn && t - pointerT < 1 && Dist(pointer, c.X, c.Y - 14) < 26) { OwlLeave(c, t); return; }
                 if (p.Puff > 0.9f && t > c.C)
                 {
@@ -517,6 +595,8 @@ namespace Stillpoint
             c.Side = light.X > SX ? -1 : 1;
             c.From = new PointF(light.X + c.Side * 90, light.Y - 30);
             c.A = 0;
+            c.B = -99;
+            c.D = 0;
         }
 
         void StepMoth(float t, float dt)
@@ -528,7 +608,8 @@ namespace Stillpoint
             float dart = (float)Math.Pow(Math.Max(0, Sin(s * 2.1f)), 8);
             float r = ((lamp ? 11 : 10) + 3 * Sin(t * 2.3f)) * (1 - 0.7f * dart);
             c.A += dt * (2.6f + 1.4f * Sin(t * 1.3f));
-            var orbit = new PointF(light.X + Cos(c.A) * r + Sin(t * 21) * 0.9f, light.Y + Sin(c.A) * r * 0.75f + Cos(t * 17) * 0.9f);
+            float dodge = Window(0, 0.9f, t - c.B, 0.15f);
+            var orbit = new PointF(light.X + Cos(c.A) * r + Sin(t * 21) * 0.9f + Sin((t - c.B) * 20) * 3 * dodge, light.Y + Sin(c.A) * r * 0.75f + Cos(t * 17) * 0.9f + dodge * 12);
             if (c.State == 1)
             {
                 float u = Clamp(s / 2.4f, 0, 1), e = Smooth(0, 1, u);
@@ -550,7 +631,7 @@ namespace Stillpoint
             }
             else
             {
-                float u = Clamp(s / 2.6f, 0, 1);
+                float u = Clamp(s / (c.D == 1 ? 1.5f : 2.6f), 0, 1);
                 c.X = c.From.X + (c.To.X - c.From.X) * u * u + Sin(t * 13) * 2;
                 c.Y = c.From.Y + (c.To.Y - c.From.Y) * u * u + Cos(t * 11) * 2;
                 if (u >= 1) c.State = 0;
@@ -582,6 +663,9 @@ namespace Stillpoint
             c.P.Curl = 0;
             c.P.Hide = 0;
             c.P.Flick = 0;
+            c.P.Tilt = 0;
+            c.C = 0;
+            c.K = 0;
         }
 
         void StepFox(float t, float dt)
@@ -593,7 +677,7 @@ namespace Stillpoint
             var trust = FoxTrust;
             if (c.State == 1)
             {
-                float u = Clamp(s / (2.6f + home / 60), 0, 1);
+                float u = Clamp(s / (c.C == 1 ? 3.2f : 2.6f + home / 60), 0, 1);
                 c.X = -24 + (home + 24) * (1 - (1 - u) * (1 - u));
                 p.Gait = s * 9;
                 p.Run = 1 - Smooth(0.85f, 1, u);
@@ -603,8 +687,23 @@ namespace Stillpoint
                     c.State = 2;
                     c.T0 = t;
                     Visit(Visitors.Fox);
-                    if (!Sleeping && !Known(Visitors.Fox)) Chat(Pick(new[] { "A fox. Shh, don't scare it.", "Look who's out tonight." }), 3f);
+                    if (!Sleeping && !Known(Visitors.Fox) && c.C == 0) Chat(Pick(new[] { "A fox. Shh, don't scare it.", "Look who's out tonight." }), 3f);
                 }
+            }
+            else if (c.State == 2 && c.C == 1)
+            {
+                p.Run = 0;
+                c.X = home;
+                c.Y = GardenArt.FoxAt.Y;
+                p.Sit = p.Curl = p.Hide = 0;
+                p.Tilt = s < 3 ? 0.42f * Window(0.2f, 3, s, 0.3f) : -0.12f * Window(3, 5.5f, s, 0.3f);
+                p.Ear = Window(3.1f, 3.5f, s, 0.1f);
+                if (s > 3.4f && c.K == 0)
+                {
+                    c.K = 1;
+                    Later(Tone == Tone.Dry ? "The squirrel got away. Fox, zero." : "Everyone's okay. Just a scare.", t + 0.3f, 2.8f);
+                }
+                if (s > c.B) { c.State = 3; c.T0 = t; c.Side = -1; p.Tilt = 0; p.Ear = 0; }
             }
             else if (c.State == 2)
             {
@@ -715,10 +814,12 @@ namespace Stillpoint
 
         void DrawGroundVisitors(Graphics g, float t, float night)
         {
-            if (digHole > 0.01f || digMound > 0.01f) GardenArt.DrawDig(g, digHole, digMound, season, night);
-            if (state.DugYesterday && season != Season.Winter && !snowGround) GardenArt.DrawSprout(g, night, wind);
-            if (acornDrop >= 0) CritterArt.DrawAcorn(g, GardenArt.DigAt.X, GardenArt.DigAt.Y - 3 * (1 - acornDrop), 0.9f * (1 - acornDrop * 0.6f), night);
+            GardenArt.DrawCaches(g, state.Caches, squirrel.Active || digHole > 0.01f || digMound > 0.01f ? digIndex : -1, season, night, snowGround, wind);
+            if (digHole > 0.01f || digMound > 0.01f) GardenArt.DrawDig(g, digSpot.X, digSpot.Y, digHole, digMound, season, night, snowGround && digIndex >= 0);
+            if (acornDrop >= 0) CritterArt.DrawAcorn(g, digSpot.X, digSpot.Y - 3 * (1 - acornDrop), 0.9f * (1 - acornDrop * 0.6f), night);
+            DrawWildGround(g, t, night);
             if (fox.Active) CritterArt.DrawFox(g, fox.X, fox.Y, t, fox.Side, fox.P, night);
+            DrawCubs(g, t, night);
             if (snails.Active)
             {
                 using (var trail = new Pen(Color.FromArgb(50, 255, 255, 255), 1.2f))
@@ -745,6 +846,7 @@ namespace Stillpoint
                     SpiritArt.FillEllipse(g, Alpha(Ink, 0.2f * moth.P.Lit), moth.X + (moth.X - GardenArt.LanternAt.X) * 0.7f, GardenArt.LanternAt.Y + 3, 2.4f, 0.7f);
                 CritterArt.DrawMoth(g, moth.X, moth.Y, t, moth.P, lamp ? 1 : 0.75f);
             }
+            DrawWildAir(g, t, night);
         }
     }
 }

@@ -17,13 +17,14 @@ namespace Stillpoint
     sealed class WeatherNow
     {
         public DateTime Fetched;
-        public float CloudCover, Rain, Snowfall, SnowDepth;
+        public float CloudCover, Rain, Snowfall, SnowDepth, Wind, Gusts;
         public int Code;
         public List<(DateTime Hour, float Rain, float Snow)> Hours = new List<(DateTime, float, float)>();
 
         public bool Fresh(DateTime now) => (now - Fetched).TotalHours < 3;
         public bool Fog => Code == 45 || Code == 48;
         public bool Storm => Code >= 95;
+        public float Windiness => SpiritArt.Clamp((Math.Max(Wind, Gusts * 0.7f) - 8) / 32, 0, 1);
 
         public float Wetness(DateTime now)
         {
@@ -43,7 +44,7 @@ namespace Stillpoint
     static class RealWeather
     {
         const string Geocoding = "https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=";
-        const string Forecast = "https://api.open-meteo.com/v1/forecast?current=precipitation,rain,showers,snowfall,cloud_cover,weather_code,snow_depth&hourly=precipitation,snowfall&past_days=2&forecast_days=1&timezone=GMT";
+        const string Forecast = "https://api.open-meteo.com/v1/forecast?current=precipitation,rain,showers,snowfall,cloud_cover,weather_code,snow_depth,wind_speed_10m,wind_gusts_10m&hourly=precipitation,snowfall&past_days=2&forecast_days=1&timezone=GMT";
         static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
         public static async Task<Town> FindTown(string name)
@@ -73,6 +74,8 @@ namespace Stillpoint
                 weather.Snowfall = (float)Number(current, "snowfall");
                 weather.SnowDepth = (float)Number(current, "snow_depth");
                 weather.Code = (int)Number(current, "weather_code");
+                weather.Wind = (float)Number(current, "wind_speed_10m");
+                weather.Gusts = (float)Number(current, "wind_gusts_10m");
             }
             if (root.TryGetValue("hourly", out var h) && h is Dictionary<string, object> hourly
                 && hourly.TryGetValue("time", out var t) && t is object[] times

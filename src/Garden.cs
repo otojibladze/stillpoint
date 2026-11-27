@@ -16,13 +16,14 @@ namespace Stillpoint
         public const string Ladybug = "ladybug", Bee = "bee", Squirrel = "squirrel", Owl = "owl", Moth = "moth", Fox = "fox", Snails = "snails", Turtle = "turtle";
         public const string Meteors = "meteors", Eclipse = "eclipse", Aurora = "aurora", Comet = "comet", Fledged = "fledged";
         public const string Duckling = "duckling", Balloon = "balloon", Traveler = "traveler", Plane = "plane", Hedgehog = "hedgehog";
-        public static readonly string[] Order = { Butterfly, Bird, Bee, Ladybug, Dragonfly, Squirrel, Snail, Snails, Turtle, Frog, Owl, Moth, Fox, Cat, Rainbow, Meteors, Eclipse, Aurora, Comet, Fledged, Duckling, Balloon, Traveler, Plane, Hedgehog };
-        static readonly string[] Happenings = { Rainbow, Meteors, Eclipse, Aurora, Comet, Fledged, Duckling, Balloon, Traveler, Plane, Hedgehog };
+        public const string Rabbit = "rabbit", Mouse = "mouse", Bat = "bat", Worm = "worm", Cubs = "cubs", Froglets = "froglets";
+        public static readonly string[] Order = { Butterfly, Bird, Bee, Ladybug, Dragonfly, Squirrel, Rabbit, Snail, Snails, Worm, Turtle, Frog, Owl, Moth, Bat, Fox, Mouse, Cat, Rainbow, Meteors, Eclipse, Aurora, Comet, Fledged, Cubs, Froglets, Duckling, Balloon, Traveler, Plane, Hedgehog };
+        static readonly string[] Happenings = { Rainbow, Meteors, Eclipse, Aurora, Comet, Fledged, Cubs, Froglets, Duckling, Balloon, Traveler, Plane, Hedgehog };
 
         public static bool IsAnimal(string id) => Array.IndexOf(Happenings, id) < 0;
 
         public static string Label(string id) =>
-            Stories.Of(id)?.Label ?? (id == Rainbow ? "Rain, then a rainbow" : id == Meteors ? "Meteor shower" : id == Aurora ? "Northern lights" : id == Fledged ? "The chicks flew" : Capital(id == Snails ? "two snails" : id));
+            Stories.Of(id)?.Label ?? (id == Rainbow ? "Rain, then a rainbow" : id == Meteors ? "Meteor shower" : id == Aurora ? "Northern lights" : id == Fledged ? "The chicks flew" : id == Cubs ? "Fox cubs" : id == Froglets ? "Tiny frogs" : id == Worm ? "Earthworm" : Capital(id == Snails ? "two snails" : id));
 
         public static string Noun(string id) => id == Snails ? "two snails" : ("aeiou".IndexOf(id[0]) >= 0 ? "an " : "a ") + id;
 
@@ -54,6 +55,7 @@ namespace Stillpoint
         public HashSet<string> Visitors = new HashSet<string>();
         public float Clouds, Rain, Tree = -1;
         public int Weeds;
+        public Caches Caches;
         public bool Today;
         public bool Empty => SitSeconds <= 0;
     }
@@ -106,10 +108,12 @@ namespace Stillpoint
             double hours = Math.Max(0, (to - from).TotalHours);
             var nightHours = new List<DateTime>();
             bool day = false;
+            var twilight = new List<DateTime>();
             for (var h = from; h < to && nightHours.Count + 1 < 200; h = h.AddHours(1))
             {
                 if (h.Hour >= 22 || h.Hour < 6) nightHours.Add(h);
                 if (h.Hour >= 8 && h.Hour < 19) day = true;
+                if (h.Hour >= 5 && h.Hour < 8 || h.Hour >= 17 && h.Hour < 21) twilight.Add(h);
             }
             report.Overnight = nightHours.Count >= 3;
             if (weather != null && weather.Fresh(to))
@@ -125,7 +129,11 @@ namespace Stillpoint
             if (nightHours.Count > 0 && rnd.NextDouble() < 0.55) report.Visits.Add((Visitors.Cat, nightHours[rnd.Next(nightHours.Count)]));
             if (report.Rained && season != Season.Winter && rnd.NextDouble() < 0.7) report.Visits.Add((Visitors.Frog, anyTime()));
             if (report.Rained && season != Season.Winter && rnd.NextDouble() < 0.35) report.Visits.Add((Visitors.Snails, anyTime()));
-            if (season != Season.Winter && day && rnd.NextDouble() < Math.Min(0.45, 0.15 + hours * 0.06)) report.Visits.Add((Visitors.Squirrel, anyTime()));
+            if (day && rnd.NextDouble() < Math.Min(0.45, 0.15 + hours * 0.06) * (season == Season.Winter ? 0.4 : 1)) report.Visits.Add((Visitors.Squirrel, anyTime()));
+            if (twilight.Count > 0 && rnd.NextDouble() < 0.3) report.Visits.Add((Visitors.Rabbit, twilight[rnd.Next(twilight.Count)]));
+            if (nightHours.Count > 0 && rnd.NextDouble() < 0.3) report.Visits.Add((Visitors.Mouse, nightHours[rnd.Next(nightHours.Count)]));
+            if (nightHours.Count > 0 && from.Month >= 4 && from.Month <= 10 && rnd.NextDouble() < 0.25) report.Visits.Add((Visitors.Bat, nightHours[rnd.Next(nightHours.Count)]));
+            if (report.Rained && season != Season.Winter && rnd.NextDouble() < 0.5) report.Visits.Add((Visitors.Worm, anyTime()));
             if (from.Month >= 4 && from.Month <= 10 && day && rnd.NextDouble() < 0.25) report.Visits.Add((Visitors.Ladybug, anyTime()));
             if (nightHours.Count > 0 && rnd.NextDouble() < 0.35) report.Visits.Add((Visitors.Owl, nightHours[rnd.Next(nightHours.Count)]));
             if (nightHours.Count > 0 && rnd.NextDouble() < 0.3) report.Visits.Add((Visitors.Fox, nightHours[rnd.Next(nightHours.Count)]));
@@ -225,6 +233,7 @@ namespace Stillpoint
                 Today = day.Date == DateTime.Today,
                 Tree = TreeGrowth(DaysTogether(sessions, day)),
                 Weeds = Weeds(sessions, current, day),
+                Caches = Wildlife.Squirrel(album, day, false),
             };
             if (album != null) g.Visitors = new HashSet<string>(album.On(day));
             g.Clouds = Weather.Clouds(g.LongestSeconds, interval);

@@ -72,7 +72,7 @@ namespace Stillpoint
     {
         public const int NameAt = 3;
         static readonly int[] Levels = { 1, 3, 6, 10, 20 };
-        public static readonly string[] Species = { Visitors.Fox, Visitors.Owl, Visitors.Cat, Visitors.Squirrel, Visitors.Bird, Visitors.Frog, Visitors.Turtle, Visitors.Snail };
+        public static readonly string[] Species = { Visitors.Fox, Visitors.Owl, Visitors.Cat, Visitors.Squirrel, Visitors.Rabbit, Visitors.Mouse, Visitors.Bird, Visitors.Frog, Visitors.Turtle, Visitors.Snail };
 
         static readonly Dictionary<string, string[]> Names = new Dictionary<string, string[]>
         {
@@ -84,6 +84,8 @@ namespace Stillpoint
             [Visitors.Frog] = new[] { "Puddle", "Lily", "Bubbles", "Fig", "Moss", "Hopper" },
             [Visitors.Turtle] = new[] { "Sheldon", "Tank", "Admiral", "Bean", "Clover", "Marlowe" },
             [Visitors.Snail] = new[] { "Shelly", "Turbo", "Sprinkle", "Professor Slow", "Dot", "Bramble" },
+            [Visitors.Rabbit] = new[] { "Clover", "Dandelion", "Willow", "Marshmallow", "Hopscotch", "Bun", "Thistle", "Honey" },
+            [Visitors.Mouse] = new[] { "Crumb", "Button", "Whisker", "Thimble", "Pipkin", "Squeak", "Cheddar", "Sesame" },
         };
 
         public static Trust TrustFor(int visits)
@@ -229,6 +231,8 @@ namespace Stillpoint
             if (seen.Contains(Visitors.Aurora)) yield return make("aurora", 8, $"{ago} the northern lights danced over our garden.");
             if (seen.Contains(Visitors.Comet)) yield return make("comet", 8, $"{ago} a comet flew over us.");
             if (seen.Contains(Visitors.Fledged)) yield return make("fledged", 8, $"{ago} our chicks learned to fly.");
+            if (seen.Contains(Visitors.Cubs)) yield return make("cubs", 8, $"{ago} the fox brought her cubs to our garden.");
+            if (seen.Contains(Visitors.Froglets)) yield return make("froglets", 8, $"{ago} our tadpoles turned into tiny frogs.");
             foreach (var story in Stories.All)
                 if (seen.Contains(story.Id)) yield return make(story.Id, 8, $"{ago} {story.Memory}.");
         }

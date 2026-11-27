@@ -577,12 +577,14 @@ namespace Stillpoint
             }
         }
 
-        public static void DrawButterfly(Graphics g, float x, float y, float t, bool landed)
+        public static void DrawButterfly(Graphics g, float x, float y, float t, bool landed, float grip = 0, float spin = 0, float beat = -1)
         {
-            float flap = landed ? 0.55f + 0.45f * Sin(t * 2.2f) : 0.25f + 0.75f * Math.Abs(Sin(t * 15));
+            float flap = landed ? 0.55f + 0.45f * Sin(t * 2.2f) : 0.25f + 0.75f * Math.Abs(Sin(beat >= 0 ? beat : t * 15));
+            if (landed) flap += (0.08f - flap) * Clamp(grip, 0, 1);
             var state = g.Save();
             g.TranslateTransform(x, y);
             if (!landed) g.RotateTransform(Sin(t * 3) * 0.2f * Deg);
+            if (spin != 0) g.RotateTransform(spin * Deg);
             foreach (int s in new[] { -1, 1 })
             {
                 var wing = g.Save();
@@ -604,30 +606,44 @@ namespace Stillpoint
             g.Restore(state);
         }
 
-        public static void DrawBird(Graphics g, float x, float y, float t, float facing, bool flying)
+        public static void DrawBird(Graphics g, float x, float y, float t, float facing, bool flying, float puff = 0, float peck = 0, float cock = 0, float shake = 0)
         {
             var state = g.Save();
             g.TranslateTransform(x, y);
             g.ScaleTransform(facing < 0 ? -1 : 1, 1);
-            var brown = Hex(0x8A6A55);
-            FillPolygon(g, Hex(0x6E5444), new PointF(-5, -3), new PointF(-12, -6.5f), new PointF(-11.5f, -2.5f));
-            FillEllipse(g, brown, 0, -4, 7, 5);
-            FillEllipse(g, Hex(0xD9774E), 2.6f, -3, 4, 3.6f);
-            FillEllipse(g, brown, 5, -9, 3.7f, 3.5f);
-            FillEllipse(g, Ink, 6.2f, -9.6f, 0.85f, 0.85f);
-            FillPolygon(g, Hex(0xE0A040), new PointF(8.2f, -9.6f), new PointF(11.2f, -8.8f), new PointF(8.2f, -8.1f));
-            float flap = flying ? Sin(t * 26) : 0.15f;
-            var wing = g.Save();
-            g.TranslateTransform(-1, -5.5f);
-            g.RotateTransform((-0.35f - flap * 0.7f) * Deg);
-            FillEllipse(g, Hex(0x6E5444), -1, 0, 6, 2.6f);
-            g.Restore(wing);
             if (!flying)
                 using (var legs = new Pen(Hex(0x5A4636), 0.8f))
                 {
                     g.DrawLine(legs, -0.5f, 0.5f, -1, 3);
                     g.DrawLine(legs, 1.5f, 0.5f, 1.5f, 3);
                 }
+            if (peck != 0 || shake != 0)
+            {
+                g.TranslateTransform(0.5f, 2);
+                g.RotateTransform(peck * 42 + shake * 12 * Sin(t * 46));
+                g.TranslateTransform(-0.5f, -2);
+            }
+            var brown = Hex(0x8A6A55);
+            float fat = 1 + 0.2f * puff, tuck = 1.8f * puff;
+            FillPolygon(g, Hex(0x6E5444), new PointF(-5, -3), new PointF(-12, -6.5f + puff), new PointF(-11.5f, -2.5f + puff));
+            FillEllipse(g, brown, 0, -4 - puff * 0.4f, 7 * fat, 5 * fat);
+            FillEllipse(g, Hex(0xD9774E), 2.6f, -3 - puff * 0.3f, 4 * fat, 3.6f * fat);
+            if (puff > 0.05f)
+                for (int i = 0; i < 5; i++)
+                    FillEllipse(g, Alpha(brown, 0.9f * puff), -4.5f + i * 2.2f, -8.6f - puff * 0.6f + Math.Abs(i - 2) * 0.7f, 1.4f, 1.1f);
+            var head = g.Save();
+            g.TranslateTransform(5, -9 + tuck);
+            g.RotateTransform(cock * 26);
+            FillEllipse(g, brown, 0, 0, 3.7f, 3.5f);
+            FillEllipse(g, Ink, 1.2f, -0.6f, 0.85f, 0.85f);
+            FillPolygon(g, Hex(0xE0A040), new PointF(3.2f, -0.6f), new PointF(6.2f, 0.2f), new PointF(3.2f, 0.9f));
+            g.Restore(head);
+            float flap = flying ? Sin(t * 26) : 0.15f;
+            var wing = g.Save();
+            g.TranslateTransform(-1, -5.5f - puff * 0.5f);
+            g.RotateTransform((-0.35f - flap * 0.7f) * Deg);
+            FillEllipse(g, Hex(0x6E5444), -1, 0, 6 * fat, 2.6f * fat);
+            g.Restore(wing);
             g.Restore(state);
         }
 
@@ -657,10 +673,11 @@ namespace Stillpoint
             g.Restore(state);
         }
 
-        public static void DrawFrog(Graphics g, float x, float y, float t, float croak)
+        public static void DrawFrog(Graphics g, float x, float y, float t, float croak, float happy = 0, float scale = 1)
         {
             var state = g.Save();
             g.TranslateTransform(x, y);
+            if (scale != 1) g.ScaleTransform(scale, scale);
             var green = Hex(0x7FA060);
             FillEllipse(g, Hex(0x6C8E50), -6.2f, -1.2f, 3.2f, 1.8f);
             FillEllipse(g, Hex(0x6C8E50), 6.2f, -1.2f, 3.2f, 1.8f);
@@ -668,11 +685,20 @@ namespace Stillpoint
             FillEllipse(g, Hex(0xBACF92), 0, -3.2f, 4.2f, 2.8f);
             FillEllipse(g, green, -3.2f, -8.2f, 2.4f, 2.3f);
             FillEllipse(g, green, 3.2f, -8.2f, 2.4f, 2.3f);
-            FillEllipse(g, Color.FromArgb(240, 250, 248, 236), -3.2f, -8.4f, 1.5f, 1.4f);
-            FillEllipse(g, Color.FromArgb(240, 250, 248, 236), 3.2f, -8.4f, 1.5f, 1.4f);
-            FillEllipse(g, Ink, -3.1f, -8.4f, 0.8f, 0.8f);
-            FillEllipse(g, Ink, 3.3f, -8.4f, 0.8f, 0.8f);
-            using (var mouth = new Pen(Hex(0x4D6B37), 0.7f)) Arc(g, mouth, 0, -6.4f, 2.6f, Pi * 0.25f, Pi * 0.75f);
+            if (happy > 0.5f)
+                using (var lid = RoundPen(Hex(0x3E5A2C), 0.6f))
+                {
+                    Arc(g, lid, -3.2f, -7.6f, 1.2f, Pi * 1.15f, Pi * 1.85f);
+                    Arc(g, lid, 3.2f, -7.6f, 1.2f, Pi * 1.15f, Pi * 1.85f);
+                }
+            else
+            {
+                FillEllipse(g, Color.FromArgb(240, 250, 248, 236), -3.2f, -8.4f, 1.5f, 1.4f);
+                FillEllipse(g, Color.FromArgb(240, 250, 248, 236), 3.2f, -8.4f, 1.5f, 1.4f);
+                FillEllipse(g, Ink, -3.1f, -8.4f, 0.8f, 0.8f);
+                FillEllipse(g, Ink, 3.3f, -8.4f, 0.8f, 0.8f);
+            }
+            using (var mouth = new Pen(Hex(0x4D6B37), 0.7f)) Arc(g, mouth, 0, -6.4f - happy * 0.4f, 2.6f + happy * 0.6f, Pi * 0.25f, Pi * 0.75f);
             if (croak > 0.02f) FillEllipse(g, Alpha(Hex(0xE4ECC8), 0.9f), 0, -2.2f, 3.4f * croak, 2.6f * croak);
             g.Restore(state);
         }
@@ -683,44 +709,60 @@ namespace Stillpoint
 
         public static void DrawCat(Graphics g, float x, float y, float t, float facing, CritterPose p)
         {
-            float c = Smooth(0, 1, p.Curl);
-            float L(float stand, float curl) => stand + (curl - stand) * c;
-            PointF P(float sx, float sy, float cx, float cy) => new PointF(L(sx, cx), L(sy, cy));
+            float c = Smooth(0, 1, p.Curl), k = Smooth(0, 1, p.Sit), h = Smooth(0, 1, p.Hide);
+            float V(float stand, float curl, float sit, float crouch) => CritterArt.Lerp(CritterArt.Lerp(CritterArt.Lerp(stand, curl, c), sit, k), crouch, h);
             var state = g.Save();
             g.TranslateTransform(x, y);
             if (facing < 0) g.ScaleTransform(-1, 1);
             var fur = Hex(0x8C8691);
             float breath = 1 + 0.035f * Sin(t * 1.4f) * c;
-            float sway = Sin(t * 2.2f) * 1.6f * (1 - c);
+            float sway = Sin(t * 2.2f) * 1.6f * (1 - c) * (1 - k) * (1 - h);
+            float flick = p.Flick * Sin(t * 16) * 2.4f;
+            float wiggle = h * Clamp(p.Walk, 0, 1) * Sin(t * 15) * 1.2f;
             using (var tail = RoundPen(Hex(0x807A86), 3.2f))
             using (var path = new GraphicsPath())
             {
-                path.AddBezier(P(11, -14, 14, -4), P(17 + sway * 0.3f, -16, 20, 3), P(20 + sway, -24, -4, 4.5f), P(16 + sway * 1.4f, -29, -12, 0.5f));
+                path.AddBezier(new PointF(V(11, 14, 9, 11) + wiggle, V(-14, -4, -3, -7)), new PointF(V(17 + sway * 0.3f, 20, 16, 17) + wiggle, V(-16, 3, 1.5f, -7.5f)),
+                    new PointF(V(20 + sway, -4, 6, 22) + wiggle, V(-24, 4.5f, 3, -6.5f) + flick * 0.4f), new PointF(V(16 + sway * 1.4f, -12, -5, 26) + wiggle, V(-29, 0.5f, 1, -8.5f) + flick));
                 g.DrawPath(tail, path);
             }
+            var headAt = new PointF(V(-11.5f, -11, -5, -14.5f), V(-19, -9, -19.5f, -10));
             if (c < 0.97f)
             {
                 float swing = p.Run * Sin(p.Gait) * 2.4f;
-                float tuck = c;
+                float[] hxs = { -6.5f, -3.5f, 7.5f, 10.5f }, swings = { swing, -swing, -swing, swing };
                 using (var leg = RoundPen(Hex(0x7A747F), 2.6f))
-                {
-                    foreach (var (hx, s) in new[] { (-6.5f, swing), (-3.5f, -swing), (7.5f, -swing), (10.5f, swing) })
+                    for (int i = 0; i < 4; i++)
                     {
-                        var hip = new PointF(hx * (1 - 0.3f * tuck), L(-11, -5));
-                        var foot = new PointF(hx + s * (1 - tuck), -0.4f);
-                        g.DrawLine(leg, hip, new PointF(foot.X + (hip.X - foot.X) * tuck, foot.Y + (hip.Y - foot.Y) * tuck));
+                        bool front = i < 2;
+                        float hx = hxs[i];
+                        var hip = new PointF(V(hx, hx * 0.7f, front ? -4.5f + i * 2.6f : 5.5f + (i - 2) * 3, front ? -7 + i * 3 : 7 + (i - 2) * 3 + wiggle), V(-11, -5, front ? -9 : -4, -6));
+                        var foot = new PointF(V(hx + swings[i], hx * 0.7f, front ? -5 + i * 2.8f : 4 + (i - 2) * 4.5f, front ? -10 + i * 3 : 6 + (i - 2) * 3.5f + wiggle), -0.4f);
+                        if (i == 0 && p.Paw == 1) foot = CritterArt.Lerp(foot, new PointF(headAt.X + 2.6f, headAt.Y + 4.6f + Sin(t * 9) * 0.6f), k);
+                        foot = CritterArt.Lerp(foot, hip, c);
+                        g.DrawLine(leg, hip, foot);
                     }
-                }
             }
-            FillEllipse(g, fur, L(2, 1), L(-13.5f, -6.5f), L(11.5f, 15.5f), L(5.2f, 7.4f) * breath);
-            FillEllipse(g, Hex(0x9D97A2), L(3.5f, 3), L(-16, -9.5f), L(7, 9), L(1.8f, 2.6f));
+            float tilt = V(0, 0, 24, 0);
+            var body = g.Save();
+            g.TranslateTransform(V(2, 1, 2.5f, 2) + wiggle * 0.5f, V(-13.5f, -6.5f, -8.5f, -7.5f));
+            g.RotateTransform(tilt);
+            FillEllipse(g, fur, 0, 0, V(11.5f, 15.5f, 7.6f, 12.5f), V(5.2f, 7.4f, 8.6f, 4.4f) * breath);
+            FillEllipse(g, Hex(0x9D97A2), V(1.5f, 2, 1.5f, 1.5f), V(-2.5f, -3, -4.5f, -2.5f), V(7, 9, 4.4f, 8), V(1.8f, 2.6f, 3.2f, 1.6f));
+            g.Restore(body);
             var head = g.Save();
-            g.TranslateTransform(L(-11.5f, -11), L(-19, -9));
-            float hs = L(0.9f, 1);
+            g.TranslateTransform(headAt.X, headAt.Y);
+            float hs = V(0.9f, 1, 0.92f, 0.92f);
             g.ScaleTransform(hs, hs);
+            g.RotateTransform(p.Tilt * 32 - (p.Paw == 1 ? 14 * k : 0));
+            var ear = g.Save();
+            g.TranslateTransform(-1.5f, -4);
+            g.RotateTransform(-p.Ear * 24);
+            g.TranslateTransform(1.5f, 4);
             FillPolygon(g, fur, new PointF(-4.5f, -3), new PointF(-3.2f, -10), new PointF(1, -5));
-            FillPolygon(g, fur, new PointF(1.5f, -5.2f), new PointF(5, -9.6f), new PointF(5.8f, -3));
             FillPolygon(g, Hex(0xC9959A), new PointF(-3.4f, -4.2f), new PointF(-2.8f, -8), new PointF(-0.6f, -5));
+            g.Restore(ear);
+            FillPolygon(g, fur, new PointF(1.5f, -5.2f), new PointF(5, -9.6f), new PointF(5.8f, -3));
             FillEllipse(g, fur, 0, 0, 6.2f, 5.6f);
             float open = (1 - Smooth(0.55f, 0.9f, c)) * (1 - Clamp(p.Blink, 0, 1));
             if (open > 0.15f)
@@ -737,6 +779,7 @@ namespace Stillpoint
                     Arc(g, eye, 2.2f, -1.2f, 1.4f, Pi * 0.15f, Pi * 0.85f);
                 }
             FillEllipse(g, Hex(0xC9959A), -0.1f, 1.4f, 0.9f, 0.6f);
+            if (p.Yawn > 0.05f) FillEllipse(g, Hex(0x4A3530), -0.1f, 2.8f, 0.9f * p.Yawn, 0.7f * p.Yawn);
             g.Restore(head);
             g.Restore(state);
         }

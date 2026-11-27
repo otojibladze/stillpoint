@@ -75,7 +75,7 @@ namespace Stillpoint
         public const float StoneX = 150, StoneGround = 194, StoneR = 56, Horizon = 174, BabyR = 11;
         public static readonly PointF LanternAt = new PointF(262, 192), PondAt = new PointF(72, 184), SnowmanAt = new PointF(40, 196);
         public static readonly PointF BabyAt = new PointF(220, 201), CatAt = new PointF(229, 217), FrogAt = new PointF(90, 213);
-        public static readonly PointF DigAt = new PointF(204, 216), SproutAt = new PointF(193, 218), FoxAt = new PointF(52, 217), MoonAt = new PointF(206, 66), SunAt = new PointF(92, 64), GiftAt = new PointF(186, 214);
+        public static readonly PointF DigAt = new PointF(204, 216), FoxAt = new PointF(52, 217), MoonAt = new PointF(206, 66), SunAt = new PointF(92, 64), GiftAt = new PointF(186, 214);
         public const float LadybugSeat = 1.32f * Pi, OwlSeat = 1.37f * Pi, NestSeat = 1.38f * Pi;
 
         public static PointF StoneSurface(SpiritPose p, float a, float inset = 0.99f)
@@ -92,32 +92,30 @@ namespace Stillpoint
         public static PointF OwlPerch(SpiritPose p, Keepsake keepsakes) =>
             (keepsakes & Keepsake.Lantern) != 0 ? new PointF(LanternAt.X, LanternAt.Y - 37.5f) : StoneSurface(p, OwlSeat);
 
-        public static void DrawDig(Graphics g, float hole, float mound, Season season, float night)
+        public static readonly PointF[] CacheSpots = { new PointF(204, 216), new PointF(238, 211), new PointF(257, 219), new PointF(222, 224) };
+
+        public static void DrawDig(Graphics g, float x, float y, float hole, float mound, Season season, float night, bool snowy = false)
         {
-            float x = DigAt.X, y = DigAt.Y;
             if (hole > 0.01f) FillEllipse(g, Alpha(Mix(Hex(0x7E6A52), Hex(0x25262F), night), 0.8f), x, y, 3.8f * hole, 1.3f * hole);
             if (mound <= 0.01f) return;
+            if (snowy)
+            {
+                FillEllipse(g, Alpha(Mix(Hex(0xA9B6C8), Hex(0x3C4256), night), 0.4f * mound), x + 0.4f, y + 0.7f, 5.6f * mound, 1.5f * mound);
+                FillEllipse(g, Mix(Hex(0xF6F8FA), Hex(0x9AA2BA), night), x, y - 0.6f * mound, 5 * mound, 2.2f * mound);
+                return;
+            }
             var sand = Mix(SandDay(season), SandNight(season), night);
-            FillEllipse(g, Alpha(Mix(Hex(0x9C8668), Hex(0x2C2E3A), night), 0.35f * mound), x + 0.4f, y + 0.7f, 5.6f * mound, 1.5f * mound);
+            FillEllipse(g, Alpha(Mix(Hex(0x8A745A), Hex(0x2C2E3A), night), 0.5f * mound), x + 0.4f, y + 0.7f, 5.6f * mound, 1.6f * mound);
             FillEllipse(g, Mix(sand, Hex(0x9C8668), 0.35f), x, y - 0.5f * mound, 4.8f * mound, 2 * mound);
             FillEllipse(g, Alpha(Color.White, 0.4f * (1 - night) * mound), x - 1.3f, y - 1.4f * mound, 2.1f * mound, 0.6f * mound);
         }
 
-        public static void DrawSprout(Graphics g, float night, float wind)
+        public static void DrawCaches(Graphics g, Caches caches, int skip, Season season, float night, bool snowy, float wind)
         {
-            float x = SproutAt.X, y = SproutAt.Y;
-            var green = Mix(Hex(0x7FA35F), Hex(0x3D4B48), night * 0.8f);
-            FillEllipse(g, Alpha(Mix(Hex(0x9C8668), Hex(0x2C2E3A), night), 0.3f), x, y + 0.4f, 3, 0.8f);
-            float tip = x + 0.6f + wind * 0.6f;
-            using (var stem = RoundPen(Mix(Hex(0x5E7E45), Hex(0x36423F), night * 0.8f), 0.8f)) g.DrawLine(stem, x, y, tip, y - 5);
-            foreach (int s in new[] { -1, 1 })
-            {
-                var st = g.Save();
-                g.TranslateTransform(tip, y - 4.6f);
-                g.RotateTransform(s * 50 + wind * 8);
-                FillEllipse(g, green, 0, -1.4f, 0.9f, 1.6f);
-                g.Restore(st);
-            }
+            for (int i = 0; i < Math.Min(caches.Buried, CacheSpots.Length); i++)
+                if (i != skip) DrawDig(g, CacheSpots[i].X, CacheSpots[i].Y, 0, 0.75f, season, night, snowy);
+            for (int i = 0; i < Math.Min(caches.Sprouts, CacheSpots.Length); i++)
+                WildArt.DrawSeedling(g, CacheSpots[i].X, CacheSpots[i].Y, caches.Growth, night, wind);
         }
         public const float PondRx = 26, PondRy = 6.5f;
         static readonly float[][] Rocks = { new[] { 62f, 207f, 7f }, new[] { 74f, 212f, 4.5f }, new[] { 238f, 205f, 5.5f } };
@@ -799,6 +797,7 @@ namespace Stillpoint
             var points = DrawSpirit(g, StoneX, StoneGround, StoneR, pose, 2f);
             if (night > 0.5f && day.Season == Season.Summer) DrawFireflies(g, 3.1f, night * 0.8f, 1);
             DrawNestOn(g, day, pose, night);
+            DrawCaches(g, day.Caches, -1, day.Season, night, day.Season == Season.Winter, 0);
             if ((day.Keepsakes & Keepsake.Baby) != 0) DrawSpirit(g, BabyAt.X, BabyAt.Y, BabyR, BabyPose(pose, 0.5f), 2f);
             var v = day.Visitors;
             if (v.Contains(Visitors.Snail)) DrawSnail(g, 198, 213, 0.4f, -1);
@@ -813,7 +812,6 @@ namespace Stillpoint
             if (v.Contains(Visitors.Turtle)) CritterArt.DrawTurtle(g, 186, 228, 0.5f, -1, still, night);
             if (v.Contains(Visitors.Squirrel))
             {
-                DrawDig(g, 0, 1, day.Season, night);
                 CritterArt.DrawSquirrel(g, DigAt.X + 9, DigAt.Y, 0.3f, -1, new CritterPose { Acorn = true }, night);
             }
             if (v.Contains(Visitors.Owl)) { var perch = OwlPerch(pose, Keepsake.None); CritterArt.DrawOwl(g, perch.X, perch.Y, 0, new CritterPose { Turn = -0.4f }, night); }
@@ -829,6 +827,7 @@ namespace Stillpoint
             }
             if (v.Contains(Visitors.Bee)) CritterArt.DrawBee(g, points.Tip.X + 15, points.Tip.Y - 9, 0.37f, -1, still);
             StoryArt.DrawStill(g, v, points.Tip, night);
+            DrawWildStill(g, day, night);
             g.Restore(state);
         }
     }

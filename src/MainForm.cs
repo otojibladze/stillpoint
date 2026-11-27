@@ -241,7 +241,7 @@ namespace Stillpoint
                 Southern = app.Settings.HasTown && app.Settings.TownLat < 0,
                 Weather = app.Weather,
                 DugToday = app.Album.On(today).Contains(Visitors.Squirrel),
-                DugYesterday = app.Album.On(today.AddDays(-1)).Contains(Visitors.Squirrel),
+                Caches = Wildlife.Squirrel(app.Album, today, app.Settings.HasTown && app.Settings.TownLat < 0),
                 Lat = app.Settings.TownLat,
                 Lon = app.Settings.TownLon,
                 Kp = app.Kp,
