@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 
@@ -8,8 +9,27 @@ namespace Stillpoint
 {
     static class Updater
     {
-        public const string Source = "https://raw.githubusercontent.com/otojibladze/stillpoint/main/latest/";
+        const string Raw = "https://raw.githubusercontent.com/otojibladze/stillpoint/";
+        const string Head = "https://api.github.com/repos/otojibladze/stillpoint/commits/main";
         const long MinExeBytes = 20 * 1024;
+        static string source;
+
+        static async Task<string> SourceAsync()
+        {
+            try
+            {
+                using (var web = Client())
+                {
+                    web.Headers[HttpRequestHeader.Accept] = "application/vnd.github.sha";
+                    string sha = (await web.DownloadStringTaskAsync(Head)).Trim();
+                    if (sha.Length == 40 && sha.All(Uri.IsHexDigit)) return Raw + sha + "/latest/";
+                }
+            }
+            catch (WebException)
+            {
+            }
+            return Raw + "main/latest/";
+        }
 
         public static Version Current => new Version(AppVersion.Text);
 
@@ -17,7 +37,8 @@ namespace Stillpoint
         {
             using (var web = Client())
             {
-                string text = await web.DownloadStringTaskAsync(Source + "version.txt?t=" + DateTime.UtcNow.Ticks);
+                source = await SourceAsync();
+                string text = await web.DownloadStringTaskAsync(source + "version.txt?t=" + DateTime.UtcNow.Ticks);
                 return Version.TryParse(text.Trim(), out var version) ? version : null;
             }
         }
@@ -29,7 +50,7 @@ namespace Stillpoint
             try
             {
                 using (var web = Client())
-                    await web.DownloadFileTaskAsync(Source + "Pebble.exe?t=" + DateTime.UtcNow.Ticks, partial);
+                    await web.DownloadFileTaskAsync((source ?? await SourceAsync()) + "Pebble.exe?t=" + DateTime.UtcNow.Ticks, partial);
                 Validate(partial, expected);
                 if (File.Exists(incoming)) File.Delete(incoming);
                 File.Move(partial, incoming);
