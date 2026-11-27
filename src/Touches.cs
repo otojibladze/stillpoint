@@ -16,14 +16,14 @@ namespace Stillpoint
 
     public sealed class Touches
     {
-        public const int MaxPlants = 5, PlantDays = 36, WiltDays = 30;
+        public const int MaxPlants = 5, PlantDays = 36, WiltDays = 30, BloomBreaks = 10;
         static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
         const string TimeFormat = "yyyy-MM-dd HH:mm:ss";
         public readonly List<Plant> Plants = new List<Plant>();
 
         public static int KindFor(DateTime date) => (int)Garden.SeasonOf(date);
 
-        public static int Stage(int breaks) => breaks <= 0 ? 0 : breaks < 3 ? 1 : breaks < 6 ? 2 : breaks < 10 ? 3 : 4;
+        public static int Stage(int breaks) => breaks <= 0 ? 0 : breaks < 3 ? 1 : breaks < 6 ? 2 : breaks < BloomBreaks ? 3 : 4;
 
         public bool Prune(DateTime now)
         {

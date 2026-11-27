@@ -233,6 +233,7 @@ namespace Stillpoint
                 LastEnd = tracker.Sessions.Count > 0 ? tracker.Sessions.Max(s => s.End) : default(DateTime),
                 Keepsakes = keep.Earned,
                 TotalBreaks = keep.Breaks,
+                TreeDays = Garden.DaysTogether(tracker.Sessions, today),
                 Tree = Garden.TreeGrowth(Garden.DaysTogether(tracker.Sessions, today)),
                 Weeds = Garden.Weeds(tracker.Sessions, tracker.Current, today),
                 Streak = Garden.OnTimeStreak(tracker.Sessions, tracker.Current, today, interval),

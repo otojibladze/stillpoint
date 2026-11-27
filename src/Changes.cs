@@ -20,6 +20,7 @@ namespace Stillpoint
 
         public static readonly Release[] All =
         {
+            R("3.14.0", "2026-11-27", "Pebble talks about your real day: breaks versus yesterday, the next keepsake, your tree, stars, the seed you planted, today's visitors, the weather and the time of day.", "Many more lines, health tips while you sit, and Pebble no longer repeats itself.", "A bird sitting on Pebble flies away when you click or pet the stone."),
             R("3.13.3", "2026-11-27", "Animals in the garden pictures no longer pile on top of each other."),
             R("3.13.2", "2026-11-27", "Check for updates finds a new version right away."),
             R("3.13.1", "2026-11-27", "Raking the sand is gone. Double-click the sand to plant a seed.", "The update message in Settings sits at the bottom right."),

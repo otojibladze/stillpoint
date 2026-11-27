@@ -33,6 +33,7 @@ namespace Stillpoint
         public bool DugToday;
         public Caches Caches;
         public float Tree = -1;
+        public int TreeDays = -1;
         public int Weeds, TotalBreaks, Streak, StoriesSeen;
         public double UsualStart = double.NaN;
         public RoamTime Roam;
@@ -472,7 +473,8 @@ namespace Stillpoint
             if (petting && !Sleeping)
             {
                 StopBeat(t);
-                if (!was && t - petSaidT > 6) { petSaidT = t; Chat(Voice.Pet(Tone, rng), 2.2f); }
+                if (!was) FlushBird(t);
+                if (!was && t - petSaidT > 6) { petSaidT = t; Chat(Remember(Talk.Pet(Tone, SaidAgo, rng)), 2.2f); }
                 if (Running) wakeT = t;
                 if (t > heartT)
                 {
@@ -643,7 +645,7 @@ namespace Stillpoint
             else if (!Running && r < 0.4 && t - boredT > 60) boredT = t;
             else if (TemperAct(t)) { }
             else if (r < (state.Chat == Chattiness.Chatty ? 0.5 : 0.62)) humT = t;
-            else Chat(Voice.Thought(Tone, Running, rng), 3.4f, thought: true);
+            else Chat(Thought(), 3.4f, thought: true);
         }
 
         void StartFlyer(Critter c, float t)
@@ -1125,6 +1127,7 @@ namespace Stillpoint
         public void Poke(float t)
         {
             PokeVisitors(t);
+            bool flushed = FlushBird(t);
             PokeStory(t);
             StopBeat(t);
             if (Sleeping) { pokeT = t; Say("Mm... five more minutes."); return; }
@@ -1140,7 +1143,8 @@ namespace Stillpoint
             }
             pokeT = t;
             if (Running && Drowsiness > 0.5f) { wakeT = t; Say(Pick(new[] { "Huh? I'm awake. I'm awake.", "Was I snoring?" })); }
-            else if (!NestHush()) Say(Voice.Poke(Tone, rng), 1.6f);
+            else if (flushed) Say(Pick(new[] { "Oops. There goes the bird.", "Sorry, little bird!", "Aw. I scared it off." }), 2f);
+            else if (!NestHush()) Say(Remember(Talk.Poke(Tone, SaidAgo, rng)), 1.6f);
         }
 
         public void ShowVisitor(string visitor)

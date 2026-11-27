@@ -110,6 +110,17 @@ namespace Stillpoint
             if (c.State == 0) c.D = 0;
         }
 
+        bool FlushBird(float t)
+        {
+            var c = bird;
+            if (c.State != 1 && c.State != 2) return false;
+            c.Side = c.X < SX ? 1 : -1;
+            SendAway(c, t);
+            c.To = new PointF(SX - c.Side * 210, -20);
+            Emit(new Particle { Kind = Bit.Feather, X = c.X, Y = c.Y - 3, Vx = -c.Side * 12, Vy = -10, Vr = 2, Life = 2.4f, Night = nightK });
+            return true;
+        }
+
         void BirdLanded(float t)
         {
             Visit(Visitors.Bird);
