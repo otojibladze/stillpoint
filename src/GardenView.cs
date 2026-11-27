@@ -65,63 +65,16 @@ namespace Stillpoint
 
         public float Radius { get; set; } = 14;
         public bool Expandable { get; set; }
-        public bool Expanded { get; private set; }
-
-        const float GrowMs = 340, ExpandedAspect = 0.75f;
-        int baseHeight, growFrom, growTo;
-        Bitmap growRaw;
-        readonly System.Diagnostics.Stopwatch growClock = new System.Diagnostics.Stopwatch();
-        Frames growFrames;
-
-        int ExpandedHeight => Math.Max(baseHeight, (int)(Width * ExpandedAspect));
+        PictureZoom zoom;
 
         protected override void OnClick(EventArgs e)
         {
             base.OnClick(e);
-            if (!Expandable || day == null) return;
-            if (baseHeight == 0) baseHeight = Height;
-            Expanded = !Expanded;
-            growRaw?.Dispose();
-            growRaw = GardenPicture.Render(day, night, new Size(Width, baseHeight), 0, Parent?.BackColor ?? Theme.Background);
-            growFrom = Height;
-            growTo = Expanded ? ExpandedHeight : baseHeight;
-            growClock.Restart();
-            if (growFrames == null) growFrames = new Frames(dt => StepGrow());
-            growFrames.Start();
+            if (!Expandable || day == null || (zoom != null && !zoom.IsDisposed)) return;
+            zoom = new PictureZoom(day, night, RectangleToScreen(ClientRectangle), Parent?.BackColor ?? Theme.Background);
+            zoom.Show(FindForm());
         }
 
-        bool StepGrow()
-        {
-            if (IsDisposed) return false;
-            float k = SpiritArt.Smooth(0, 1, growClock.ElapsedMilliseconds / GrowMs);
-            Height = (int)Math.Round(growFrom + (growTo - growFrom) * k);
-            if (k >= 1)
-            {
-                growRaw?.Dispose();
-                growRaw = null;
-            }
-            Invalidate();
-            Update();
-            return k < 1;
-        }
-
-        void DrawGrowing(Graphics g, Color around, float radius)
-        {
-            float scale = Height / (float)growRaw.Height, w = growRaw.Width * scale;
-            g.InterpolationMode = InterpolationMode.Bilinear;
-            g.PixelOffsetMode = PixelOffsetMode.Half;
-            g.DrawImage(growRaw, new RectangleF((Width - w) / 2, 0, w, Height));
-            g.PixelOffsetMode = PixelOffsetMode.Default;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            using (var corners = new GraphicsPath { FillMode = FillMode.Alternate })
-            using (var round = Draw.Rounded(new RectangleF(0, 0, Width - 0.5f, Height - 0.5f), radius))
-            using (var brush = new SolidBrush(around))
-            {
-                corners.AddRectangle(new RectangleF(-1, -1, Width + 2, Height + 2));
-                corners.AddPath(round, false);
-                g.FillPath(brush, corners);
-            }
-        }
         public string Eyebrow { get; set; }
         public string Title { get; set; }
 
@@ -157,7 +110,6 @@ namespace Stillpoint
             g.Clear(around);
             if (day == null || Width < 4 || Height < 4) return;
             float radius = Radius * DeviceDpi / 96f;
-            if (growRaw != null) { DrawGrowing(g, around, radius); return; }
             string key = GardenPicture.Signature(day, night, Size) + "|" + radius + "|" + around.ToArgb();
             if (cache == null || key != cacheKey)
             {
@@ -199,7 +151,6 @@ namespace Stillpoint
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            if (Expanded && growRaw == null && Height != ExpandedHeight) Height = ExpandedHeight;
             Invalidate();
         }
 
@@ -210,8 +161,121 @@ namespace Stillpoint
                 cache?.Dispose();
                 slideFrom?.Dispose();
                 slideTimer?.Dispose();
-                growRaw?.Dispose();
-                growFrames?.Dispose();
+                zoom?.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+    }
+
+    sealed class PictureZoom : Form
+    {
+        const float Ms = 320;
+        readonly Rectangle from, to;
+        readonly Bitmap small;
+        Bitmap large;
+        readonly GardenDay day;
+        readonly float night;
+        readonly Frames frames;
+        readonly System.Diagnostics.Stopwatch clock = new System.Diagnostics.Stopwatch();
+        bool closing;
+        float pos, closeFrom;
+
+        public PictureZoom(GardenDay day, float night, Rectangle from, Color around)
+        {
+            this.day = day;
+            this.night = night;
+            this.from = from;
+            FormBorderStyle = FormBorderStyle.None;
+            ShowInTaskbar = false;
+            StartPosition = FormStartPosition.Manual;
+            BackColor = around;
+            DoubleBuffered = true;
+            KeyPreview = true;
+            Cursor = Cursors.Hand;
+            var area = Screen.FromRectangle(from).WorkingArea;
+            float k = Math.Max(1, Math.Min(area.Width * 0.75f / from.Width, area.Height * 0.75f / from.Height));
+            var size = new Size((int)Math.Round(from.Width * k), (int)Math.Round(from.Height * k));
+            to = new Rectangle(area.Left + (area.Width - size.Width) / 2, area.Top + (area.Height - size.Height) / 2, size.Width, size.Height);
+            small = GardenPicture.Render(day, night, from.Size, 0, around);
+            Bounds = from;
+            frames = new Frames(dt => Step());
+        }
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                var p = base.CreateParams;
+                p.ClassStyle |= 0x20000;
+                return p;
+            }
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            Theme.RoundCorners(this);
+            clock.Restart();
+            frames.Start();
+        }
+
+        bool Step()
+        {
+            if (IsDisposed) return false;
+            float u = SpiritArt.Clamp(clock.ElapsedMilliseconds / (closing ? Ms * Math.Max(0.4f, closeFrom) : Ms), 0, 1);
+            float k = pos = closing ? closeFrom * (1 - SpiritArt.Smooth(0, 1, u)) : SpiritArt.Smooth(0, 1, u);
+            Bounds = new Rectangle(
+                (int)Math.Round(from.X + (to.X - from.X) * k), (int)Math.Round(from.Y + (to.Y - from.Y) * k),
+                (int)Math.Round(from.Width + (to.Width - from.Width) * k), (int)Math.Round(from.Height + (to.Height - from.Height) * k));
+            if (u >= 1)
+            {
+                if (closing) { BeginInvoke((Action)Close); return false; }
+                if (large == null) large = GardenPicture.Render(day, night, to.Size, 0, BackColor);
+            }
+            Invalidate();
+            Update();
+            return u < 1;
+        }
+
+        void Shrink()
+        {
+            if (closing || IsDisposed) return;
+            closing = true;
+            large?.Dispose();
+            large = null;
+            closeFrom = pos;
+            clock.Restart();
+            frames.Start();
+        }
+
+        protected override void OnClick(EventArgs e) { base.OnClick(e); Shrink(); }
+
+        protected override void OnDeactivate(EventArgs e) { base.OnDeactivate(e); Shrink(); }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (e.KeyCode == Keys.Escape || e.KeyCode == Keys.Space || e.KeyCode == Keys.Enter) Shrink();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            if (large != null && large.Size == ClientSize) { g.DrawImageUnscaled(large, 0, 0); return; }
+            g.InterpolationMode = InterpolationMode.HighQualityBilinear;
+            g.PixelOffsetMode = PixelOffsetMode.Half;
+            g.DrawImage(small, new Rectangle(Point.Empty, ClientSize));
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs e) { }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                frames.Dispose();
+                small.Dispose();
+                large?.Dispose();
             }
             base.Dispose(disposing);
         }
