@@ -7,6 +7,21 @@ using System.Threading.Tasks;
 
 namespace Stillpoint
 {
+    static class Net
+    {
+        public static async Task<T> Timed<T>(WebClient web, Func<Task<T>> start, int seconds)
+        {
+            var task = Task.Run(start);
+            if (await Task.WhenAny(task, Task.Delay(seconds * 1000)) != task)
+            {
+                web.CancelAsync();
+                var ignored = task.ContinueWith(t => t.Exception, TaskContinuationOptions.OnlyOnFaulted);
+                throw new TimeoutException("The server took too long to answer.");
+            }
+            return await task;
+        }
+    }
+
     static class Updater
     {
         const string Raw = "https://raw.githubusercontent.com/otojibladze/stillpoint/";
@@ -21,11 +36,11 @@ namespace Stillpoint
                 using (var web = Client())
                 {
                     web.Headers[HttpRequestHeader.Accept] = "application/vnd.github.sha";
-                    string sha = (await web.DownloadStringTaskAsync(Head)).Trim();
+                    string sha = (await Net.Timed(web, () => web.DownloadStringTaskAsync(Head), 20)).Trim();
                     if (sha.Length == 40 && sha.All(Uri.IsHexDigit)) return Raw + sha + "/latest/";
                 }
             }
-            catch (WebException)
+            catch (Exception ex) when (ex is WebException || ex is TimeoutException)
             {
             }
             return Raw + "main/latest/";
@@ -38,7 +53,7 @@ namespace Stillpoint
             using (var web = Client())
             {
                 source = await SourceAsync();
-                string text = await web.DownloadStringTaskAsync(source + "version.txt?t=" + DateTime.UtcNow.Ticks);
+                string text = await Net.Timed(web, () => web.DownloadStringTaskAsync(source + "version.txt?t=" + DateTime.UtcNow.Ticks), 30);
                 return Version.TryParse(text.Trim(), out var version) ? version : null;
             }
         }
@@ -50,7 +65,10 @@ namespace Stillpoint
             try
             {
                 using (var web = Client())
-                    await web.DownloadFileTaskAsync((source ?? await SourceAsync()) + "Pebble.exe?t=" + DateTime.UtcNow.Ticks, partial);
+                {
+                    string from = (source ?? await SourceAsync()) + "Pebble.exe?t=" + DateTime.UtcNow.Ticks;
+                    await Net.Timed(web, async () => { await web.DownloadFileTaskAsync(from, partial); return true; }, 300);
+                }
                 Validate(partial, expected);
                 if (File.Exists(incoming)) File.Delete(incoming);
                 File.Move(partial, incoming);
@@ -101,8 +119,22 @@ namespace Stillpoint
         {
             string bad = exePath + ".bad";
             if (File.Exists(bad)) File.Delete(bad);
+            Quietly(() => File.WriteAllText(exePath + ".skip", FileVersionInfo.GetVersionInfo(exePath).FileVersion ?? ""));
             File.Move(exePath, bad);
             File.Move(exePath + ".old", exePath);
+        }
+
+        public static Version Skipped(string exePath)
+        {
+            try
+            {
+                string path = exePath + ".skip";
+                return File.Exists(path) && Version.TryParse(File.ReadAllText(path).Trim(), out var v) ? v : null;
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                return null;
+            }
         }
 
         public static void CleanUp(string exePath)

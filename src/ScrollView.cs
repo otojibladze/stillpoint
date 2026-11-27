@@ -167,6 +167,7 @@ namespace Stillpoint
             {
                 base.OnMouseWheel(e);
                 view.WheelBy(e.Delta);
+                if (e is HandledMouseEventArgs handled) handled.Handled = true;
             }
         }
     }

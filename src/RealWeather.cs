@@ -50,7 +50,7 @@ namespace Stillpoint
         public static async Task<Town> FindTown(string name)
         {
             string json;
-            using (var web = Client()) json = await web.DownloadStringTaskAsync(Geocoding + Uri.EscapeDataString(name.Trim()));
+            using (var web = Client()) json = await Net.Timed(web, () => web.DownloadStringTaskAsync(Geocoding + Uri.EscapeDataString(name.Trim())), 20);
             var root = Parse(json);
             if (!(root.TryGetValue("results", out var results) && results is object[] list && list.Length > 0 && list[0] is Dictionary<string, object> first)) return null;
             string label = Text(first, "name");
@@ -63,7 +63,7 @@ namespace Stillpoint
         {
             string url = Forecast + "&latitude=" + lat.ToString("0.####", Inv) + "&longitude=" + lon.ToString("0.####", Inv);
             string json;
-            using (var web = Client()) json = await web.DownloadStringTaskAsync(url);
+            using (var web = Client()) json = await Net.Timed(web, () => web.DownloadStringTaskAsync(url), 30);
             var root = Parse(json);
             var weather = new WeatherNow { Fetched = DateTime.Now };
             if (root.TryGetValue("current", out var c) && c is Dictionary<string, object> current)
@@ -94,7 +94,7 @@ namespace Stillpoint
         public static async Task<float> FetchKp()
         {
             string json;
-            using (var web = Client()) json = await web.DownloadStringTaskAsync(KpFeed);
+            using (var web = Client()) json = await Net.Timed(web, () => web.DownloadStringTaskAsync(KpFeed), 30);
             float kp = float.NaN;
             var since = DateTime.UtcNow.AddHours(-6);
             if (new JavaScriptSerializer().DeserializeObject(json) is object[] rows)

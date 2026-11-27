@@ -175,39 +175,42 @@ namespace Stillpoint
             today = today.Date;
             var tone = Character.ToneOf(temper);
             var found = new List<Memory>();
-            var done = sessions.Where(s => s != current && s.Seconds >= 60).ToList();
+            var all = sessions.Where(s => s != current).ToList();
+            var done = all.Where(s => s.Seconds >= 60).ToList();
             foreach (var (rank, words, back) in Ago)
             {
                 var day = back(today);
-                foreach (var m in On(day, rank, words, done, album, interval, tone, friend, today)) found.Add(m);
+                if ((words.Contains("year") || words.Contains("month")) && day.Day != today.Day) continue;
+                foreach (var m in On(day, rank, words, done, all, album, interval, tone, friend, today)) found.Add(m);
             }
             return found.OrderByDescending(m => m.Rank).FirstOrDefault();
         }
 
-        static IEnumerable<Memory> On(DateTime day, int agoRank, string ago, List<Session> done, Album album, double interval, Tone tone, Func<string, Friend> friend, DateTime today)
+        static IEnumerable<Memory> On(DateTime day, int agoRank, string ago, List<Session> done, List<Session> all, Album album, double interval, Tone tone, Func<string, Friend> friend, DateTime today)
         {
             string id(string what) => what + "@" + day.ToString("yyyy-MM-dd");
             Memory make(string what, int kind, string text) => new Memory { Id = id(what), Rank = agoRank * 10 + kind, Text = text };
             var before = done.Where(s => s.Start.Date <= day).ToList();
-            if (before.Count == 0) yield break;
+            var counted = all.Where(s => s.Start.Date <= day).ToList();
+            if (counted.Count == 0) yield break;
 
-            if (before.Min(s => s.Start.Date) == day)
+            if (counted.Min(s => s.Start.Date) == day)
                 yield return make("met", 9, Together(agoRank, tone));
 
             var onDay = before.Where(s => s.Start.Date == day).ToList();
-            if (onDay.Count > 0)
+            if (counted.Any(s => s.Start.Date == day))
             {
-                double longest = onDay.Max(s => s.Seconds);
+                double longest = onDay.Count == 0 ? 0 : onDay.Max(s => s.Seconds);
                 if (longest >= Math.Max(interval * 2, 2 * 3600) && longest >= before.Max(s => s.Seconds))
                     yield return make("longest", 7, Longest(ago, Fmt.Hm(longest), tone));
                 int breaks = onDay.Count;
                 if (breaks >= 6 && breaks >= before.GroupBy(s => s.Start.Date).Max(g => g.Count()))
                     yield return make("busiest", 5, tone == Tone.Dry ? $"{ago} you got up {breaks} times. Show-off." : $"{ago} you got up {breaks} times in one day. Legend.");
-                var firstFlower = before.GroupBy(s => s.Start.Date).Where(g => g.Count() >= Garden.FlowerBreaks).Select(g => g.Key).DefaultIfEmpty(DateTime.MaxValue).Min();
+                var firstFlower = counted.GroupBy(s => s.Start.Date).Where(g => g.Count() >= Garden.FlowerBreaks).Select(g => g.Key).DefaultIfEmpty(DateTime.MaxValue).Min();
                 if (firstFlower == day) yield return make("flower", 6, $"{ago} my first flower bloomed.");
             }
 
-            var progress = Garden.Progress(before, null, day);
+            var progress = Garden.Progress(counted, null, day);
             foreach (var (since, name) in new[] { (progress.MossSince, "moss"), (progress.LanternSince, "the stone lantern"), (progress.PondSince, "the pond"), (progress.BabySince, "a baby pebble") })
                 if (since == day) yield return make("keepsake:" + name, 6, $"{ago} the garden got {name}.");
 

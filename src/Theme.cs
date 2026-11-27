@@ -16,8 +16,8 @@ namespace Stillpoint
             public Palette(params int[] rgb) { Colors = Array.ConvertAll(rgb, c => Color.FromArgb((c >> 16) & 255, (c >> 8) & 255, c & 255)); }
         }
 
-        static readonly int[] LightBase = { 0xECEAE7, 0xF6F5F3, 0x1C1A19, 0x3A3735, 0x5F5C5A, 0xD5D2CF, 0xD9D6D3, 0xBDB9B6, 0, 0, 0xE2DFDB, 0xF7F6F4 };
-        static readonly int[] DarkBase = { 0x1D1C1B, 0x272624, 0xECE8E3, 0xD4CFC9, 0xA6A19B, 0x3B3936, 0x353330, 0x4C4946, 0, 0, 0x302E2C, 0x1A1918 };
+        static readonly int[] LightBase = { 0xECEAE7, 0xF6F5F3, 0x1C1A19, 0x3A3735, 0x5F5C5A, 0xD5D2CF, 0xD9D6D3, 0xBDB9B6, 0, 0, 0xE2DFDB, 0xF7F6F4, 0x4F6B3D };
+        static readonly int[] DarkBase = { 0x1D1C1B, 0x272624, 0xECE8E3, 0xD4CFC9, 0xA6A19B, 0x3B3936, 0x353330, 0x4C4946, 0, 0, 0x302E2C, 0x1A1918, 0x9CC48A };
         static readonly Dictionary<Season, int[]> Accents = new Dictionary<Season, int[]>
         {
             [Season.Autumn] = new[] { 0xC46040, 0x9A3F22, 0xE0896A },
@@ -49,6 +49,7 @@ namespace Stillpoint
         public static Color AccentText => current.Colors[9];
         public static Color Tile => current.Colors[10];
         public static Color OnInk => current.Colors[11];
+        public static Color Positive => current.Colors[12];
         public static bool Dark { get; private set; }
         public static event EventHandler Changed;
 

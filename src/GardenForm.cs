@@ -69,7 +69,7 @@ namespace Stillpoint
                 var icon = new KeepsakeIcon(keepsake) { Margin = new Padding(0, 0, 10, 0) };
                 var label = new Label { Text = name, AutoSize = true, Margin = new Padding(0, 5, 0, 0) };
                 var note = new Label { Text = need, AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(8.5f), Margin = new Padding(6, 7, 0, 0) };
-                var since = new Label { AutoSize = true, ForeColor = SpiritArt.Hex(0x4F6B3D), Font = Theme.SemiBold(9f), Anchor = AnchorStyles.Right, Margin = new Padding(0), Visible = false };
+                var since = new Label { AutoSize = true, ForeColor = Theme.Positive, Font = Theme.SemiBold(9f), Anchor = AnchorStyles.Right, Margin = new Padding(0), Visible = false };
                 var bar = new ThinBar { Anchor = AnchorStyles.Right, Margin = new Padding(0, 0, 2, 0) };
                 keepsakes.AddRow(Ui.Row(icon, label, note), Ui.Row(since, bar));
                 keepsakeRows[keepsake] = (icon, since, bar);
@@ -93,8 +93,15 @@ namespace Stillpoint
         public event Action JournalRequested;
         public Func<DateTime, string> JournalFor { get; set; }
 
+        DateTime todayWas = DateTime.Today;
+
         public void SetData(IReadOnlyList<Session> list, Session now, Album visits, double reminderInterval)
         {
+            if (DateTime.Today != todayWas)
+            {
+                if (gardenDate == todayWas) gardenDate = DateTime.Today;
+                todayWas = DateTime.Today;
+            }
             sessions = list;
             current = now;
             album = visits;
@@ -179,7 +186,7 @@ namespace Stillpoint
                 var name = new Label { Text = f.Title, AutoSize = true, Margin = new Padding(0, 1, 0, 0) };
                 var note = new Label { Text = Friends.Word(f.Trust) + "  ·  " + (f.Visits == 1 ? "1 visit" : f.Visits + " visits"), AutoSize = true, ForeColor = Theme.Muted, Font = Theme.Regular(8.5f), Margin = new Padding(8, 3, 0, 0) };
                 Control right;
-                if (f.Trust == Trust.Family) right = new Label { Text = "Family", AutoSize = true, ForeColor = SpiritArt.Hex(0x4F6B3D), Font = Theme.SemiBold(9f), Anchor = AnchorStyles.Right, Margin = new Padding(0) };
+                if (f.Trust == Trust.Family) right = new Label { Text = "Family", AutoSize = true, ForeColor = Theme.Positive, Font = Theme.SemiBold(9f), Anchor = AnchorStyles.Right, Margin = new Padding(0) };
                 else right = new ThinBar { Anchor = AnchorStyles.Right, Margin = new Padding(0, 0, 2, 0), Value = Friends.ToNext(f) };
                 friendsCard.AddRow(Ui.Row(name, note), right);
             }

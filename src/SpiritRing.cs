@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
@@ -73,7 +74,8 @@ namespace Stillpoint
         readonly List<float> pokes = new List<float>();
         readonly Critter butterfly = new Critter(), bird = new Critter(), snail = new Critter(), frog = new Critter(), cat = new Critter();
         SpiritPose pose;
-        float last;
+        double lastFrame, epoch;
+        const float RebaseAt = 20000, RebaseTo = 2000, TimeFloor = 1000;
 
         RingState state = new RingState();
         bool known, hasLast;
@@ -138,7 +140,31 @@ namespace Stillpoint
 
         public Func<DateTime> Clock { get; set; } = () => DateTime.Now;
         public event Action<string> Visited;
-        public float Now => (float)watch.Elapsed.TotalSeconds;
+        public float Now => (float)(watch.Elapsed.TotalSeconds - epoch);
+
+        void Rebase()
+        {
+            float shift = Now - RebaseTo;
+            if (shift < RebaseAt - RebaseTo) return;
+            epoch += shift;
+            float Shift(float v) => v > TimeFloor ? v - shift : v;
+            void ShiftFields(object o)
+            {
+                foreach (var f in o.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+                {
+                    var v = f.GetValue(o);
+                    if (v is float x) f.SetValue(o, Shift(x));
+                    else if (v is float[] xs) for (int i = 0; i < xs.Length; i++) xs[i] = Shift(xs[i]);
+                    else if (v is List<float> list) for (int i = 0; i < list.Count; i++) list[i] = Shift(list[i]);
+                    else if (v is Critter c && o == (object)this) ShiftFields(c);
+                    else if (v is Critter[] cs) foreach (var each in cs) ShiftFields(each);
+                    else if (v is List<Meteor> ms) foreach (var m in ms) ShiftFields(m);
+                }
+            }
+            ShiftFields(this);
+            for (int i = 0; i < pending.Count; i++) pending[i] = (Shift(pending[i].At), pending[i].Text, pending[i].Seconds);
+            for (int i = 0; i < prints.Count; i++) prints[i] = (prints[i].At, Shift(prints[i].T));
+        }
 
         bool Running => state.Running;
         bool NightHour(int from) { int h = Clock().Hour; return h >= from || h < 6; }
@@ -153,6 +179,7 @@ namespace Stillpoint
             season = Garden.SeasonOf(today);
             if (breaksDate != today || breaks < 0)
             {
+                if (breaks >= 0) shownWeeds = next.Weeds;
                 breaks = next.BreaksToday;
                 breaksDate = today;
             }
@@ -200,9 +227,10 @@ namespace Stillpoint
                 var now = Clock();
                 var gap = now - lastEnd;
                 string start = lastEnd.Date < now.Date ? Voice.Start(now.TimeOfDay.TotalHours, next.UsualStart) : null;
-                if ((now.Date - lastEnd.Date).Days >= 2 && !reunionDone)
+                if ((now.Date - lastEnd.Date).Days >= 2 && reunionFor != lastEnd)
                 {
                     reunionDone = true;
+                    reunionFor = lastEnd;
                     StartReunion(t, (now.Date - lastEnd.Date).Days);
                 }
                 else if (gap.TotalMinutes < 1) Say("Back already?");
@@ -240,7 +268,7 @@ namespace Stillpoint
             demoIndex = (Clock().DayOfYear + Math.Max(0, breaks)) % Stretches.Length;
             Later(Stretches[demoIndex].Line, demoT, DemoLength - 0.3f);
             bfAt = demoT + DemoLength + 1.5f;
-            if (maxRain > 0.15f || (cloudK > 0.6f && rng.NextDouble() < 0.5))
+            if (maxRain > 0.15f && Daylight && !snowing)
             {
                 rainbowT = t + 2;
                 Visit(Visitors.Rainbow);
@@ -391,9 +419,10 @@ namespace Stillpoint
         {
             while (Animating && !Frames.Busy && !PeekMessage(out _, IntPtr.Zero, 0, 0, 0))
             {
-                float t = Now;
-                float dt = Math.Min(0.1f, t - last);
-                last = t;
+                Rebase();
+                double frame = watch.Elapsed.TotalSeconds;
+                float t = Now, dt = (float)Math.Min(0.1, frame - lastFrame);
+                lastFrame = frame;
                 Step(t, dt);
                 Refresh();
                 double period = FindForm()?.ContainsFocus == true ? 1 / 60.0 : 1 / 30.0;

@@ -93,8 +93,8 @@ namespace Stillpoint
             ResumeLayout(false);
             PerformLayout();
 
-            startStop.Click += (s, e) => app.ToggleRunning();
-            resume.Click += (s, e) => app.Resume();
+            startStop.Click += (s, e) => { if (FirstPress()) app.ToggleRunning(); };
+            resume.Click += (s, e) => { if (FirstPress()) app.Resume(); };
             rail.Picked += key =>
             {
                 if (key == "timer") ShowTimer();
@@ -141,10 +141,18 @@ namespace Stillpoint
 
         public void ApplyWindowSize(WindowSize size)
         {
-            float k = Settings.Scale(size) * DeviceDpi / 96f;
+            var area = Screen.FromControl(this).WorkingArea;
+            int frameW = Width - ClientSize.Width, frameH = Height - ClientSize.Height;
+            float fit = Math.Min((area.Height - frameH) / (float)BaseHeight, (area.Width - frameW) / (float)(BaseRail + BaseMain));
+            float k = Math.Min(Settings.Scale(size) * DeviceDpi / 96f, fit);
             rail.Width = (int)Math.Round(BaseRail * k);
             var target = new Size(rail.Width + (int)Math.Round(BaseMain * k), (int)Math.Round(BaseHeight * k));
             if (ClientSize != target) ClientSize = target;
+            KeepOnScreen();
+        }
+
+        public void KeepOnScreen()
+        {
             var area = Screen.FromControl(this).WorkingArea;
             Left = Math.Max(area.Left, Math.Min(Left, area.Right - Width));
             Top = Math.Max(area.Top, Math.Min(Top, area.Bottom - Height));
@@ -189,6 +197,16 @@ namespace Stillpoint
         public void SyncControls()
         {
             if (settings != null && !settings.IsDisposed) settings.SyncControls();
+        }
+
+        DateTime lastPress;
+
+        bool FirstPress()
+        {
+            var now = DateTime.Now;
+            bool first = (now - lastPress).TotalMilliseconds > SystemInformation.DoubleClickTime;
+            lastPress = now;
+            return first;
         }
 
         public void UpdateView()
@@ -278,8 +296,8 @@ namespace Stillpoint
             Ui.SetLine(updateStatus, app.UpdateStatus);
             Ui.SetLine(saveError, app.SaveError == null ? null : "Could not save: " + app.SaveError);
 
-            if (history != null && !history.IsDisposed) history.SetSessions(app.Tracker.Sessions, app.Tracker.Current, app.Album, interval);
-            if (garden != null && !garden.IsDisposed) garden.SetData(app.Tracker.Sessions, app.Tracker.Unsettled, app.Album, interval);
+            if (history != null && !history.IsDisposed && stack.Current == "history") history.SetSessions(app.Tracker.Sessions, app.Tracker.Current, app.Album, interval);
+            if (garden != null && !garden.IsDisposed && stack.Current == "garden") garden.SetData(app.Tracker.Sessions, app.Tracker.Unsettled, app.Album, interval);
             if (journal != null && !journal.IsDisposed && stack.Current == "journal") journal.RefreshEntries();
             if (settings != null && !settings.IsDisposed) settings.UpdateView();
         }
@@ -316,6 +334,7 @@ namespace Stillpoint
                 next.GardenRequested += d => ShowGarden(d);
                 return next;
             });
+            history.SetSessions(app.Tracker.Sessions, app.Tracker.Current, app.Album, app.Tracker.ReminderIntervalSeconds);
             if (day != null) history.ShowDay(day.Value);
         }
 
@@ -331,6 +350,7 @@ namespace Stillpoint
                 next.JournalRequested += ShowJournal;
                 return next;
             });
+            garden.SetData(app.Tracker.Sessions, app.Tracker.Unsettled, app.Album, app.Tracker.ReminderIntervalSeconds);
             if (day != null) garden.ShowDay(day.Value);
         }
 

@@ -22,7 +22,10 @@ namespace Stillpoint
 
         public void Clear()
         {
+            var old = new Control[Controls.Count];
+            Controls.CopyTo(old, 0);
             Controls.Clear();
+            foreach (var c in old) c.Dispose();
             RowStyles.Clear();
             RowCount = 0;
         }
@@ -122,6 +125,7 @@ namespace Stillpoint
         {
             base.OnMouseWheel(e);
             Step(Math.Sign(e.Delta));
+            if (e is HandledMouseEventArgs handled) handled.Handled = true;
         }
 
         protected override bool IsInputKey(Keys keyData) =>

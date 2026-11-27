@@ -9,7 +9,7 @@ namespace Stillpoint
 {
     sealed partial class SpiritRing
     {
-        float treeShakeT = -99, sandHoverT = -1, touchSaidT = -99;
+        float treeShakeT = -99, sandHoverT = -1, touchSaidT = -99, pruneNext;
         string tipNow;
         readonly HashSet<string> hintsShown = new HashSet<string>();
         readonly Dictionary<Plant, int> plantStages = new Dictionary<Plant, int>();
@@ -65,7 +65,9 @@ namespace Stillpoint
             base.OnMouseDoubleClick(e);
             if (!CanTouch || e.Button != MouseButtons.Left || RoamAt(e.Location)) return;
             var q = ToScene(e.Location);
-            if (OnSand(q) && !OnStone(q) && !OnTree(q)) TryPlant(q);
+            if (OnSand(q) && !OnStone(q) && !OnTree(q) && !InPond(q)) TryPlant(q);
+            else if (OnStone(q)) Poke(Now);
+            else TouchClick(q);
         }
 
         bool TouchClick(PointF q)
@@ -73,7 +75,7 @@ namespace Stillpoint
             if (!CanTouch) return false;
             float t = Now;
             if (OnTree(q)) { ShakeTree(t); return true; }
-            if (InPond(q))
+            if (InPond(q) && !snowGround && season != Season.Winter)
             {
                 for (int i = 0; i < 2; i++) Emit(new Particle { Kind = Bit.Ripple, X = q.X, Y = q.Y, Life = 0.9f + i * 0.4f, Size = 1 + i });
                 Emit(new Particle { Kind = Bit.Dew, X = q.X, Y = q.Y - 1, Vy = -40, Size = 1.1f, Target = q.Y, Life = 0.8f });
@@ -85,10 +87,12 @@ namespace Stillpoint
         void TryPlant(PointF q)
         {
             float t = Now;
+            PrunePlants();
             var plants = Touch.Plants;
             if (plants.Count >= Touches.MaxPlants)
             {
-                if (t - touchSaidT > 3) { touchSaidT = t; Say("Our flower bed is full. Let these grow first.", 2.8f); }
+                bool bloomed = plants.All(p => Touches.Stage((int)PlantBreaks(p)) >= 4);
+                if (t - touchSaidT > 3) { touchSaidT = t; Say(bloomed ? "Our flower bed is full of blooms. Let's enjoy them for a while." : "Our flower bed is full. Let these grow first.", 2.8f); }
                 return;
             }
             string why = GardenArt.PlantSpot(q, plants, state.Keepsakes);
@@ -163,9 +167,17 @@ namespace Stillpoint
             return ends.Count - lo;
         }
 
+        void PrunePlants()
+        {
+            if (Touch == null || !Touch.Prune(Clock())) return;
+            foreach (var gone in plantStages.Keys.Where(p => !Touch.Plants.Contains(p)).ToList()) plantStages.Remove(gone);
+            TouchChanged?.Invoke();
+        }
+
         void StepTouch(float t, float dt)
         {
             if (Touch == null) return;
+            if (t > pruneNext) { pruneNext = t + 60; PrunePlants(); }
             bool quiet = bubble == null || t >= bubbleEnd;
             if (sandHoverT > 0 && Now - sandHoverT > 2.5f && quiet && !HintDone("plant") && !HintDone("seed") && !Sleeping && known && !Busy(t))
             {
@@ -178,6 +190,7 @@ namespace Stillpoint
                 if (!plantStages.TryGetValue(p, out var was)) { plantStages[p] = stage; continue; }
                 if (stage <= was) continue;
                 plantStages[p] = stage;
+                if ((snowGround || season == Season.Winter) && p.Kind != 3) continue;
                 for (int i = 0; i < 5; i++) Emit(new Particle { Kind = Bit.Spark, X = p.X + (Rand - 0.5f) * 6, Y = p.Y - 8, Vx = (Rand - 0.5f) * 20, Vy = -20 - Rand * 15, Vr = 3, Life = 0.9f, Size = 2 + Rand });
                 if (stage == 4 && !Sleeping) Chat(Pick(new[] { "Look! Our flower bloomed.", "It bloomed! All those breaks paid off." }), 3f);
             }

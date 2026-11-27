@@ -97,8 +97,14 @@ namespace Stillpoint
         }
         string LogPath => Path.Combine(Dir, "error.log");
 
-        public List<Session> LoadSessions() =>
-            ReadSessions(SessionsPath) ?? ReadSessions(SessionsPath + ".bak") ?? new List<Session>();
+        public List<Session> LoadSessions()
+        {
+            var main = ReadSessions(SessionsPath);
+            var pending = ReadSessions(SessionsPath + ".tmp");
+            if (pending != null && (main == null || pending.Count >= main.Count && File.GetLastWriteTimeUtc(SessionsPath + ".tmp") > File.GetLastWriteTimeUtc(SessionsPath)))
+                return pending;
+            return main ?? ReadSessions(SessionsPath + ".bak") ?? new List<Session>();
+        }
 
         public void SaveSessions(IEnumerable<Session> sessions)
         {
@@ -116,7 +122,7 @@ namespace Stillpoint
         public Settings LoadSettings()
         {
             var settings = new Settings();
-            var saved = ReadLines(SettingsPath);
+            var saved = ReadLines(SettingsPath) ?? ReadLines(SettingsPath + ".tmp") ?? ReadLines(SettingsPath + ".bak");
             if (saved != null) settings.Defaults = 1;
             foreach (var line in saved ?? new string[0])
             {
@@ -154,10 +160,10 @@ namespace Stillpoint
                     case "realWeather": settings.RealWeather = on; break;
                     case "town": settings.TownName = value; break;
                     case "townLat":
-                        if (double.TryParse(value, NumberStyles.Float, Inv, out double lat)) settings.TownLat = lat;
+                        if (double.TryParse(value, NumberStyles.Float, Inv, out double lat) && Math.Abs(lat) <= 90) settings.TownLat = lat;
                         break;
                     case "townLon":
-                        if (double.TryParse(value, NumberStyles.Float, Inv, out double lon)) settings.TownLon = lon;
+                        if (double.TryParse(value, NumberStyles.Float, Inv, out double lon) && Math.Abs(lon) <= 180) settings.TownLon = lon;
                         break;
                     case "lastSeen":
                         if (DateTime.TryParseExact(value, TimeFormat, Inv, DateTimeStyles.None, out var seen)) settings.LastSeen = seen;
@@ -249,7 +255,7 @@ namespace Stillpoint
                     && DateTime.TryParseExact(parts[0].Trim(), TimeFormat, Inv, DateTimeStyles.None, out var start)
                     && DateTime.TryParseExact(parts[1].Trim(), TimeFormat, Inv, DateTimeStyles.None, out var end)
                     && double.TryParse(parts[2].Trim(), NumberStyles.Float, Inv, out var seconds)
-                    && seconds >= 0)
+                    && seconds >= 0 && seconds < 7 * 86400)
                 {
                     sessions.Add(new Session { Start = start, End = end, Seconds = seconds });
                 }
@@ -263,22 +269,22 @@ namespace Stillpoint
 
         static string[] ReadLines(string path)
         {
-            try
+            for (int attempt = 0; ; attempt++)
             {
-                if (!File.Exists(path)) return null;
-                using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
-                using (var reader = new StreamReader(stream))
+                try
                 {
-                    return reader.ReadToEnd().Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+                    if (!File.Exists(path)) return null;
+                    using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                    using (var reader = new StreamReader(stream))
+                    {
+                        return reader.ReadToEnd().Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+                    }
                 }
-            }
-            catch (IOException)
-            {
-                return null;
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return null;
+                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                {
+                    if (attempt >= 4) return null;
+                    System.Threading.Thread.Sleep(250);
+                }
             }
         }
 

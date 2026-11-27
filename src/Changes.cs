@@ -20,6 +20,7 @@ namespace Stillpoint
 
         public static readonly Release[] All =
         {
+            R("3.14.6", "2026-11-27", "Locking the PC or sleeping for 10 minutes or more, or past midnight, now ends the session and counts as a break. Time no longer lands on the wrong day.", "Answering I got up after the PC slept no longer deletes the session.", "Updates wait while the PC is locked and never reinstall a version that failed to start.", "Saved data is safer when files are locked or a save is interrupted.", "The garden stays smooth after many days without a restart.", "Animals get their names, dreams are told every morning, reunions and gifts work every day, faded flowers make room for new seeds.", "Double-clicking Start or I GOT UP no longer starts and stops at once.", "The window fits small screens and never opens off-screen.", "Seasons follow the southern hemisphere when your town is there.", "Many small fixes."),
             R("3.14.5", "2026-11-27", "A break counts in the garden after you've been up for 2 minutes. Pressing Resume right after I GOT UP no longer makes flowers grow and then vanish."),
             R("3.14.4", "2026-11-27", "The ground reaches all the way to the hills. No more empty strip next to the sand."),
             R("3.14.3", "2026-11-27", "Clicking the garden picture now shows the same picture bigger in the middle of the screen. Nothing moves or gets cut off. Click it again, press Esc or click elsewhere to close it."),

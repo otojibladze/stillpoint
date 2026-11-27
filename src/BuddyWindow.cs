@@ -37,6 +37,12 @@ namespace Stillpoint
             };
             MouseEnter += (s, e) => hover = true;
             MouseLeave += (s, e) => hover = false;
+            Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
+        }
+
+        void OnDisplayChanged(object sender, EventArgs e)
+        {
+            if (!IsDisposed && !hidden) { Place(); Present(); }
         }
 
         public event EventHandler OpenRequested;
@@ -92,7 +98,7 @@ namespace Stillpoint
             }
         }
 
-        float Now => (float)watch.Elapsed.TotalSeconds;
+        float Now => (float)(watch.Elapsed.TotalSeconds % 1800);
 
         SpiritPose PoseAt(float t)
         {
@@ -143,10 +149,13 @@ namespace Stillpoint
                     g.ScaleTransform(s, s);
                     SpiritArt.DrawSpirit(g, 34, 64, 22, PoseAt(t), t);
                 }
-                IntPtr screen = GetDC(IntPtr.Zero), memory = CreateCompatibleDC(screen);
-                IntPtr hBitmap = bitmap.GetHbitmap(Color.FromArgb(0)), old = SelectObject(memory, hBitmap);
+                IntPtr screen = IntPtr.Zero, memory = IntPtr.Zero, hBitmap = IntPtr.Zero, old = IntPtr.Zero;
                 try
                 {
+                    screen = GetDC(IntPtr.Zero);
+                    memory = CreateCompatibleDC(screen);
+                    hBitmap = bitmap.GetHbitmap(Color.FromArgb(0));
+                    old = SelectObject(memory, hBitmap);
                     var size = new NativeSize { Width = Width, Height = Height };
                     var source = new NativePoint();
                     var target = new NativePoint { X = Left, Y = Top };
@@ -155,10 +164,10 @@ namespace Stillpoint
                 }
                 finally
                 {
-                    SelectObject(memory, old);
-                    DeleteObject(hBitmap);
-                    DeleteDC(memory);
-                    ReleaseDC(IntPtr.Zero, screen);
+                    if (old != IntPtr.Zero) SelectObject(memory, old);
+                    if (hBitmap != IntPtr.Zero) DeleteObject(hBitmap);
+                    if (memory != IntPtr.Zero) DeleteDC(memory);
+                    if (screen != IntPtr.Zero) ReleaseDC(IntPtr.Zero, screen);
                 }
             }
         }
@@ -179,6 +188,7 @@ namespace Stillpoint
         {
             if (disposing)
             {
+                Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
                 anim.Dispose();
                 tip.Dispose();
                 menu.Dispose();

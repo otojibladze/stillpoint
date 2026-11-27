@@ -100,7 +100,7 @@ namespace Stillpoint
                     float hop = since % 1.6f < 0.25f ? Sin(since % 1.6f / 0.25f * Pi) * 3 : 0;
                     c.X = seat.X;
                     c.Y = seat.Y - hop;
-                    if (since % SongEvery < 0.05f && since > 0.5f) Emit(new Particle { Kind = Bit.Note, X = c.X + 6 * -c.Side, Y = c.Y - 12, Vx = -c.Side * 10, Vy = -22, Vr = 0.3f, Life = 1.2f, Size = 8 });
+                    if (since > 0.5f && (int)(since / SongEvery) != (int)c.A) { c.A = (int)(since / SongEvery); Emit(new Particle { Kind = Bit.Note, X = c.X + 6 * -c.Side, Y = c.Y - 12, Vx = -c.Side * 10, Vy = -22, Vr = 0.3f, Life = 1.2f, Size = 8 }); }
                     birdCock = DayCatStalking ? 0.4f * Window(0, 2, since % 3.4f, 0.4f) : 0;
                     float stay = DayCatStalking ? 30 : NestBusy ? 10 : 5.5f;
                     if (since > stay || Running || Sleeping) SendAway(c, t);

@@ -76,6 +76,7 @@ namespace Stillpoint
             current = now;
             album = visits;
             interval = reminderInterval;
+            month.RollToday();
             var totals = DayTotals();
             double today = Total(totals, DateTime.Today, 1);
             double weekTotal = Total(totals, DateTime.Today, 7);

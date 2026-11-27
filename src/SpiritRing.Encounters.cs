@@ -215,7 +215,8 @@ namespace Stillpoint
             c.B = 6.5f;
             c.C = 1;
             c.D = (int)TrustOf(Visitors.Fox);
-            c.P.Sit = c.P.Curl = c.P.Hide = c.P.Flick = c.P.Tilt = 0;
+            c.K = 0;
+            c.P.Sit = c.P.Curl = c.P.Hide = c.P.Flick = c.P.Tilt = c.P.Blink = c.P.Ear = c.P.Yawn = 0;
             Chat(Tone == Tone.Dry ? "Uh oh. Squirrel, run." : Tone == Tone.Worry ? "Oh no, a fox! Squirrel, go!" : Tone == Tone.Plain ? "A fox. The squirrel won't stay for this." : "A fox! Run, little squirrel!", 2.8f);
         }
 

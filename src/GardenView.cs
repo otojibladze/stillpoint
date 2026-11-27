@@ -23,7 +23,7 @@ namespace Stillpoint
             {
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 var rect = new RectangleF(0, 0, size.Width, size.Height);
-                if (size.Width < 160)
+                if (size.Width < 160 && size.Width > 1 && size.Height > 1)
                     using (var big = new Bitmap(size.Width * 2, size.Height * 2, PixelFormat.Format32bppPArgb))
                     {
                         using (var bg = Graphics.FromImage(big))
@@ -300,13 +300,19 @@ namespace Stillpoint
 
         public void SetDays(List<GardenDay> week, DateTime selectedDay)
         {
+            foreach (var old in thumbs.Keys.Where(d => !week.Any(w => w.Date == d)).ToList())
+            {
+                thumbs[old].Dispose();
+                thumbs.Remove(old);
+                keys.Remove(old);
+            }
             days = week;
             selected = selectedDay.Date;
             Invalidate();
         }
 
         float Cell => Width / 7f;
-        float Thumb => Math.Min(Cell - 8 * DeviceDpi / 96f, 48 * DeviceDpi / 96f);
+        float Thumb => Math.Max(4, Math.Min(Cell - 8 * DeviceDpi / 96f, 48 * DeviceDpi / 96f));
 
         protected override void OnPaint(PaintEventArgs e)
         {

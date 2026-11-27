@@ -15,6 +15,7 @@ namespace Stillpoint
         float startleT = -99, reunionT = -99, danceT = -99, partyT = -99, danceAt = -1, partyAt = -1, weedPopT = -99, heartNext;
         int shownWeeds = -1, partyBreaks, danceStreak;
         bool reunionDone, wowSaid, beatSpoke;
+        DateTime reunionFor;
         readonly HashSet<string> beatsDone = new HashSet<string>();
 
         bool BeatActive(float t) => beat != Beat.None && t >= beatT && t < beatT + beatLen;
@@ -71,7 +72,7 @@ namespace Stillpoint
             {
                 reunionDone = true;
                 int days = lastEnd == default(DateTime) ? 0 : (Clock().Date - lastEnd.Date).Days;
-                if (days >= 2) StartReunion(t, days);
+                if (days >= 2) { reunionFor = lastEnd; StartReunion(t, days); }
                 else if (shownWeeds > 0) Later(Voice.Weeds(shownWeeds), t + 0.5f, 3.6f);
             }
             if (danceAt > 0 && t > danceAt) { danceAt = -1; danceT = t; Chat(Voice.Streak(danceStreak, Tone), 3f); }

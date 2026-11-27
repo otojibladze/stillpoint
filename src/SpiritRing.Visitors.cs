@@ -18,7 +18,7 @@ namespace Stillpoint
         bool Lantern => (state.Keepsakes & Keepsake.Lantern) != 0;
         bool Daylight => nightK < 0.35f;
         bool Green => season != Season.Winter && !snowGround && Daylight;
-        bool Warm => Green && Clock().Month >= 4 && Clock().Month <= 10;
+        bool Warm => Green && Garden.SeasonMonth(Clock()) >= 4 && Garden.SeasonMonth(Clock()) <= 10;
         bool VisitorBusy => ladybug.Active || bee.Active || squirrel.Active || rabbit.Active || worm.Active || cat.Active && cat.D == 1;
         bool AnyVisitor => VisitorBusy || owl.Active || moth.Active || fox.Active || snails.Active || turtle.Active || bat.Active || mouse.Active;
         bool LadybugOnStone => ladybug.State >= 2 && ladybug.State != 4;
@@ -406,7 +406,7 @@ namespace Stillpoint
                 if (s > 8)
                 {
                     if (retrieving) { c.State = 5; c.T0 = t; p.Dig = p.Flick = 0; p.Paw = 2; }
-                    else if (!state.Caches.Winter && TrustOf(Visitors.Squirrel) >= Trust.Friendly && !giftLeft) { c.State = 3; c.T0 = t; c.From = new PointF(c.X, c.Y); p.Acorn = true; }
+                    else if (!state.Caches.Winter && TrustOf(Visitors.Squirrel) >= Trust.Friendly && !GiftLeft) { c.State = 3; c.T0 = t; c.From = new PointF(c.X, c.Y); p.Acorn = true; }
                     else SquirrelRun(c, t);
                     if (digIndex >= 0 && !retrieving) digMound = 0;
                 }
@@ -422,9 +422,9 @@ namespace Stillpoint
                 c.X = c.From.X + (GardenArt.GiftAt.X + 7 - c.From.X) * u;
                 c.Y = GardenArt.DigAt.Y - Math.Abs(Sin(u * Pi * 3)) * 4 * (1 - u);
                 p.Acorn = s < 1.4f;
-                if (s >= 1.4f && !giftLeft)
+                if (s >= 1.4f && !GiftLeft)
                 {
-                    giftLeft = true;
+                    giftDay = Clock().Date;
                     var f = FriendNow(Visitors.Squirrel);
                     Later(f != null && f.Named ? $"{f.Name} left me an acorn!" : "It left me an acorn!", t + 0.3f, 2.8f);
                 }
@@ -739,7 +739,7 @@ namespace Stillpoint
         void StartSnails(float t)
         {
             var c = snails;
-            if (c.Active || snail.Active) return;
+            if (c.Active || snail.Active || turtle.Active) return;
             c.State = 1;
             c.T0 = t;
             c.A = 30;

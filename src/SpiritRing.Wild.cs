@@ -17,7 +17,7 @@ namespace Stillpoint
         PointF castAt, batVel, mouseFrom, mouseTo;
         int batExit = 1;
 
-        bool BatSeason => Clock().Month >= 4 && Clock().Month <= 10;
+        bool BatSeason => Garden.SeasonMonth(Clock()) >= 4 && Garden.SeasonMonth(Clock()) <= 10;
         bool WetGround => season != Season.Winter && !snowGround && (wetReal > 0.4f || rainK > 0.25f || AwayWet(Now) > 0.3f);
         Trust RabbitTrust => (Trust)(int)rabbit.D;
 

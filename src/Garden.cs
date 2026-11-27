@@ -48,7 +48,7 @@ namespace Stillpoint
     sealed class GardenDay
     {
         public DateTime Date;
-        public int Breaks;
+        public int Breaks, Sits;
         public double SitSeconds, LongestSeconds;
         public Season Season;
         public Keepsake Keepsakes;
@@ -93,7 +93,7 @@ namespace Stillpoint
             var animals = Visitors.Sorted(Visits.Select(v => v.Visitor).Distinct()).ToList();
             if (Saw(Visitors.Cat) && Overnight && animals.Count == 1) return "The cat kept me company last night.";
             string rain = Snowed ? "It snowed while you were away." : Rained ? "It rained while you were away." : null;
-            if (animals.Count == 0) return rain ?? (Overnight ? "Good morning. Quiet night here." : null);
+            if (animals.Count == 0) return rain ?? (Overnight && To.Hour >= 5 && To.Hour < 12 ? "Good morning. Quiet night here." : Overnight ? "Quiet night here." : null);
             string list = Visitors.List(animals);
             string line = animals.Count == 1 ? Visitors.Capital(list) + " came by while you were gone." : $"While you were away, {list} came by.";
             return rain == null ? line : line + " " + (Snowed ? "And it snowed." : "And it rained.");
@@ -143,8 +143,15 @@ namespace Stillpoint
 
         public const int FlowerBreaks = 4, MossStreak = 7, LanternBreaks = 50, PondBreaks = 100, BabyDays = 30;
 
-        public static Season SeasonOf(DateTime d) =>
-            d.Month == 12 || d.Month <= 2 ? Season.Winter : d.Month <= 5 ? Season.Spring : d.Month <= 8 ? Season.Summer : Season.Autumn;
+        public static bool Southern;
+
+        public static int SeasonMonth(DateTime d) => (Southern ? d.AddMonths(6) : d).Month;
+
+        public static Season SeasonOf(DateTime d)
+        {
+            int m = SeasonMonth(d);
+            return m == 12 || m <= 2 ? Season.Winter : m <= 5 ? Season.Spring : m <= 8 ? Season.Summer : Season.Autumn;
+        }
 
         public static int BreaksOn(IReadOnlyList<Session> sessions, Session current, DateTime day) =>
             sessions.Count(s => s != current && s.Start.Date == day.Date);
@@ -236,13 +243,14 @@ namespace Stillpoint
                 Date = day.Date,
                 Season = SeasonOf(day),
                 Breaks = list.Count(s => s != current),
+                Sits = list.Count,
                 SitSeconds = list.Sum(s => s.Seconds),
                 LongestSeconds = list.Count == 0 ? 0 : list.Max(s => s.Seconds),
                 Keepsakes = Progress(sessions, current, day).Earned,
                 Today = day.Date == DateTime.Today,
                 Tree = TreeGrowth(DaysTogether(sessions, day)),
                 Weeds = Weeds(sessions, current, day),
-                Caches = Wildlife.Squirrel(album, day, false),
+                Caches = Wildlife.Squirrel(album, day, Southern),
             };
             if (album != null) g.Visitors = new HashSet<string>(album.On(day));
             g.Clouds = Weather.Clouds(g.LongestSeconds, interval);
@@ -255,7 +263,7 @@ namespace Stillpoint
         {
             if (day.Empty) return "A quiet day away from the screen.";
             if (day.Breaks == 0) return "One long sit so far. A short walk would feel good.";
-            double average = day.SitSeconds / (day.Breaks + 1) / 60;
+            double average = day.SitSeconds / Math.Max(1, day.Sits) / 60;
             if (day.LongestSeconds <= interval * 1.15)
                 return $"Good rhythm today. You got up about every {Math.Max(1, (int)Math.Round(average))} minutes.";
             if (day.LongestSeconds <= interval * 2)
@@ -275,7 +283,7 @@ namespace Stillpoint
         public IEnumerable<DateTime> DaysWith(string visitor) => days.Where(d => d.Value.Contains(visitor)).Select(d => d.Key).OrderBy(d => d);
 
         public IReadOnlyCollection<string> On(DateTime day) =>
-            days.TryGetValue(day.Date, out var set) ? (IReadOnlyCollection<string>)set : new string[0];
+            days.TryGetValue(day.Date, out var set) ? set.ToArray() : new string[0];
 
         public bool Add(DateTime day, string visitor)
         {

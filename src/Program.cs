@@ -34,7 +34,7 @@ namespace Stillpoint
             if (customDir != null) customDir = Path.GetFullPath(customDir);
             string localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             string dir = customDir ?? Path.Combine(localData, "Stillpoint");
-            string extraArgs = customDir == null ? "" : $" --data \"{customDir}\"";
+            string extraArgs = customDir == null ? "" : $" --data \"{(customDir.EndsWith("\\") ? customDir + "\\" : customDir)}\"";
 
             if (int.TryParse(Value(args, "--wait-pid"), out int waitPid)) WaitForExit(waitPid);
             if (customDir == null) MigrateLegacyData(Path.Combine(localData, LegacyDataFolder), dir);
@@ -59,6 +59,7 @@ namespace Stillpoint
                 Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
                 Application.ThreadException += (s, e) => store.Log(e.Exception);
                 AppDomain.CurrentDomain.UnhandledException += (s, e) => store.Log(e.ExceptionObject);
+                Frames.Failed += ex => store.Log(ex);
                 ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
 
                 string exe = Application.ExecutablePath;

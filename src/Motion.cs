@@ -25,6 +25,8 @@ namespace Stillpoint
 
         public static bool Busy => active.Count > 0;
 
+        public static event Action<Exception> Failed;
+
         public bool Running => active.Contains(this);
 
         public void Start()
@@ -52,7 +54,10 @@ namespace Stillpoint
                     if (!active.Contains(f)) continue;
                     float dt = (float)Math.Min(0.05, f.clock.Elapsed.TotalSeconds);
                     f.clock.Restart();
-                    if (!f.step(dt)) f.Stop();
+                    bool more;
+                    try { more = f.step(dt); }
+                    catch (Exception ex) { more = false; Failed?.Invoke(ex); }
+                    if (!more) f.Stop();
                 }
                 if (active.Count == 0) break;
                 int ok;

@@ -164,6 +164,8 @@ namespace Stillpoint
             foreach (var r in Rocks)
                 if ((q.X - r[0]) * (q.X - r[0]) + (q.Y - r[1]) * (q.Y - r[1]) < (r[2] + 4) * (r[2] + 4)) return "That's a rock. Try the sand.";
             if (Math.Abs(q.X - TreeAt.X) < 8 && q.Y < TreeAt.Y + 4) return "Too close to our tree.";
+            if ((keepsakes & Keepsake.Baby) != 0 && Math.Abs(q.X - BabyAt.X) < BabyR + 6 && q.Y < BabyAt.Y + 6) return "That's where the little one sits.";
+            if (Math.Abs(q.X - SnowmanAt.X) < 12 && q.Y < SnowmanAt.Y + 6 && q.Y > SnowmanAt.Y - 30) return "Not there. Try the open sand.";
             foreach (var p in plants)
                 if ((q.X - p.X) * (q.X - p.X) + (q.Y - p.Y) * (q.Y - p.Y) < 13 * 13) return "Too close to the other one.";
             return null;

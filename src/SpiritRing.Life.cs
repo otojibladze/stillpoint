@@ -10,13 +10,15 @@ namespace Stillpoint
         string recall;
         float recallAt, eyeRollT = -99, ponderT = -99, worryT = -99, begT = -99, begNext = 12, fledgeT = -99, nestCheckT = -99, nestProgress;
         NestStage nestStage;
-        bool fledgeShown, giftLeft;
+        bool fledgeShown;
+        DateTime giftDay;
+        bool GiftLeft => giftDay == Clock().Date;
 
         Tone Tone => Character.ToneOf(state.Temper);
         float HopScale => Nest.Fragile(nestStage) ? 0.3f : 1;
         bool NestShown => nestStage != NestStage.None;
         bool NestBusy => nestStage >= NestStage.Building && nestStage <= NestStage.Fledglings;
-        bool BirdInNest => NestShown && bird.State == 2;
+        bool BirdInNest => NestShown && bird.State == 2 && bird.D == 0;
         float LadyTop => NestShown ? 1.2f * Pi : GardenArt.LadybugSeat;
         float SongEvery => TrustOf(Visitors.Bird) >= Trust.Friendly ? 1.3f : 2.2f;
         bool FledgeDue => nestStage == NestStage.Empty && nestProgress < 0.02f && !state.Fledged && !fledgeShown;
@@ -165,7 +167,7 @@ namespace Stillpoint
 
         void DrawLife(Graphics g, float t, float night)
         {
-            if ((giftLeft || state.DugToday && TrustOf(Visitors.Squirrel) >= Trust.Friendly && !squirrel.Active) && season != Season.Winter)
+            if ((GiftLeft || state.DugToday && TrustOf(Visitors.Squirrel) >= Trust.Friendly && !squirrel.Active) && season != Season.Winter)
                 CritterArt.DrawAcorn(g, GardenArt.GiftAt.X, GardenArt.GiftAt.Y, 1, night);
             if (!NestShown) return;
             var at = GardenArt.StoneSurface(Shape, GardenArt.NestSeat, 0.95f);

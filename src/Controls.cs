@@ -101,12 +101,15 @@ namespace Stillpoint
         public static void Ring(Graphics g, RectangleF bounds, float width, Color track, Color fill, float progress)
         {
             var r = RectangleF.Inflate(bounds, -width / 2, -width / 2);
+            if (!(r.Width >= 1 && r.Height >= 1 && width > 0)) return;
             using (var pen = new Pen(track, width)) g.DrawEllipse(pen, r);
-            if (360 * progress < 0.5f) return;
+            if (!(360 * progress >= 0.5f)) return;
             using (var pen = new Pen(fill, width) { StartCap = LineCap.Flat, EndCap = LineCap.Flat })
             {
                 if (progress >= 1) g.DrawEllipse(pen, r);
-                else g.DrawArc(pen, r, -90, 360 * progress);
+                else
+                    try { g.DrawArc(pen, r, -90, 360 * progress); }
+                    catch (OutOfMemoryException) { }
             }
         }
     }

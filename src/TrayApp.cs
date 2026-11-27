@@ -97,6 +97,7 @@ namespace Stillpoint
             SystemEvents.PowerModeChanged += OnPowerModeChanged;
             SystemEvents.SessionEnding += OnSessionEnding;
             SystemEvents.SessionEnded += OnSessionEnded;
+            SystemEvents.TimeChanged += OnTimeChanged;
             showWait = ThreadPool.RegisterWaitForSingleObject(showEvent, (state, timedOut) => OnShowSignal(), null, Timeout.Infinite, false);
 
 
@@ -394,6 +395,7 @@ namespace Stillpoint
 
         public void ApplyTheme()
         {
+            Garden.Southern = Southern;
             var now = DateTime.Now;
             bool dark = Settings.DarkMode == DarkMode.On
                 || (Settings.DarkMode == DarkMode.Night && Sky.Darkness(now, SunToday) > 0.5f)
@@ -502,7 +504,7 @@ namespace Stillpoint
         {
             awayAsked = true;
             leftAt = DateTime.Now.AddSeconds(-idle);
-            secondsAtLeave = Math.Max(0, Tracker.SessionSeconds - idle);
+            secondsAtLeave = Math.Max(0, Math.Min(Tracker.SessionSeconds, Tracker.SecondsAtInput));
             backAt = null;
             popup?.Close();
             awayPopup?.Close();
@@ -538,6 +540,7 @@ namespace Stillpoint
             try
             {
                 var latest = await Updater.LatestAsync();
+                if (!manual && latest != null && latest == Updater.Skipped(Application.ExecutablePath)) latest = null;
                 UpdateAvailable = latest != null && latest > Updater.Current ? latest : null;
                 if (UpdateAvailable == null)
                 {
@@ -610,7 +613,7 @@ namespace Stillpoint
 
         bool QuietForUpdate()
         {
-            if (popup != null || awayPopup != null || askingName || Form.ActiveForm != null) return false;
+            if (popup != null || awayPopup != null || askingName || Form.ActiveForm != null || Tracker.Paused != PauseReason.None || SaveError != null) return false;
             if ((DateTime.Now - lastWindowUse).TotalSeconds < 60) return false;
             return Tracker.IdleSeconds >= 300 || (DateTime.Now - wokeAt).TotalSeconds < 60;
         }
@@ -668,6 +671,7 @@ namespace Stillpoint
             if (shutDown) return;
             form.SyncControls();
             form.UpdateView();
+            if (form.WindowState == FormWindowState.Normal) form.KeepOnScreen();
             form.Show();
             if (form.WindowState == FormWindowState.Minimized) form.WindowState = FormWindowState.Normal;
             form.Activate();
@@ -871,17 +875,21 @@ namespace Stillpoint
         void SaveUsage()
         {
             ticksSinceSave = 0;
-            if (!Tracker.Dirty && SaveError == null) return;
+            if (!Tracker.Dirty && SaveError == null && !Album.Dirty) return;
+            string error = null;
             try
             {
                 Store.SaveSessions(Tracker.Sessions);
                 Tracker.Dirty = false;
-                SaveError = null;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             {
-                SaveError = ex.Message;
+                error = ex.Message;
             }
+            if (Album.Dirty)
+                try { Store.SaveAlbum(Album); }
+                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { error = error ?? ex.Message; }
+            SaveError = error;
         }
 
         void SaveSettings()
@@ -929,7 +937,7 @@ namespace Stillpoint
             else if (e.Reason == SessionSwitchReason.SessionUnlock)
             {
                 wokeAt = DateTime.Now;
-                Tracker.Resume(PauseReason.Locked);
+                Tracker.Resume(PauseReason.Locked, DateTime.Now);
                 Tracker.Tick(DateTime.Now, TakeDelta());
             }
             Refresh();
@@ -945,9 +953,15 @@ namespace Stillpoint
             else if (e.Mode == PowerModes.Resume)
             {
                 wokeAt = DateTime.Now;
-                Tracker.Resume(PauseReason.Asleep);
+                Tracker.Resume(PauseReason.Asleep, DateTime.Now);
                 Tracker.Tick(DateTime.Now, TakeDelta());
             }
+            Refresh();
+        }
+
+        void OnTimeChanged(object sender, EventArgs e)
+        {
+            TimeZoneInfo.ClearCachedData();
             Refresh();
         }
 
@@ -977,6 +991,7 @@ namespace Stillpoint
             SystemEvents.PowerModeChanged -= OnPowerModeChanged;
             SystemEvents.SessionEnding -= OnSessionEnding;
             SystemEvents.SessionEnded -= OnSessionEnded;
+            SystemEvents.TimeChanged -= OnTimeChanged;
             Tracker.Tick(DateTime.Now, TakeDelta());
             SaveUsage();
             if (form.Visible && form.WindowState != FormWindowState.Minimized) lastSeen = DateTime.Now;

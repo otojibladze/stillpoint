@@ -127,6 +127,7 @@ namespace Stillpoint
         {
             base.OnMouseWheel(e);
             ShowMonth(e.Delta > 0 ? -1 : 1);
+            if (e is HandledMouseEventArgs handled) handled.Handled = true;
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
@@ -144,6 +145,19 @@ namespace Stillpoint
         {
             base.OnMouseLeave(e);
             hover = -1;
+            Invalidate();
+        }
+
+        DateTime todayWas = DateTime.Today;
+
+        public void RollToday()
+        {
+            if (DateTime.Today == todayWas) return;
+            bool follow = Selected == todayWas;
+            todayWas = DateTime.Today;
+            if (!follow) { Invalidate(); return; }
+            Selected = DateTime.Today;
+            month = First(DateTime.Today);
             Invalidate();
         }
 

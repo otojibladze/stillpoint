@@ -19,7 +19,7 @@ namespace Stillpoint
 
         int FlowerNeeds()
         {
-            if (Touch == null) return -1;
+            if (Touch == null || snowGround || season == Season.Winter) return -1;
             var left = Touch.Plants.Select(p => Touches.BloomBreaks - (int)PlantBreaks(p)).Where(n => n > 0).ToList();
             return left.Count == 0 ? -1 : left.Min();
         }

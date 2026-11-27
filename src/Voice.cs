@@ -70,7 +70,7 @@ namespace Stillpoint
             {
                 case Tone.Cheer: return $"Welcome back. {minutes} min break. Nice!";
                 case Tone.Dry: return $"Back. {minutes} min. I'll allow it.";
-                case Tone.Worry: return $"Welcome back. {minutes} minutes. Feel better?";
+                case Tone.Worry: return minutes == 1 ? "Welcome back. 1 minute. Feel better?" : $"Welcome back. {minutes} minutes. Feel better?";
                 default: return $"Welcome back. {minutes} min break.";
             }
         }

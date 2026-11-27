@@ -14,6 +14,7 @@ namespace Stillpoint
         readonly Curtain curtain = new Curtain { Visible = false };
         readonly Frames frames;
         Control shown;
+        bool curtainUp;
         float elapsed;
         int direction;
 
@@ -45,6 +46,7 @@ namespace Stillpoint
                 curtain.Bounds = ClientRectangle;
                 curtain.Set(before, null, 0, 0);
                 curtain.Visible = true;
+                curtainUp = true;
                 curtain.BringToFront();
                 curtain.Update();
             }
@@ -98,7 +100,8 @@ namespace Stillpoint
         void Finish()
         {
             frames.Stop();
-            if (!curtain.Visible) return;
+            if (!curtainUp) return;
+            curtainUp = false;
             curtain.Visible = false;
             curtain.Set(null, null, 0, 0);
             if (shown != null) shown.Bounds = ClientRectangle;

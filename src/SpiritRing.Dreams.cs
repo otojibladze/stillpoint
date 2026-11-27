@@ -10,7 +10,7 @@ namespace Stillpoint
         const float DreamSeconds = 11;
         static readonly PointF DreamAt = new PointF(92, 60);
         float dreamT = -99, dreamNext = 6;
-        bool dreamTold;
+        DateTime dreamToldNight;
 
         public event Action<DateTime> DreamShared;
 
@@ -35,9 +35,9 @@ namespace Stillpoint
                 dreamNext = Math.Max(dreamNext, t + 5);
             }
             float hour = (float)Clock().TimeOfDay.TotalHours;
-            if (!dreamTold && d != null && !state.DreamTold && !Sleeping && hour >= 5 && hour < 12 && t > viewT + 3 && known && state.Chat != Chattiness.Quiet)
+            if (d != null && d.Night != dreamToldNight && !state.DreamTold && !Sleeping && hour >= 5 && hour < 12 && t > viewT + 3 && known && state.Chat != Chattiness.Quiet)
             {
-                dreamTold = true;
+                dreamToldNight = d.Night;
                 Later(Tone == Tone.Dry ? "Weird dream last night. " + d.Line : d.Worried ? "Funny dream last night. " + d.Line : d.Line, t + 1.5f, 4.8f);
                 DreamShared?.Invoke(d.Night);
             }
@@ -93,7 +93,7 @@ namespace Stillpoint
             if (stars == null || stars.Count == 0 || nightK < 0.7f || cloudK > 0.7f || Sleeping || t < viewT + 4) return;
             var today = Clock().Date;
             var last = stars[stars.Count - 1].Day;
-            if (last < today.AddDays(-1)) return;
+            if (last != SkyEvents.NightOf(Clock()).Date && last != today) return;
             var (shape, lit, _) = Constellation.Progress(stars.Count, last, Clock());
             string night = SkyEvents.NightOf(Clock()).ToString("yyyyMMdd");
             if (lit == Constellation.Size && Tell("constellation" + night, null))
